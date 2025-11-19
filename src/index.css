@@ -5,8 +5,8 @@
   line-height: 1.5;
   font-weight: 400;
   
-  color: #000000;
-  background-color: #ffffff;
+  color: #161519;
+  background-color: #F5F5F5;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -26,6 +26,6 @@ button {
 }
 
 button:focus {
-  outline: 2px solid #000000;
+  outline: 2px solid #A8202D;
   outline-offset: 2px;
 }

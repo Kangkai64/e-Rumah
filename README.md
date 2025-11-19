@@ -1,6 +1,6 @@
-# RASMS — Reverse Annuity Scheme Management System
+# e-Rumah — Reverse Annuity Scheme Management System
 
-**A digital platform to manage Malaysia’s Reverse Annuity Scheme for seniors (60+).**
+**A digital platform to manage Malaysia's Reverse Annuity Scheme for seniors (60+).**
 
 ---
 
@@ -9,15 +9,12 @@
 2. [Features](#features)
 3. [Technology Stack](#technology-stack)
 4. [Getting Started](#getting-started)
-5. [Folder Structure](#folder-structure)
-6. [Usage](#usage)
-7. [Contributing](#contributing)
-8. [License](#license)
+5. [Project Structure](#project-structure)
 
 ---
 
 ## Project Overview
-The **Reverse Annuity Scheme Management System (RASMS)** helps elderly homeowners in Malaysia convert their home equity into monthly income, a lump sum, or a credit line while continuing to live in their homes.  
+**e-Rumah** helps elderly homeowners in Malaysia convert their home equity into monthly income, a lump sum, or a credit line while continuing to live in their homes.  
 
 This system simplifies the process for elderly applicants and nominees, manages loan disbursement, monitors property compliance, and allows administrators to manage all applications digitally.
 
@@ -54,11 +51,55 @@ This system simplifies the process for elderly applicants and nominees, manages 
 ---
 
 ## Technology Stack
-- **Frontend:** JavaScript, React.js, Vue.js, Node.js
-- **Backend:** PHP
-- **Database:** Supabase (PostgreSQL)
+- **Frontend:** React.js + Vite
+- **Backend:** PHP (planned)
+- **Database:** Supabase (PostgreSQL, planned)
 - **IDE:** Visual Studio Code
 - **Version Control:** Git + GitHub
+
+---
+
+## Project Structure
+
+### `src/` Folder Organization
+
+```
+src/
+├── features/          - Feature modules (each feature in its own folder)
+│   ├── auth/         - Login, register, logout
+│   ├── application/  - Application forms for elderly
+│   ├── payment/      - Payment tracking and disbursement
+│   ├── admin/        - Admin dashboard
+│   └── home/         - Homepage sections
+│
+├── layouts/          - Page layouts (Header, Footer)
+│
+├── shared/           - Reusable code across the app
+│   ├── components/   - Reusable UI components (Button, Container)
+│   ├── utils/        - Helper functions (formatCurrency, calculateAge)
+│   └── hooks/        - Custom React hooks
+│
+├── assets/           - Images, icons, static files
+├── App.jsx           - Main app component
+├── main.jsx          - Entry point
+└── index.css         - Global styles
+```
+
+### What Each Folder Does
+
+**`features/`** - Each major feature gets its own folder. Inside each feature:
+- `components/` - UI components specific to that feature
+- `services/` - API calls and business logic
+- `hooks/` - Custom hooks for that feature
+
+**`layouts/`** - Components that appear on every page (Header, Footer)
+
+**`shared/`** - Code that's used in multiple places
+- Buttons, forms, containers
+- Helper functions like formatting dates or currency
+- Custom React hooks
+
+This structure keeps code organized by feature, making it easy to find and update specific parts of the app.
 
 ---
 
@@ -74,9 +115,25 @@ This system simplifies the process for elderly applicants and nominees, manages 
 1. **Clone the repository**
 ```bash
 git clone https://github.com/Bompipi/e-Rumah.git
+cd e-Rumah
 ```
 
-### How to Run?
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Run development server**
 ```bash
 npm run dev
 ```
+
+---
+
+## Color Scheme
+Inspired by [Kalsis](https://kalsis.com.my/)
+
+- **Primary Red:** `#A8202D` - Buttons, accents, hero/footer backgrounds
+- **Black:** `#161519` - Text, borders
+- **Grey:** `#777778` - Secondary text
+- **Light Grey:** `#F5F5F5` - Backgrounds, subtle elements
