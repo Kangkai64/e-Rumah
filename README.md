@@ -137,5 +137,3 @@ Inspired by [Kalsis](https://kalsis.com.my/)
 - **Black:** `#161519` - Text, borders
 - **Grey:** `#777778` - Secondary text
 - **Light Grey:** `#F5F5F5` - Backgrounds, subtle elements
-
-test test test
