@@ -30,6 +30,15 @@
   border-color: #A8202D;
 }
 
+.feature-card:hover p {
+  color: #F5F5F5;
+  transition: 0.3s;
+}
+
+.feature-card:hover .feature-number{
+  color: rgb(255, 255, 255);
+}
+
 .feature-number {
   font-size: 3rem;
   font-weight: bold;
