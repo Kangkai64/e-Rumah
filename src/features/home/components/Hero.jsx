@@ -13,7 +13,7 @@ const Hero = () => {
           <br />For Malaysian seniors aged 60 and above.
         </p>
         <div className="hero-buttons">
-          <Button variant="primary">Apply Now</Button>
+          <Button variant="primary" to="/application">Apply Now</Button>
           <Button variant="secondary">Learn More</Button>
         </div>
       </div>
