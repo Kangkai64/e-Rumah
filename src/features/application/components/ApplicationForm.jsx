@@ -5,9 +5,9 @@ import WizardNavigation from './WizardNavigation'
 import Step1PersonalInfo from './steps/Step1PersonalInfo'
 import Step2JointApplicant from './steps/Step2JointApplicant'
 import Step3PropertyDetails from './steps/Step3PropertyDetails'
-import Step5Nominees from './steps/Step5Nominees'
-import Step5bAcknowledgement from './steps/Step5bAcknowledgement'
-import Step6InfoDisplay from './steps/Step6InfoDisplay'
+import Step4Nominees from './steps/Step4Nominees'
+import Step5InfoDisplay from './steps/Step5InfoDisplay'
+import Step6Acknowledgement from './steps/Step6Acknowledgement'
 import Step7Review from './steps/Step7Review'
 import { validateStep } from '../services/validation'
 import './applicationForm.css'
@@ -768,11 +768,11 @@ function ApplicationForm() {
       case 3:
         return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} />
       case 4:
-        return <Step5Nominees formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} />
       case 5:
-        return <Step6InfoDisplay formData={formData} handleChange={handleChange} />
+        return <Step5InfoDisplay formData={formData} handleChange={handleChange} />
       case 6:
-        return <Step5bAcknowledgement formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step6Acknowledgement formData={formData} handleChange={handleChange} errors={errors} />
       case 7:
         return <Step7Review formData={formData} />
       default:

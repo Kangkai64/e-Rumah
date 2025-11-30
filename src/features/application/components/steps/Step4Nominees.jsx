@@ -1,5 +1,4 @@
 import ErrorSummary from '../ErrorSummary'
-import ErrorMessage from '../ErrorMessage'
 
 export default function Step5Nominees({ formData, handleChange, errors = {} }) {
   return (
