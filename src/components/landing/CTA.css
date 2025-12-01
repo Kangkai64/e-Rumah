@@ -1,0 +1,16 @@
+.cta {
+  padding: 6rem 0;
+  background: #F5F5F5;
+  text-align: center;
+}
+
+.cta h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.cta p {
+  font-size: 1.2rem;
+  margin-bottom: 2.5rem;
+  color: #777778;
+}

@@ -1,0 +1,51 @@
+.eligibility {
+  padding: 6rem 0;
+  background: #ffffff;
+  color: #161519;
+}
+
+.eligibility .section-title {
+  color: #161519;
+}
+
+.eligibility-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 3rem;
+}
+
+.eligibility-box {
+  border: 2px solid #A8202D;
+  padding: 2.5rem;
+}
+
+.eligibility-box h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+.eligibility-box ul {
+  list-style: none;
+}
+
+.eligibility-box li {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #F5F5F5;
+  font-size: 1.1rem;
+}
+
+.eligibility-box li:last-child {
+  border-bottom: none;
+}
+
+.eligibility-box li:before {
+  content: "✓ ";
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .eligibility-grid {
+    grid-template-columns: 1fr;
+  }
+}

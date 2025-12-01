@@ -1,0 +1,45 @@
+.btn {
+  padding: 1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid;
+}
+
+.btn-primary {
+  background: #A8202D;
+  color: #F5F5F5;
+  border-color: #A8202D;
+}
+
+.btn-primary:hover {
+  background: #161519;
+  color: #F5F5F5;
+  border-color: #161519;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #F5F5F5;
+  border-color: #F5F5F5;
+}
+
+.btn-secondary:hover {
+  background: #F5F5F5;
+  color: #A8202D;
+  border-color: #F5F5F5;
+}
+
+.btn-login {
+  background: #A8202D;
+  color: #F5F5F5;
+  border: 2px solid #A8202D;
+  padding: 0.6rem 1.5rem;
+  font-size: 1rem;
+}
+
+.btn-login:hover {
+  background: transparent;
+  color: #A8202D;
+}

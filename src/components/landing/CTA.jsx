@@ -1,4 +1,4 @@
-import Button from '../../../shared/components/Button'
+import Button from '../common/Button'
 import './CTA.css'
 
 const CTA = () => {
