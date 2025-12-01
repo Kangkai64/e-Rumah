@@ -4,7 +4,7 @@
 // NO imports from other views allowed!
 
 import { useRef, useEffect } from 'react'
-import '../features/application/components/applicationForm.css'
+import '../components/application/applicationForm.css'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)

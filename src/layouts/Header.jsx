@@ -1,4 +1,4 @@
-import Button from '../shared/components/Button'
+import Button from '../components/common/Button'
 import './Header.css'
 
 const Header = () => {
