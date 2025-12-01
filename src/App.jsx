@@ -6,7 +6,7 @@ import Hero from './features/home/components/Hero'
 import Features from './features/home/components/Features'
 import Eligibility from './features/home/components/Eligibility'
 import CTA from './features/home/components/CTA'
-import ApplicationForm from './features/application/components/ApplicationForm'
+import ApplicationController from './controllers/ApplicationController.jsx'
 
 function App() {
   return (
@@ -21,7 +21,7 @@ function App() {
             <CTA />
           </>
         } />
-        <Route path="/application" element={<ApplicationForm />} />
+        <Route path="/application" element={<ApplicationController />} />
       </Routes>
       <Footer />
     </div>
