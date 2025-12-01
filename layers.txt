@@ -1,0 +1,39 @@
+- view layer -
+ApplicationFormView ✅
+ApplicationDetailView
+HealthMonitoringView
+CustomerSupportView
+AppointmentView
+UserProfileView
+PropertyCalculatorView
+LoanStatementView
+AdminView
+AdminApplicationReviewView
+AdminReportView
+
+- controller layer - 
+LoanController
+ApplicationController ✅
+AdminController
+UserProfileController
+HealthReportController
+CustomerSupportController
+AppointmentController
+AdminReportController
+PropertyCalculatorController
+
+- model layer -
+Property
+Nominee
+User
+Application ✅
+LoanDisbursement
+HealthReport
+Inquiry
+CreditProfile
+EligibityRule
+CustomerSupportContact
+Loan
+ValuationReport
+Appointment
+Admin
