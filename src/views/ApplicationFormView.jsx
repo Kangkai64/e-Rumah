@@ -180,6 +180,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
       
       <ErrorSummary errors={errors} />
 
+      <section className="form-section">
       <div className="form-group">
         <label>How do you know about SSB/SSB-i? *</label>
         <div className="radio-group">
@@ -597,6 +598,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
           <label className="radio-label"><input type="radio" name="paymentOption" value="toBeAdvanced" checked={formData.paymentOption === 'toBeAdvanced'} onChange={handleChange} /> To be advanced by Cagamas</label>
         </div>
       </div>
+      </section>
     </div>
   )
 }
