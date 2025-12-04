@@ -2,7 +2,7 @@ import './HomePage.css'
 import heroImage from '../../assets/images/hero_coupleLookingPhone.jpg'
 import eligibilityImage from '../../assets/images/hero_What-you-need-to-know.jpg'
 import partnershipImage from '../../assets/images/hero_aboutUs.jpeg'
-import elderImage from '../../assets/images/hero_What-you-need-to-know.jpg'
+import elderImage from '../../assets/images/hero_Asian-Attractive-Happy-Senior.jpg'
 
 const HomePage = () => {
   return (

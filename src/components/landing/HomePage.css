@@ -48,6 +48,7 @@
 .services-cards {
   background: white;
   padding: 4rem 2rem;
+  padding-bottom: 0rem;
 }
 
 .services-container {
@@ -108,7 +109,7 @@
 /* Quote Section */
 .quote-section {
   background: white;
-  padding: 4rem 2rem;
+  padding: 5rem 2rem;
 }
 
 .quote-container {
@@ -184,7 +185,7 @@
 }
 
 .eligibility-list li {
-  font-size: 0.9rem;
+  font-size: 1.0rem;
   line-height: 1.5;
 }
 
@@ -291,7 +292,7 @@
 }
 
 .benefit-card h3 {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #161519;
   line-height: 1.5;
@@ -329,7 +330,7 @@
 }
 
 .complementary-item p {
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   color: #4b5563;
   line-height: 1.5;
   margin: 0;
@@ -464,14 +465,14 @@
 }
 
 .philosophy-card h4 {
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #161519;
   margin: 0;
 }
 
 .philosophy-card p {
-  font-size: 0.9rem;
+  font-size: 1.0rem;
   color: #4b5563;
   line-height: 1.6;
   margin: 0;
