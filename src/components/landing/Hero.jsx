@@ -1,20 +1,16 @@
 import Button from '../common/Button'
 import './Hero.css'
+import heroImage from '../../assets/images/hero_coupleLookingPhone.jpg'
 
 const Hero = () => {
   return (
     <section className="hero">
-      <div className="container">
-        <h1 className="hero-title">
-          Reverse Annuity Scheme<br />Management System
-        </h1>
-        <p className="hero-subtitle">
-          Convert your home equity into monthly income while continuing to live in your home.
-          <br />For Malaysian seniors aged 60 and above.
-        </p>
-        <div className="hero-buttons">
-          <Button variant="primary" to="/application">Apply Now</Button>
-          <Button variant="secondary">Learn More</Button>
+      <div className="hero-content">
+        <div className="hero-image">
+          <img src={heroImage} alt="Senior couple" />
+          <div className="hero-badge">
+            <h2>Innovation-driven healthcare and retirement financing for Malaysia's seniors</h2>
+          </div>
         </div>
       </div>
     </section>

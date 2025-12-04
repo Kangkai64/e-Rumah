@@ -1,44 +1,137 @@
-.header {
-  background: #ffffff;
-  color: #161519;
-  padding: 1.5rem 0;
+.site-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 2px solid #A8202D;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.header .container {
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
 }
 
 .logo {
-  font-size: 1.8rem;
-  font-weight: bold;
-  letter-spacing: 2px;
-}
-
-.nav {
   display: flex;
-  gap: 2rem;
   align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: #161519;
+  font-weight: 700;
+  font-size: 1.25rem;
 }
 
-.nav a {
+.logo-image {
+  height: 40px;
+  width: auto;
+}
+
+.logo-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-text {
+  color: #161519;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex: 1;
+  justify-content: flex-end;
+  margin-right: 2rem;
+}
+
+.nav-link {
   color: #161519;
   text-decoration: none;
+  font-size: 0.9rem;
   font-weight: 500;
-  transition: color 0.3s;
+  white-space: nowrap;
+  transition: color 0.2s;
 }
 
-.nav a:hover {
+.nav-link:hover {
   color: #A8202D;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.contact-link {
+  color: #161519;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.contact-link:hover {
+  color: #A8202D;
+}
+
+.login-btn {
+  background: #A8202D;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.login-btn:hover {
+  background: #8a1a24;
+}
+
+.user-icon-btn {
+  background: none;
+  border: 1px solid #A8202D;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.user-icon-btn:hover {
+  background: #f9f9f9;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .main-nav {
+    gap: 1rem;
+  }
+  
+  .nav-link {
+    font-size: 0.85rem;
+  }
+}
+
 @media (max-width: 768px) {
-  .nav {
+  .main-nav {
     display: none;
+  }
+  
+  .header-container {
+    padding: 0 1rem;
   }
 }

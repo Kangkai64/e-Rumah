@@ -1,9 +1,9 @@
 - view layer -
 ApplicationFormView ✅
-ApplicationDetailView
+ManageApplicationView
 HealthMonitoringView
 CustomerSupportView
-AppointmentView
+AnswerInquiryView
 UserProfileView
 PropertyCalculatorView
 LoanStatementView
@@ -18,7 +18,7 @@ AdminController
 UserProfileController
 HealthReportController
 CustomerSupportController
-AppointmentController
+ManageApplicationController
 AdminReportController
 PropertyCalculatorController
 
@@ -35,5 +35,5 @@ EligibityRule
 CustomerSupportContact
 Loan
 ValuationReport
-Appointment
+Notification
 Admin
