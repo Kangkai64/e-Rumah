@@ -2084,31 +2084,12 @@ function Step7Review({ formData }) {
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.propertyPostcode)}</div>
         <div className="review-grid">
           <div className="review-field"><strong>Property Type:</strong> {getValue(formData.propertyType)}</div>
-          <div className="review-field"><strong>Tenure:</strong> {getValue(formData.propertyTenure)}</div>
-          {formData.propertyTenure === 'leasehold' && (
-            <div className="review-field"><strong>Remaining Lease:</strong> {getValue(formData.leaseholdYears)} years</div>
-          )}
+          <div className="review-field"><strong>Tenure:</strong> {getValue(formData.tenureTitle)}</div>
           <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} sq ft</div>
           <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.builtUpArea)} sq ft</div>
-          <div className="review-field"><strong>Year Built:</strong> {getValue(formData.yearBuilt)}</div>
           <div className="review-field"><strong>Market Value:</strong> {formatCurrency(formData.indicativeMarketValue)}</div>
-          <div className="review-field"><strong>Title Number:</strong> {getValue(formData.titleNumber)}</div>
-          <div className="review-field"><strong>Encumbered:</strong> {getValue(formData.isEncumbered)}</div>
+          <div className="review-field"><strong>Encumbered:</strong> {getValue(formData.propertyEncumbered)}</div>
         </div>
-        {formData.isEncumbered === 'yes' && (
-          <>
-            <div className="review-field"><strong>Financial Institution:</strong> {getValue(formData.encumbranceBank)}</div>
-            <div className="review-field"><strong>Outstanding Loan:</strong> {formatCurrency(formData.outstandingLoanAmount)}</div>
-          </>
-        )}
-        <div className="review-field"><strong>Insured:</strong> {getValue(formData.isInsured)}</div>
-        {formData.isInsured === 'yes' && (
-          <>
-            <div className="review-field"><strong>Insurance Company:</strong> {getValue(formData.insuranceCompany)}</div>
-            <div className="review-field"><strong>Policy Number:</strong> {getValue(formData.insurancePolicyNumber)}</div>
-            <div className="review-field"><strong>Sum Insured:</strong> {formatCurrency(formData.insuranceSumInsured)}</div>
-          </>
-        )}
       </div>
 
       <div className="review-section">
@@ -2118,12 +2099,11 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>Name:</strong> {getValue(formData.nominee1Name)}</div>
           <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nominee1Ic)}</div>
           <div className="review-field"><strong>Relationship:</strong> {getValue(formData.nominee1Relationship)}</div>
-          <div className="review-field"><strong>Share:</strong> {getValue(formData.nominee1Share)}%</div>
         </div>
         <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee1Address)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee1Postcode)}</div>
         <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
-        <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee1Phone)}</div>
+        <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee1Telephone)}</div>
 
         {formData.hasSecondNominee && (
           <>
@@ -2132,44 +2112,11 @@ function Step7Review({ formData }) {
               <div className="review-field"><strong>Name:</strong> {getValue(formData.nominee2Name)}</div>
               <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nominee2Ic)}</div>
               <div className="review-field"><strong>Relationship:</strong> {getValue(formData.nominee2Relationship)}</div>
-              <div className="review-field"><strong>Share:</strong> {getValue(formData.nominee2Share)}%</div>
             </div>
             <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee2Address)}</div>
             <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee2Postcode)}</div>
             <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee2Email)}</div>
-            <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee2Phone)}</div>
-          </>
-        )}
-      </div>
-
-      <div className="review-section">
-        <h3>{formData.isJointApplicant ? '6' : '5'}. Declarations & Consents</h3>
-        <div className="review-field"><strong>Privacy Consent:</strong> {getValue(formData.privacyConsent)}</div>
-        <div className="review-field"><strong>Documents Ready:</strong> {getValue(formData.documentsReady)}</div>
-        <div className="review-field"><strong>Declaration Confirmed:</strong> {getValue(formData.declarationConfirm)}</div>
-        <div className="review-field"><strong>Applicant Signature Date:</strong> {getValue(formData.applicantSignatureDate)}</div>
-        {formData.isJointApplicant && (
-          <div className="review-field"><strong>Joint Applicant Signature Date:</strong> {getValue(formData.jointApplicantSignatureDate)}</div>
-        )}
-      </div>
-
-      <div className="review-section">
-        <h3>{formData.isJointApplicant ? '7' : '6'}. Nominee Acknowledgements</h3>
-        <h4>Nominee 1</h4>
-        <div className="review-field"><strong>Name:</strong> {getValue(formData.ack_nominee1Name)}</div>
-        <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.ack_nominee1Ic)}</div>
-        <div className="review-field"><strong>Consent Given:</strong> {getValue(formData.ack_nominee1Consent)}</div>
-        <div className="review-field"><strong>Signature Date:</strong> {getValue(formData.nominee1SignatureDate)}</div>
-        <div className="review-field"><strong>Witness:</strong> {getValue(formData.nominee1WitnessName)}</div>
-
-        {formData.hasSecondNominee && (
-          <>
-            <h4 style={{marginTop: '1rem'}}>Nominee 2</h4>
-            <div className="review-field"><strong>Name:</strong> {getValue(formData.ack_nominee2Name)}</div>
-            <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.ack_nominee2Ic)}</div>
-            <div className="review-field"><strong>Consent Given:</strong> {getValue(formData.ack_nominee2Consent)}</div>
-            <div className="review-field"><strong>Signature Date:</strong> {getValue(formData.nominee2SignatureDate)}</div>
-            <div className="review-field"><strong>Witness:</strong> {getValue(formData.nominee2WitnessName)}</div>
+            <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee2Telephone)}</div>
           </>
         )}
       </div>

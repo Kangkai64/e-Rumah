@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
-import { validateStep } from '../utils/validation'
+import { validateStep } from '../utils/applicationValidation'
 import ApplicationFormView from '../views/ApplicationFormView'
 import { parseICNumber, getCurrentDate } from '../utils/icParser'
 

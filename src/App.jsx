@@ -16,7 +16,13 @@ function App() {
             <Footer />
           </>
         } />
-        <Route path="/application" element={<ApplicationController />} />
+        <Route path="/application" element={
+          <>
+            <Header />
+            <ApplicationController />
+            <Footer />
+          </>
+        } />
       </Routes>
     </div>
   )
