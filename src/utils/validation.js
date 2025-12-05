@@ -1,10 +1,51 @@
 // Validation utility functions
 
-// IC Number validation: xxxxxx-xx-xxxx
+// IC Number validation: xxxxxx-xx-xxxx with valid date
 export const validateIC = (ic) => {
   if (!ic) return 'IC Number is required'
   const icPattern = /^\d{6}-\d{2}-\d{4}$/
   if (!icPattern.test(ic)) return 'IC must be in format: xxxxxx-xx-xxxx'
+  
+  // Extract date components (YYMMDD)
+  const cleanIC = ic.replace(/[-\s]/g, '')
+  const year = cleanIC.substring(0, 2)
+  const month = cleanIC.substring(2, 4)
+  const day = cleanIC.substring(4, 6)
+  
+  const monthInt = parseInt(month)
+  const dayInt = parseInt(day)
+  const yearInt = parseInt(year)
+  
+  // Validate month (01-12)
+  if (monthInt < 1 || monthInt > 12) {
+    return 'IC contains invalid month (must be 01-12)'
+  }
+  
+  // Validate day (01-31)
+  if (dayInt < 1 || dayInt > 31) {
+    return 'IC contains invalid day (must be 01-31)'
+  }
+  
+  // Determine full year
+  let fullYear
+  if (yearInt <= 25) {
+    fullYear = 2000 + yearInt
+  } else {
+    fullYear = 1900 + yearInt
+  }
+  
+  // Validate day based on month
+  const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (dayInt > daysInMonth[monthInt - 1]) {
+    return 'IC contains invalid day for the specified month'
+  }
+  
+  // Final validation: Check if the date is actually valid using JavaScript Date
+  const testDate = new Date(fullYear, monthInt - 1, dayInt)
+  if (testDate.getMonth() !== monthInt - 1 || testDate.getDate() !== dayInt) {
+    return 'IC contains an invalid date'
+  }
+  
   return null
 }
 

@@ -206,33 +206,6 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
       </div>
 
       <div className="form-group">
-        <label>Which one you prefer? *</label>
-        <div className="radio-group">
-          <label className="radio-label">
-            <input
-              type="radio"
-              name="preferredScheme"
-              value="conventional"
-              checked={formData.preferredScheme === 'conventional'}
-              onChange={handleChange}
-              required
-            />
-            Conventional (SSB)
-          </label>
-          <label className="radio-label">
-            <input
-              type="radio"
-              name="preferredScheme"
-              value="islamic"
-              checked={formData.preferredScheme === 'islamic'}
-              onChange={handleChange}
-            />
-            Islamic (SSB-i)
-          </label>
-        </div>
-      </div>
-
-      <div className="form-group">
         <label className="checkbox-label">
           <input
             type="checkbox"
@@ -298,11 +271,12 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
           placeholder="Format: xxxxxx-xx-xxxx"
           required 
         />
+        <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
         <ErrorMessage error={errors.nricNo} />
       </div>
 
       <div className="form-group">
-        <label>Date of Birth (DD/MM/YYYY) *</label>
+        <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
         <div style={{display: 'flex', gap: '0.5rem'}}>
           <select name="dobDay" value={formData.dobDay} onChange={handleChange} style={{width: '70px'}} className={errors.dob ? 'error' : ''} required>
             <option value="">DD</option>
@@ -321,10 +295,10 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
       </div>
 
       <div className="form-group">
-        <label>Sex *</label>
+        <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
         <div className="radio-group">
-          <label className="radio-label"><input type="radio" name="sex" value="male" checked={formData.sex === 'male'} onChange={handleChange} required /> Male</label>
-          <label className="radio-label"><input type="radio" name="sex" value="female" checked={formData.sex === 'female'} onChange={handleChange} /> Female</label>
+          <label className="radio-label"><input type="radio" name="sex" value="Male" checked={formData.sex === 'Male'} onChange={handleChange} required /> Male</label>
+          <label className="radio-label"><input type="radio" name="sex" value="Female" checked={formData.sex === 'Female'} onChange={handleChange} /> Female</label>
         </div>
       </div>
 
@@ -669,11 +643,12 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
               placeholder="Format: xxxxxx-xx-xxxx"
               required 
             />
+            <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
             <ErrorMessage error={errors.jIc} />
           </div>
 
           <div className="form-group">
-            <label>Date of Birth (DD/MM/YYYY) *</label>
+            <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div style={{display: 'flex', gap: '0.5rem'}}>
               <select name="jDobDay" value={formData.jDobDay} onChange={handleChange} style={{width: '70px'}} required>
                 <option value="">DD</option>
@@ -691,10 +666,10 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           </div>
 
           <div className="form-group">
-            <label>Sex *</label>
+            <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="jSex" value="male" checked={formData.jSex === 'male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="jSex" value="female" checked={formData.jSex === 'female'} onChange={handleChange} /> Female</label>
+              <label className="radio-label"><input type="radio" name="jSex" value="Male" checked={formData.jSex === 'Male'} onChange={handleChange} required /> Male</label>
+              <label className="radio-label"><input type="radio" name="jSex" value="Female" checked={formData.jSex === 'Female'} onChange={handleChange} /> Female</label>
             </div>
           </div>
 
@@ -1215,11 +1190,12 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
             placeholder="Format: xxxxxx-xx-xxxx"
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
           <ErrorMessage error={errors.nominee1Ic} />
         </div>
 
         <div className="form-group">
-          <label>Date of Birth (DD/MM/YYYY) *</label>
+          <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
           <div style={{display: 'flex', gap: '0.5rem'}}>
             <select name="nominee1DobDay" value={formData.nominee1DobDay} onChange={handleChange} style={{width: '70px'}} required>
               <option value="">DD</option>
@@ -1237,10 +1213,10 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
         </div>
 
         <div className="form-group">
-          <label>Sex *</label>
+          <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
           <div className="radio-group">
-            <label className="radio-label"><input type="radio" name="nominee1Sex" value="male" checked={formData.nominee1Sex === 'male'} onChange={handleChange} required /> Male</label>
-            <label className="radio-label"><input type="radio" name="nominee1Sex" value="female" checked={formData.nominee1Sex === 'female'} onChange={handleChange} /> Female</label>
+            <label className="radio-label"><input type="radio" name="nominee1Sex" value="Male" checked={formData.nominee1Sex === 'Male'} onChange={handleChange} required /> Male</label>
+            <label className="radio-label"><input type="radio" name="nominee1Sex" value="Female" checked={formData.nominee1Sex === 'Female'} onChange={handleChange} /> Female</label>
           </div>
         </div>
 
@@ -1437,11 +1413,12 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
               placeholder="Format: xxxxxx-xx-xxxx"
               required 
             />
+            <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
             <ErrorMessage error={errors.nominee2Ic} />
           </div>
 
           <div className="form-group">
-            <label>Date of Birth (DD/MM/YYYY) *</label>
+            <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div style={{display: 'flex', gap: '0.5rem'}}>
               <select name="nominee2DobDay" value={formData.nominee2DobDay} onChange={handleChange} style={{width: '70px'}} required>
                 <option value="">DD</option>
@@ -1459,10 +1436,10 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
           </div>
 
           <div className="form-group">
-            <label>Sex *</label>
+            <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="male" checked={formData.nominee2Sex === 'male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="female" checked={formData.nominee2Sex === 'female'} onChange={handleChange} /> Female</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Male" checked={formData.nominee2Sex === 'Male'} onChange={handleChange} required /> Male</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Female" checked={formData.nominee2Sex === 'Female'} onChange={handleChange} /> Female</label>
             </div>
           </div>
 
@@ -1717,23 +1694,27 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
                 type="text"
                 name="applicant_signature_name"
                 value={formData.applicant_signature_name}
-                onChange={handleChange}
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 placeholder="Full name"
                 required
                 className={errors.applicant_signature_name ? 'error' : ''}
               />
+              <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from applicant name</small>
               <ErrorMessage error={errors.applicant_signature_name} />
             </div>
             <div className="form-group">
               <label>Date *</label>
               <input
-                type="date"
+                type="text"
                 name="applicant_signature_date"
                 value={formData.applicant_signature_date}
-                onChange={handleChange}
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 required
                 className={errors.applicant_signature_date ? 'error' : ''}
               />
+              <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>
               <ErrorMessage error={errors.applicant_signature_date} />
             </div>
           </div>
@@ -1759,25 +1740,29 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
                 type="text"
                 name="jApplicant_signature_name"
                 value={formData.jApplicant_signature_name}
-                onChange={handleChange}
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 placeholder="Full name"
                 disabled={!formData.isJointApplicant}
                 required={formData.isJointApplicant}
                 className={errors.jApplicant_signature_name ? 'error' : ''}
               />
+              {formData.isJointApplicant && <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from joint applicant name</small>}
               <ErrorMessage error={errors.jApplicant_signature_name} />
             </div>
             <div className="form-group">
               <label>{formData.isJointApplicant ? "Date *" : "Date"}</label>
               <input
-                type="date"
+                type="text"
                 name="jApplicant_signature_date"
                 value={formData.jApplicant_signature_date}
-                onChange={handleChange}
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 disabled={!formData.isJointApplicant}
                 required={formData.isJointApplicant}
                 className={errors.jApplicant_signature_date ? 'error' : ''}
               />
+              {formData.isJointApplicant && <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>}
               <ErrorMessage error={errors.jApplicant_signature_date} />
             </div>
           </div>
@@ -1799,7 +1784,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
   return (
     <div className="step-container">
       <h2>Acknowledgement Form</h2>
-      <p className="step-description">To be completed by Nominee(s)</p>
+      <p className="step-description">To be completed by Nominee(s) - Review information and sign</p>
       <ErrorSummary errors={errors} />
       
       <section className="form-section">
@@ -1815,7 +1800,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
           </ol>
         </div>
 
-        <h3>Nominee Information</h3>
+        <h3>Nominee Information (Auto-filled)</h3>
         
         <div className="form-group">
           <label>Nominee Name (as per NRIC) *</label>
@@ -1823,10 +1808,12 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             type="text" 
             name="ack_nomineeName" 
             value={formData.ack_nomineeName} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_nomineeName ? 'error' : ''}
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
           <ErrorMessage error={errors.ack_nomineeName} />
         </div>
 
@@ -1836,11 +1823,13 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             type="text" 
             name="ack_nomineeNRIC" 
             value={formData.ack_nomineeNRIC} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_nomineeNRIC ? 'error' : ''}
             placeholder="Format: xxxxxx-xx-xxxx"
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
           <ErrorMessage error={errors.ack_nomineeNRIC} />
         </div>
 
@@ -1849,15 +1838,17 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
           <textarea 
             name="ack_nomineeAddress" 
             value={formData.ack_nomineeAddress} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_nomineeAddress ? 'error' : ''}
             rows="3"
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
           <ErrorMessage error={errors.ack_nomineeAddress} />
         </div>
 
-        <h3 style={{marginTop: '2rem'}}>Applicant Information</h3>
+        <h3 style={{marginTop: '2rem'}}>Applicant Information (Auto-filled)</h3>
         
         <div className="form-group">
           <label>Applicant Name *</label>
@@ -1865,10 +1856,12 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             type="text" 
             name="ack_applicantName" 
             value={formData.ack_applicantName} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_applicantName ? 'error' : ''}
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Applicant information</small>
           <ErrorMessage error={errors.ack_applicantName} />
         </div>
 
@@ -1878,11 +1871,13 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             type="text" 
             name="ack_applicantNRIC" 
             value={formData.ack_applicantNRIC} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_applicantNRIC ? 'error' : ''}
             placeholder="Format: xxxxxx-xx-xxxx"
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Applicant information</small>
           <ErrorMessage error={errors.ack_applicantNRIC} />
         </div>
 
@@ -1894,10 +1889,12 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
                 type="text" 
                 name="ack_jointApplicantName" 
                 value={formData.ack_jointApplicantName} 
-                onChange={handleChange} 
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 className={errors.ack_jointApplicantName ? 'error' : ''}
                 required 
               />
+              <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Joint Applicant information</small>
               <ErrorMessage error={errors.ack_jointApplicantName} />
             </div>
 
@@ -1907,11 +1904,13 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
                 type="text" 
                 name="ack_jointApplicantNRIC" 
                 value={formData.ack_jointApplicantNRIC} 
-                onChange={handleChange} 
+                readOnly
+                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
                 className={errors.ack_jointApplicantNRIC ? 'error' : ''}
                 placeholder="Format: xxxxxx-xx-xxxx"
                 required 
               />
+              <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Joint Applicant information</small>
               <ErrorMessage error={errors.ack_jointApplicantNRIC} />
             </div>
           </div>
@@ -1922,32 +1921,43 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
           <textarea 
             name="ack_applicantAddress" 
             value={formData.ack_applicantAddress} 
-            onChange={handleChange} 
+            readOnly
+            style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
             className={errors.ack_applicantAddress ? 'error' : ''}
             rows="3"
             required 
           />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Applicant information</small>
           <ErrorMessage error={errors.ack_applicantAddress} />
         </div>
 
-        <h3 style={{marginTop: '2rem'}}>Application Date</h3>
+        <h3 style={{marginTop: '2rem'}}>Date (Auto-filled with current date)</h3>
         
         <div className="form-group">
-          <label>Date of Application (DD/MM/YYYY) *</label>
-          <div style={{display: 'flex', gap: '0.5rem'}}>
-            <select name="ack_applicationDay" value={formData.ack_applicationDay} onChange={handleChange} style={{width: '70px'}} required>
-              <option value="">DD</option>
-              {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-            </select>
-            <select name="ack_applicationMonth" value={formData.ack_applicationMonth} onChange={handleChange} style={{width: '70px'}} required>
-              <option value="">MM</option>
-              {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-            </select>
-            <select name="ack_applicationYear" value={formData.ack_applicationYear} onChange={handleChange} style={{width: '90px'}} required>
-              <option value="">YYYY</option>
-              {Array.from({length: 10}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-            </select>
+          <label>Date (DD/MM/YYYY) *</label>
+          <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+            <input 
+              type="text" 
+              value={formData.ack_dateDay} 
+              readOnly
+              style={{width: '70px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
+            <span>/</span>
+            <input 
+              type="text" 
+              value={formData.ack_dateMonth} 
+              readOnly
+              style={{width: '70px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
+            <span>/</span>
+            <input 
+              type="text" 
+              value={formData.ack_dateYear} 
+              readOnly
+              style={{width: '90px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
           </div>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>
         </div>
 
         <div className="form-group">

@@ -9,6 +9,7 @@ import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
 import { validateStep } from '../utils/validation'
 import ApplicationFormView from '../views/ApplicationFormView'
+import { parseICNumber, getCurrentDate } from '../utils/icParser'
 
 function ApplicationController() {
   const navigate = useNavigate()
@@ -206,15 +207,123 @@ function ApplicationController() {
   }, [currentStep])
 
   /**
-   * Handle form field changes
+   * Handle form field changes with auto-fill logic
    */
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-      // Never clear any fields - preserve all data for recoverability
-    }))
+    
+    setFormData(prev => {
+      let updates = {
+        [name]: type === 'checkbox' ? checked : value
+      }
+
+      // Auto-fill: Sync accountPreference with preferredScheme
+      if (name === 'accountPreference') {
+        updates.preferredScheme = value
+      }
+
+      // Auto-fill: Parse IC number and fill birthdate + sex for main applicant
+      if (name === 'nricNo' && value) {
+        const parsed = parseICNumber(value)
+        if (parsed.isValid && parsed.birthDate) {
+          updates.dobDay = parsed.birthDate.day
+          updates.dobMonth = parsed.birthDate.month
+          updates.dobYear = parsed.birthDate.year
+          updates.sex = parsed.sex
+        }
+      }
+
+      // Auto-fill: Parse IC number and fill birthdate + sex for joint applicant
+      if (name === 'jIc' && value) {
+        const parsed = parseICNumber(value)
+        if (parsed.isValid && parsed.birthDate) {
+          updates.jDobDay = parsed.birthDate.day
+          updates.jDobMonth = parsed.birthDate.month
+          updates.jDobYear = parsed.birthDate.year
+          updates.jSex = parsed.sex
+        }
+      }
+
+      // Auto-fill: Parse IC number and fill birthdate + sex for nominee 1
+      if (name === 'nominee1Ic' && value) {
+        const parsed = parseICNumber(value)
+        if (parsed.isValid && parsed.birthDate) {
+          updates.nominee1DobDay = parsed.birthDate.day
+          updates.nominee1DobMonth = parsed.birthDate.month
+          updates.nominee1DobYear = parsed.birthDate.year
+          updates.nominee1Sex = parsed.sex
+        }
+      }
+
+      // Auto-fill: Parse IC number and fill birthdate + sex for nominee 2
+      if (name === 'nominee2Ic' && value) {
+        const parsed = parseICNumber(value)
+        if (parsed.isValid && parsed.birthDate) {
+          updates.nominee2DobDay = parsed.birthDate.day
+          updates.nominee2DobMonth = parsed.birthDate.month
+          updates.nominee2DobYear = parsed.birthDate.year
+          updates.nominee2Sex = parsed.sex
+        }
+      }
+
+      // Auto-fill: Signature names and dates for applicant
+      if (name === 'nameAsPerNRIC' && value) {
+        updates.applicant_signature_name = value
+        const currentDate = getCurrentDate()
+        updates.applicant_signature_date = `${currentDate.day}/${currentDate.month}/${currentDate.year}`
+      }
+
+      // Auto-fill: Signature names and dates for joint applicant
+      if (name === 'jName' && value) {
+        updates.jApplicant_signature_name = value
+        const currentDate = getCurrentDate()
+        updates.jApplicant_signature_date = `${currentDate.day}/${currentDate.month}/${currentDate.year}`
+      }
+
+      // Auto-fill: Acknowledgement form fields from previously entered data
+      // Sync nominee information
+      if (name === 'nominee1Name' && value) {
+        updates.ack_nomineeName = value
+      }
+      if (name === 'nominee1Ic' && value) {
+        updates.ack_nomineeNRIC = value
+      }
+      if (name === 'nominee1Address' && value) {
+        updates.ack_nomineeAddress = value
+      }
+
+      // Sync applicant information
+      if (name === 'nameAsPerNRIC' && value) {
+        updates.ack_applicantName = value
+        updates.ack_signName = value
+      }
+      if (name === 'nricNo' && value) {
+        updates.ack_applicantNRIC = value
+        updates.ack_signIC = value
+      }
+      if (name === 'address' && value) {
+        updates.ack_applicantAddress = value
+      }
+
+      // Sync joint applicant information
+      if (name === 'jName' && value) {
+        updates.ack_jointApplicantName = value
+      }
+      if (name === 'jIc' && value) {
+        updates.ack_jointApplicantNRIC = value
+      }
+
+      // Auto-fill current date for acknowledgement
+      const currentDate = getCurrentDate()
+      updates.ack_dateDay = currentDate.day
+      updates.ack_dateMonth = currentDate.month
+      updates.ack_dateYear = currentDate.year
+
+      return {
+        ...prev,
+        ...updates
+      }
+    })
   }
 
   /**
