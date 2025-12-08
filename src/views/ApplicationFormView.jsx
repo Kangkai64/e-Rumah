@@ -2029,7 +2029,6 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>No. of Dependents:</strong> {getValue(formData.numOfDependents)}</div>
           <div className="review-field"><strong>Occupation:</strong> {getValue(formData.occupation)}</div>
           <div className="review-field"><strong>Present House:</strong> {getValue(formData.presentHouse)}</div>
-          <div className="review-field"><strong>Preferred Scheme:</strong> {getValue(formData.preferredScheme)}</div>
         </div>
         <div className="review-field" style={{marginTop: '0.5rem'}}><strong>Address:</strong> {getValue(formData.address)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.postcode)}</div>
@@ -2075,7 +2074,6 @@ function Step7Review({ formData }) {
         <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
         <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
         <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
-        <div className="review-field"><strong>Branch:</strong> {getValue(formData.bankBranch)}</div>
       </div>
 
       <div className="review-section">
@@ -2086,7 +2084,7 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>Property Type:</strong> {getValue(formData.propertyType)}</div>
           <div className="review-field"><strong>Tenure:</strong> {getValue(formData.tenureTitle)}</div>
           <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} sq ft</div>
-          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.builtUpArea)} sq ft</div>
+          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.buildUpArea)} sq ft</div>
           <div className="review-field"><strong>Market Value:</strong> {formatCurrency(formData.indicativeMarketValue)}</div>
           <div className="review-field"><strong>Encumbered:</strong> {getValue(formData.propertyEncumbered)}</div>
         </div>
@@ -2147,7 +2145,9 @@ export default function ApplicationFormView({
   handleChange,
   handleNext,
   handleBack,
-  handleSubmit
+  handleSubmit,
+  isLoading = false,
+  isSaving = false
 }) {
   const renderStep = () => {
     switch (currentStep) {
@@ -2170,10 +2170,38 @@ export default function ApplicationFormView({
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="application-form">
+        <div className="app-container">
+          <div style={{ textAlign: 'center', padding: '50px' }}>
+            <div className="loading-spinner"></div>
+            <p>Loading your application...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="application-form">
       <div className="app-container">
         <h1>SKIM SARAAN BERCAGAR (SSB) Application Form</h1>
+        {isSaving && (
+          <div style={{ 
+            position: 'fixed', 
+            top: '70px', 
+            right: '20px', 
+            background: '#4CAF50', 
+            color: 'white', 
+            padding: '10px 20px', 
+            borderRadius: '5px',
+            boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+            zIndex: 1000
+          }}>
+            💾 Saving...
+          </div>
+        )}
         <div className="wizard-container">
           <WizardNavigation
             currentStep={currentStep}

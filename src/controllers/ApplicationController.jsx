@@ -3,28 +3,38 @@
 // Renders ApplicationFormView (pure presentational component)
 // NO imports from other controllers allowed!
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
 import { validateStep } from '../utils/applicationValidation'
 import ApplicationFormView from '../views/ApplicationFormView'
 import { parseICNumber, getCurrentDate } from '../utils/icParser'
+import { getCurrentUser } from '../services/authService'
+import { 
+  loadApplicationData, 
+  saveApplicationData, 
+  saveToLocalStorage,
+  loadFromLocalStorage 
+} from '../services/applicationService'
 
 function ApplicationController() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 7
   const [errors, setErrors] = useState({})
+  const [currentUser, setCurrentUser] = useState(null)
+  const [applicationId, setApplicationId] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const saveTimeoutRef = useRef(null)
   
-  // Initialize form data from draft or empty
-  const [formData, setFormData] = useState(() => {
-    const saved = Application.loadDraft()
-    return saved || {
-      // How do you know about SSB
-      howDidYouKnow: '',
-      isJointApplicant: false,
-      preferredScheme: '',
+  // Initialize form data - will be loaded from Supabase
+  const [formData, setFormData] = useState({
+    // How do you know about SSB
+    howDidYouKnow: '',
+    isJointApplicant: false,
+    preferredScheme: '',
       
       // Applicant Information
       salutation: '',
@@ -184,27 +194,132 @@ function ApplicationController() {
       // Privacy & Documents
       privacyConsent: false,
       acknowledgeDeclaration: false,
-    }
   })
 
-  // Load saved step on mount
+  // ==========================================
+  // INITIAL LOAD: Get user and load application data
+  // ==========================================
   useEffect(() => {
-    const savedStep = localStorage.getItem('ssbCurrentStep')
-    if (savedStep) {
-      setCurrentStep(parseInt(savedStep))
+    const initializeApplication = async () => {
+      try {
+        setIsLoading(true)
+
+        // Get current authenticated user
+        const { user, error: userError } = await getCurrentUser()
+        
+        if (userError || !user) {
+          // No user logged in - redirect to login
+          console.warn('No user authenticated, redirecting to login')
+          // For now, use localStorage as fallback (until auth pages are ready)
+          const localData = loadFromLocalStorage('guest')
+          setFormData(prev => ({ ...prev, ...localData.formData }))
+          setCurrentStep(localData.currentStep)
+          setIsLoading(false)
+          return
+        }
+
+        setCurrentUser(user)
+
+        // Load application data from Supabase
+        const { formData: loadedData, currentStep: loadedStep, application, error } = 
+          await loadApplicationData(user.id)
+
+        if (error) {
+          console.error('Error loading from Supabase, using localStorage fallback:', error)
+          // Fallback to localStorage
+          const localData = loadFromLocalStorage(user.id)
+          setFormData(prev => ({ ...prev, ...localData.formData }))
+          setCurrentStep(localData.currentStep)
+        } else {
+          // Successfully loaded from Supabase
+          setFormData(prev => ({ ...prev, ...loadedData }))
+          setCurrentStep(loadedStep)
+          setApplicationId(application?.id)
+          console.log('✅ Loaded application from Supabase')
+        }
+
+        window.scrollTo(0, 0)
+      } catch (error) {
+        console.error('Error initializing application:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    window.scrollTo(0, 0)
+
+    initializeApplication()
   }, [])
 
-  // Save draft whenever formData changes
-  useEffect(() => {
-    Application.saveDraft(formData)
-  }, [formData])
+  // ==========================================
+  // AUTO-SAVE: Debounced save to Supabase
+  // ==========================================
+  const debouncedSave = useCallback(async (data, step) => {
+    if (!currentUser || !applicationId) {
+      // No user or application yet - save to localStorage only
+      saveToLocalStorage(currentUser?.id || 'guest', data, step)
+      return
+    }
 
-  // Save current step
+    try {
+      setIsSaving(true)
+      
+      // Save to Supabase
+      const { error } = await saveApplicationData(applicationId, data, step)
+      
+      if (error) {
+        console.error('Error saving to Supabase, using localStorage fallback:', error)
+        saveToLocalStorage(currentUser.id, data, step)
+      } else {
+        console.log('✅ Auto-saved to Supabase')
+        // Also save to localStorage as backup
+        saveToLocalStorage(currentUser.id, data, step)
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      saveToLocalStorage(currentUser.id, data, step)
+    } finally {
+      setIsSaving(false)
+    }
+  }, [currentUser, applicationId])
+
+  // Trigger auto-save when formData or currentStep changes
   useEffect(() => {
-    localStorage.setItem('ssbCurrentStep', currentStep.toString())
-  }, [currentStep])
+    if (isLoading) return // Don't save during initial load
+
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // Debounce save by 1 second
+    saveTimeoutRef.current = setTimeout(() => {
+      debouncedSave(formData, currentStep)
+    }, 1000)
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [formData, currentStep, debouncedSave, isLoading])
+
+  // Old localStorage-only code (kept for reference, now handled above)
+  // useEffect(() => {
+  //   const savedStep = localStorage.getItem('ssbCurrentStep')
+  //   if (savedStep) {
+  //     setCurrentStep(parseInt(savedStep))
+  //   }
+  //   window.scrollTo(0, 0)
+  // }, [])
+
+  // Old: Save draft whenever formData changes (now handled by auto-save above)
+  // useEffect(() => {
+  //   Application.saveDraft(formData)
+  // }, [formData])
+
+  // Old: Save current step (now handled by auto-save above)
+  // useEffect(() => {
+  //   localStorage.setItem('ssbCurrentStep', currentStep.toString())
+  // }, [currentStep])
 
   /**
    * Handle form field changes with auto-fill logic
@@ -712,6 +827,8 @@ function ApplicationController() {
       handleNext={handleNext}
       handleBack={handleBack}
       handleSubmit={handleSubmit}
+      isLoading={isLoading}
+      isSaving={isSaving}
     />
   )
 }
