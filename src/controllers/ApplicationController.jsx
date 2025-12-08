@@ -219,23 +219,25 @@ function ApplicationController() {
         }
 
         setCurrentUser(user)
+        console.log('👤 User authenticated:', user.id)
 
         // Load application data from Supabase
         const { formData: loadedData, currentStep: loadedStep, application, error } = 
           await loadApplicationData(user.id)
 
         if (error) {
-          console.error('Error loading from Supabase, using localStorage fallback:', error)
+          console.error('❌ Error loading from Supabase:', error)
           // Fallback to localStorage
           const localData = loadFromLocalStorage(user.id)
           setFormData(prev => ({ ...prev, ...localData.formData }))
           setCurrentStep(localData.currentStep)
+          console.log('📂 Using localStorage fallback')
         } else {
           // Successfully loaded from Supabase
           setFormData(prev => ({ ...prev, ...loadedData }))
           setCurrentStep(loadedStep)
           setApplicationId(application?.id)
-          console.log('✅ Loaded application from Supabase')
+          console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', loadedStep, 'Fields:', Object.keys(loadedData).length)
         }
 
         window.scrollTo(0, 0)
@@ -253,28 +255,53 @@ function ApplicationController() {
   // AUTO-SAVE: Debounced save to Supabase
   // ==========================================
   const debouncedSave = useCallback(async (data, step) => {
-    if (!currentUser || !applicationId) {
-      // No user or application yet - save to localStorage only
-      saveToLocalStorage(currentUser?.id || 'guest', data, step)
+    if (!currentUser) {
+      // No user yet - save to localStorage only
+      console.log('⚠️ No user, saving to localStorage only')
+      saveToLocalStorage('guest', data, step)
       return
     }
 
     try {
       setIsSaving(true)
       
+      // If no applicationId, try to get or create one
+      let appId = applicationId
+      if (!appId) {
+        console.log('🔄 No applicationId, fetching/creating application...')
+        const { application, error: appError } = await loadApplicationData(currentUser.id)
+        if (!appError && application?.id) {
+          appId = application.id
+          setApplicationId(application.id)
+          console.log('✅ Application ID set:', application.id)
+        } else {
+          console.error('❌ Failed to get application ID:', appError)
+          saveToLocalStorage(currentUser.id, data, step)
+          setIsSaving(false)
+          return
+        }
+      }
+      
       // Save to Supabase
-      const { error } = await saveApplicationData(applicationId, data, step)
+      console.log('💾 Saving to Supabase:', {
+        appId,
+        step,
+        fieldCount: Object.keys(data).length,
+        fields: Object.keys(data).slice(0, 5) // First 5 field names
+      })
+      
+      const { error } = await saveApplicationData(appId, data, step)
       
       if (error) {
-        console.error('Error saving to Supabase, using localStorage fallback:', error)
+        console.error('❌ Error saving to Supabase:', error)
         saveToLocalStorage(currentUser.id, data, step)
       } else {
-        console.log('✅ Auto-saved to Supabase')
+        console.log('✅ Auto-saved to Supabase (App ID:', appId, ')')
         // Also save to localStorage as backup
         saveToLocalStorage(currentUser.id, data, step)
       }
     } catch (error) {
-      console.error('Save error:', error)
+      console.error('❌ Save error:', error)
       saveToLocalStorage(currentUser.id, data, step)
     } finally {
       setIsSaving(false)
@@ -433,6 +460,9 @@ function ApplicationController() {
       updates.ack_dateDay = currentDate.day
       updates.ack_dateMonth = currentDate.month
       updates.ack_dateYear = currentDate.year
+      updates.ack_applicationDay = currentDate.day
+      updates.ack_applicationMonth = currentDate.month
+      updates.ack_applicationYear = currentDate.year
 
       return {
         ...prev,
@@ -477,15 +507,34 @@ function ApplicationController() {
     e.preventDefault()
     
     try {
+      console.log('📋 Starting application submission...')
+      
+      // 1. Submit to database (create nominees and property records)
+      if (currentUser && applicationId) {
+        const { submitApplicationComplete } = await import('../services/applicationService')
+        const { success, error } = await submitApplicationComplete(applicationId, formData)
+        
+        if (error) {
+          console.error('❌ Database submission failed:', error)
+          alert('Failed to submit application to database: ' + error.message)
+          return
+        }
+        
+        console.log('✅ Application submitted to database')
+      }
+      
+      // 2. Generate PDF
+      console.log('📄 Generating PDF...')
       const pdfBlob = await generatePDF(formData)
       downloadPDF(pdfBlob)
       
-      // Don't clear draft - keep data for testing and recoverability
-      alert('PDF generated successfully! Form data is preserved for testing.')
-      // navigate('/') - commented out to stay on form
+      alert('Application submitted successfully! PDF has been downloaded.')
+      
+      // Optional: navigate away or show success page
+      // navigate('/success')
     } catch (error) {
-      console.error('Error generating PDF:', error)
-      alert('Error generating PDF. Please try again.')
+      console.error('Error during submission:', error)
+      alert('Error submitting application. Please try again.')
     }
   }
 

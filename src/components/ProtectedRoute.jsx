@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children }) {
   if (!user) {
     // For now, allow access without auth (until auth is fully set up)
     // Uncomment the line below to enforce authentication:
-    // return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />
     
     // Temporary: Allow access for testing
     return children

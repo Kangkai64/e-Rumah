@@ -28,9 +28,27 @@ export const getOrCreateApplication = async (userId) => {
 
     // If found, return it
     if (existingApps) {
+      console.log('🔍 Found existing application:', {
+        appId: existingApps.id,
+        status: existingApps.status,
+        application_data_type: typeof existingApps.application_data,
+        application_data_length: existingApps.application_data?.length,
+        application_data_raw: existingApps.application_data
+      })
+      
+      const appData = Array.isArray(existingApps.application_data) 
+        ? existingApps.application_data[0] 
+        : existingApps.application_data
+      
+      console.log('📦 Application data extracted:', {
+        id: appData?.id,
+        current_step: appData?.current_step,
+        form_data_keys: Object.keys(appData?.form_data || {}).length
+      })
+      
       return {
         application: existingApps,
-        applicationData: existingApps.application_data[0] || null,
+        applicationData: appData || null,
         error: null
       }
     }
@@ -80,6 +98,13 @@ export const getOrCreateApplication = async (userId) => {
  */
 export const saveApplicationData = async (applicationId, formData, currentStep) => {
   try {
+    console.log('📤 Supabase update request:', {
+      applicationId,
+      currentStep,
+      formDataKeys: Object.keys(formData),
+      formDataSample: JSON.stringify(formData).slice(0, 100) + '...'
+    })
+    
     const { data, error } = await supabase
       .from('application_data')
       .update({
@@ -92,6 +117,13 @@ export const saveApplicationData = async (applicationId, formData, currentStep) 
       .single()
 
     if (error) throw error
+    
+    console.log('✅ Supabase response:', {
+      id: data.id,
+      current_step: data.current_step,
+      form_data_keys: Object.keys(data.form_data || {}),
+      updated_at: data.updated_at
+    })
 
     return { data, error: null }
   } catch (error) {
@@ -299,5 +331,212 @@ export const clearLocalStorage = () => {
     console.log('✅ Cleared localStorage')
   } catch (error) {
     console.error('Error clearing localStorage:', error)
+  }
+}
+
+// ==========================================
+// NOMINEE AND PROPERTY FUNCTIONS
+// ==========================================
+
+/**
+ * Create or update nominees from form data
+ * @param {string} applicationId - Application ID
+ * @param {object} formData - Complete form data
+ * @returns {Promise<{nominees, error}>}
+ */
+export const saveNominees = async (applicationId, formData) => {
+  try {
+    const nominees = []
+    
+    // Nominee 1 (required)
+    if (formData.nom1Name && formData.nom1IC) {
+      nominees.push({
+        application_id: applicationId,
+        type: 'nominee1',
+        salutation: formData.nom1Salutation || null,
+        name: formData.nom1Name,
+        ic_number: formData.nom1IC,
+        address: formData.nom1Address || null,
+        postcode: formData.nom1Postcode || null,
+        email: formData.nom1Email || null,
+        residence_phone: formData.nom1ResidencePhone || null,
+        telephone: formData.nom1Telephone || null,
+        dob_day: formData.nom1DobDay || null,
+        dob_month: formData.nom1DobMonth || null,
+        dob_year: formData.nom1DobYear || null,
+        sex: formData.nom1Sex || null,
+        race: formData.nom1Race || null,
+        is_malaysian: formData.nom1Malaysian || false,
+        marital_status: formData.nom1MaritalStatus || null,
+        relationship: formData.nom1Relationship || null,
+        occupation: formData.nom1Occupation || null,
+        employer_name: formData.nom1EmployerName || null
+      })
+    }
+    
+    // Nominee 2 (optional)
+    if (formData.nom2Name && formData.nom2IC) {
+      nominees.push({
+        application_id: applicationId,
+        type: 'nominee2',
+        salutation: formData.nom2Salutation || null,
+        name: formData.nom2Name,
+        ic_number: formData.nom2IC,
+        address: formData.nom2Address || null,
+        postcode: formData.nom2Postcode || null,
+        email: formData.nom2Email || null,
+        residence_phone: formData.nom2ResidencePhone || null,
+        telephone: formData.nom2Telephone || null,
+        dob_day: formData.nom2DobDay || null,
+        dob_month: formData.nom2DobMonth || null,
+        dob_year: formData.nom2DobYear || null,
+        sex: formData.nom2Sex || null,
+        race: formData.nom2Race || null,
+        is_malaysian: formData.nom2Malaysian || false,
+        marital_status: formData.nom2MaritalStatus || null,
+        relationship: formData.nom2Relationship || null,
+        occupation: formData.nom2Occupation || null,
+        employer_name: formData.nom2EmployerName || null
+      })
+    }
+    
+    if (nominees.length === 0) {
+      return { nominees: [], error: null }
+    }
+    
+    // Delete existing nominees for this application
+    await supabase
+      .from('nominees')
+      .delete()
+      .eq('application_id', applicationId)
+    
+    // Insert new nominees
+    const { data, error } = await supabase
+      .from('nominees')
+      .insert(nominees)
+      .select()
+    
+    if (error) throw error
+    
+    console.log('✅ Saved nominees:', data?.length || 0)
+    return { nominees: data, error: null }
+  } catch (error) {
+    console.error('Error saving nominees:', error)
+    return { nominees: null, error }
+  }
+}
+
+/**
+ * Create or update property from form data
+ * @param {string} applicationId - Application ID
+ * @param {object} formData - Complete form data
+ * @returns {Promise<{property, error}>}
+ */
+export const saveProperty = async (applicationId, formData) => {
+  try {
+    // Helper to format date from day/month/year fields
+    const formatDate = (day, month, year) => {
+      if (!day || !month || !year) return null
+      // Format as YYYY-MM-DD for PostgreSQL DATE type
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    }
+    
+    const propertyData = {
+      application_id: applicationId,
+      property_type: formData.propertyType || null,
+      address: formData.propertyAddress || null,
+      postcode: formData.propertyPostcode || null,
+      indicative_market_value: formData.indicativeMarketValue ? parseFloat(formData.indicativeMarketValue) : null,
+      valuation_date: formatDate(formData.valuationDay, formData.valuationMonth, formData.valuationYear),
+      expected_market_value: formData.expectedMarketValue ? parseFloat(formData.expectedMarketValue) : null,
+      purchase_price: formData.purchasePrice ? parseFloat(formData.purchasePrice) : null,
+      purchase_date: formatDate(formData.purchaseDay, formData.purchaseMonth, formData.purchaseYear),
+      tenure_title: formData.tenureTitle || null,
+      expiry_date: formatDate(formData.expiryDay, formData.expiryMonth, formData.expiryYear),
+      build_up_area: formData.buildUpArea ? parseFloat(formData.buildUpArea) : null,
+      land_area: formData.landArea ? parseFloat(formData.landArea) : null,
+      is_encumbered: formData.isEncumbered || false,
+      bank_name: formData.bankName || null,
+      est_outstanding_balance: formData.outstandingBalance ? parseFloat(formData.outstandingBalance) : null,
+      has_fire_insurance: formData.hasFireInsurance || false,
+      insurance_company: formData.insuranceCompany || null,
+      insurance_period_validity: formData.insurancePeriodValidity || null
+    }
+    
+    // Check if property already exists
+    const { data: existing } = await supabase
+      .from('properties')
+      .select('id')
+      .eq('application_id', applicationId)
+      .single()
+    
+    let result
+    if (existing) {
+      // Update existing property
+      result = await supabase
+        .from('properties')
+        .update(propertyData)
+        .eq('application_id', applicationId)
+        .select()
+        .single()
+    } else {
+      // Insert new property
+      result = await supabase
+        .from('properties')
+        .insert(propertyData)
+        .select()
+        .single()
+    }
+    
+    if (result.error) throw result.error
+    
+    console.log('✅ Saved property')
+    return { property: result.data, error: null }
+  } catch (error) {
+    console.error('Error saving property:', error)
+    return { property: null, error }
+  }
+}
+
+/**
+ * Submit application - updates status and creates nominee/property records
+ * @param {string} applicationId - Application ID
+ * @param {object} formData - Complete form data
+ * @returns {Promise<{success, error}>}
+ */
+export const submitApplicationComplete = async (applicationId, formData) => {
+  try {
+    console.log('📤 Submitting application:', applicationId)
+    
+    // 1. Save nominees
+    const { error: nomineeError } = await saveNominees(applicationId, formData)
+    if (nomineeError) {
+      console.error('❌ Nominee save failed:', nomineeError)
+      throw new Error('Failed to save nominees: ' + nomineeError.message)
+    }
+    
+    // 2. Save property
+    const { error: propertyError } = await saveProperty(applicationId, formData)
+    if (propertyError) {
+      console.error('❌ Property save failed:', propertyError)
+      throw new Error('Failed to save property: ' + propertyError.message)
+    }
+    
+    // 3. Update application status to submitted
+    const { error: statusError } = await supabase
+      .from('applications')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString()
+      })
+      .eq('id', applicationId)
+    
+    if (statusError) throw statusError
+    
+    console.log('✅ Application submitted successfully!')
+    return { success: true, error: null }
+  } catch (error) {
+    console.error('Error submitting application:', error)
+    return { success: false, error }
   }
 }

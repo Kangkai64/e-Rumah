@@ -25,7 +25,9 @@ export const signUp = async (email, password, metadata = {}) => {
 
     // 2. Create user record in users table
     if (authData.user) {
-      const { error: userError } = await supabase
+      console.log('📝 Creating user record in users table...')
+      
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .insert({
           id: authData.user.id,
@@ -35,17 +37,30 @@ export const signUp = async (email, password, metadata = {}) => {
           ic_number: metadata.ic_number || null,
           phone: metadata.phone || null
         })
+        .select()
 
       if (userError) {
-        console.error('Error creating user record:', userError)
-        // Note: Auth user is created but users table insert failed
-        // You may want to handle this differently
+        console.error('❌ Error creating user record:', userError)
+        // Try to check if user already exists
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single()
+        
+        if (existingUser) {
+          console.log('✅ User record already exists')
+        } else {
+          console.error('⚠️ User created in Auth but not in users table!')
+        }
+      } else {
+        console.log('✅ User record created:', userData)
       }
     }
 
     return { user: authData.user, error: null }
   } catch (error) {
-    console.error('Sign up error:', error)
+    console.error('❌ Sign up error:', error)
     return { user: null, error }
   }
 }

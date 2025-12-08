@@ -29,7 +29,12 @@ export default function LoginPage() {
       const { user, error } = await signIn(formData.email, formData.password)
 
       if (error) {
-        setError(error.message || 'Login failed')
+        // Check if it's an email confirmation error
+        if (error.message?.includes('Email not confirmed')) {
+          setError('Please verify your email before logging in. Check your inbox for the confirmation link.')
+        } else {
+          setError(error.message || 'Login failed')
+        }
         setLoading(false)
         return
       }

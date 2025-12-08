@@ -1931,7 +1931,37 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
           <ErrorMessage error={errors.ack_applicantAddress} />
         </div>
 
-        <h3 style={{marginTop: '2rem'}}>Date (Auto-filled with current date)</h3>
+        <h3 style={{marginTop: '2rem'}}>Application Date (Auto-filled)</h3>
+        
+        <div className="form-group">
+          <label>Application Date (DD/MM/YYYY) *</label>
+          <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
+            <input 
+              type="text" 
+              value={formData.ack_applicationDay} 
+              readOnly
+              style={{width: '70px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
+            <span>/</span>
+            <input 
+              type="text" 
+              value={formData.ack_applicationMonth} 
+              readOnly
+              style={{width: '70px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
+            <span>/</span>
+            <input 
+              type="text" 
+              value={formData.ack_applicationYear} 
+              readOnly
+              style={{width: '90px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
+            />
+          </div>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Date of application submission (auto-filled)</small>
+          <ErrorMessage error={errors.ack_applicationDate} />
+        </div>
+
+        <h3 style={{marginTop: '2rem'}}>Acknowledgement Date (Auto-filled)</h3>
         
         <div className="form-group">
           <label>Date (DD/MM/YYYY) *</label>
@@ -1957,7 +1987,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
               style={{width: '90px', backgroundColor: '#f5f5f5', cursor: 'not-allowed', textAlign: 'center'}}
             />
           </div>
-          <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Date of acknowledgement (auto-filled)</small>
         </div>
 
         <div className="form-group">

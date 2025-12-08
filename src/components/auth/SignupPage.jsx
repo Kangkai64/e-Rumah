@@ -60,8 +60,18 @@ export default function SignupPage() {
 
       if (user) {
         console.log('✅ Signup successful')
-        alert('Account created successfully! Please check your email to verify your account.')
-        navigate('/login')
+        
+        // Check if email confirmation is required
+        if (user.confirmed_at) {
+          // Email confirmed - go directly to application
+          alert('Account created successfully!')
+          navigate('/application')
+        } else {
+          // Email not confirmed yet
+          alert('Account created! For full access, please check your email to verify your account. You can still use the application.')
+          // Allow them to use the app anyway (or redirect to login)
+          navigate('/application')
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred')
