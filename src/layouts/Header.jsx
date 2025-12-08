@@ -21,7 +21,7 @@ const Header = () => {
 
         <div className="header-actions">
           <a href="#contact" className="contact-link">Contact Us</a>
-          <a href="#login" className="login-btn">Login</a>
+          <a href="/login" className="login-btn">Login</a>
           <button className="user-icon-btn">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="8" r="4" stroke="#A8202D" strokeWidth="2"/>
