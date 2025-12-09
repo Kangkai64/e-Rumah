@@ -3,6 +3,24 @@ import heroImage from '../../assets/images/hero_coupleLookingPhone.jpg'
 import eligibilityImage from '../../assets/images/hero_What-you-need-to-know.jpg'
 import partnershipImage from '../../assets/images/hero_aboutUs.jpeg'
 import elderImage from '../../assets/images/hero_Asian-Attractive-Happy-Senior.jpg'
+import appleLogo from '../../assets/images/hero_apple.png'
+import teslaLogo from '../../assets/images/hero_tesla.png'
+import sunwayLogo from '../../assets/images/hero_sunway.png'
+
+import iconHealthcare from '../../assets/icons/icon_Healthcare_Financing.png'
+import iconRetirement from '../../assets/icons/icon_Retirement_Resilience.png'
+import iconProperty from '../../assets/icons/icon_property_value_estimation.svg'
+import iconBenefit1 from '../../assets/icons/icon_scheme benefits_1.jpg'
+import iconBenefit2 from '../../assets/icons/icon_scheme benefits_2.png'
+import iconBenefit3 from '../../assets/icons/icon_scheme benefits_3.png'
+import iconComplimentary1 from '../../assets/icons/icon_complimentary_service_1.png'
+import iconComplimentary2 from '../../assets/icons/icon_complimentary_service_2.png'
+import iconComplimentary3 from '../../assets/icons/icon_complimentary_service_3.png'
+import iconComplimentary4 from '../../assets/icons/icon_complimentary_service_4.png'
+import iconComplimentary5 from '../../assets/icons/icon_complimentary_service_5.png'
+import iconInnovation from '../../assets/icons/icon_innovation.png'
+import iconImpact from '../../assets/icons/icon_impact.png'
+import iconIntegrity from '../../assets/icons/icon_integrity.png'
 
 const HomePage = () => {
   return (
@@ -19,56 +37,45 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Services Cards Section */}
-      <section className="services-cards">
-        <div className="services-container">
-          <div className="service-card">
-            <div className="service-icon">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <path d="M24 4L4 16v24h12v-12h16v12h12V16L24 4z" fill="#A8202D"/>
-                <circle cx="24" cy="22" r="3" fill="#A8202D"/>
-              </svg>
+      {/* Services + Narrative Section */}
+      <section className="services-section">
+        <div className="services-shell">
+          <div className="services-left">
+            <p className="section-label">WHAT WE DO AT E-RUMAH</p>
+            <h2 className="services-heading">
+              We invest in people to create a progressive society that is meaningfully invested in each other.
+            </h2>
+          </div>
+
+          <div className="services-grid">
+            <div className="service-card">
+              <div className="service-icon">
+                <img src={iconHealthcare} alt="Healthcare financing icon" className="icon-img" />
+              </div>
+              <h3>Healthcare Financing</h3>
+              <p>e-Rumah enables seniors battling cancer to fund their treatments and retirement by unlocking wealth from their biggest assets: their homes.</p>
             </div>
-            <h3>Healthcare Financing</h3>
-            <p>We provide healthcare financing options to help you cover medical expenses and ensure you receive the best care possible.</p>
-          </div>
 
-          <div className="service-card">
-            <div className="service-icon">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <rect x="6" y="12" width="36" height="28" rx="2" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                <path d="M24 12V4M18 4h12M24 20v8M20 24h8" stroke="#A8202D" strokeWidth="2"/>
-              </svg>
+            <div className="service-card">
+              <div className="service-icon">
+                <img src={iconRetirement} alt="Retirement resilience icon" className="icon-img" />
+              </div>
+              <h3>Retirement Resilience</h3>
+              <p>e-Rumah enhances the financial resilience of seniors with lump sum payouts and monthly annuities for life while being able to age in place without moving.</p>
             </div>
-            <h3>Retirement Residence Assistance</h3>
-            <p>If you need to move to a retirement home, we can help you find the right place and provide financial assistance to make the transition easier.</p>
-          </div>
 
-          <div className="service-card service-card-image">
-            <img src={elderImage} alt="Property" />
-          </div>
-
-          <div className="service-card">
-            <div className="service-icon">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <rect x="8" y="12" width="32" height="28" rx="2" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                <path d="M8 20h32M16 8v8M32 8v8" stroke="#A8202D" strokeWidth="2"/>
-                <rect x="14" y="26" width="6" height="6" fill="#A8202D"/>
-              </svg>
+            <div className="service-card service-card-image">
+              <img src={elderImage} alt="Smiling senior at home" />
             </div>
-            <h3>Property Valuation Estimation</h3>
-            <p>We can provide you with an estimated value of your property, helping you understand its worth in the current market.</p>
-          </div>
-        </div>
-      </section>
 
-      {/* Quote Section */}
-      <section className="quote-section">
-        <div className="quote-container">
-          <p className="quote-label">WHAT SETS US DIFFERENT</p>
-          <h2 className="quote-text">
-            We invest in people to create a progressive society that is meaningfully invested in each other.
-          </h2>
+            <div className="service-card">
+              <div className="service-icon">
+                <img src={iconProperty} alt="Property value estimation icon" className="icon-img" />
+              </div>
+              <h3>Property Value Estimation</h3>
+              <p>e-Rumah provides an estimation to your property’s value and recommendations to make more out of your assets.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -78,25 +85,25 @@ const HomePage = () => {
           <div className="eligibility-content">
             <p className="eligibility-label">ELIGIBILITY CRITERIA</p>
             <h2 className="eligibility-title">What you need to know</h2>
-            <p className="eligibility-subtitle">Basic requirements</p>
+            <p className="eligibility-subtitle">Senior must be:</p>
             <ul className="eligibility-list">
               <li>Applicants should be aged 55 years & above</li>
-              <li>Be a borrower, sole, or joint of a fully paid residential property</li>
-              <li>Eligible for the property for use by the borrower(s) for the remaining part of their life</li>
-              <li>Have a net monthly household income not exceeding RM7,500</li>
-              <li>Not be recipient of monthly assistance benefit or facing enforcement actions, including bankruptcy, civil suits, and levy action</li>
-              <li>Not have mortgage or charges registered on your property, with no issues regarding property ownership, or be under any court proceedings</li>
-              <li>Have no existing Housing Loan for the property</li>
-              <li>Not be recipients in any loan assistance schemes</li>
-              <li>Own an MPB/MB house (not suitable for Taman RMBI 4G Series)</li>
-              <li>Own a property that has no issue of ownership dispute and no legal action against the property</li>
-              <li>Own a property that is in habitable condition</li>
-              <li>Note: Borrowers at least 55 years old and not exceeding 80 years old can apply under this scheme</li>
+              <li>Owner of the home and has the requisite legal capacity to sell the home</li>
+            </ul>
+            <p className="eligibility-subtitle">Property must be:</p>
+            <ul className="eligibility-list">
+              <li>Freehold, landed and located in Klang Valley (certain postcodes excluded), Johor Bahru, Penang, Ipoh, Seremban and Malacca City</li>
+              <li>Occupied by owner as their primary place of residence</li>
+              <li>Free from all encumbrances, such as mortgage and/or other financial liabilities. All property taxes,management fees (where applicable) and utility bills have to be paid up to date</li>
+              <li>Not built on Malay reserved land, not a low-cost/ medium-cost affordable home, not adesignated Bumiputera unit</li>
+              <li>Valid and effective legal title issued under the name of the senior</li>
+              <li>Valid Certificate of Completion and Compliance / Certificate of Fitness for Occupation</li>
+              <li>Meets e-Rumah evaluation criteria</li>
             </ul>
             <div className="eligibility-buttons">
-              <button className="btn-outline">Hear in Pdf</button>
-              <button className="btn-outline">Download Brochure</button>
-              <button className="btn-primary">Calculate</button>
+              <button className="btn-outline">FAQs</button>
+              <button className="btn-outline">Excluded Postcodes</button>
+              <button className="btn-primary">Brochure</button>
             </div>
           </div>
           <div className="eligibility-image">
@@ -114,95 +121,62 @@ const HomePage = () => {
           <div className="benefits-grid">
             <div className="benefit-card">
               <div className="benefit-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <rect x="8" y="12" width="32" height="24" rx="2" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M8 20h32M16 12v-4M32 12v-4" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconBenefit1} alt="Benefit lump sum icon" className="icon-img" />
               </div>
-              <h3>BENEFITS COMPRISING PROCEEDS OF UP TO RM 1,500 FOR HEALTHCARE NEEDS, PROPERTY MAINTENANCE AND RENT CLEARANCE</h3>
+              <h3>Immediate lumpsum payout up to 20% for healthcare needs, property maintenance and debt clearance</h3>
             </div>
 
             <div className="benefit-card">
               <div className="benefit-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <circle cx="24" cy="24" r="16" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M24 12v12l8 4" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconBenefit2} alt="Benefit monthly icon" className="icon-img" />
               </div>
-              <h3>MONTHLY PAYMENT OF RM 300 REPAYMENT PLUS LIVING EXPENSES</h3>
+              <h3>Monthly lifetime instalment for living expenses</h3>
             </div>
 
             <div className="benefit-card">
               <div className="benefit-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <path d="M24 4L4 16v16c0 8 8 12 20 12s20-4 20-12V16L24 4z" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M24 24v12" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconBenefit3} alt="Benefit age in place icon" className="icon-img" />
               </div>
-              <h3>ABLE TO PLACE PROPERTY INHERITED UPON HIS/HER DEATH IN THE COMFORT OF HOME</h3>
+              <h3>Age in place without moving and in the comfort of home</h3>
             </div>
           </div>
 
           <h3 className="complementary-title">Complementary Services</h3>
-          
+
           <div className="complementary-grid">
             <div className="complementary-item">
               <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <path d="M20 4L4 12v16h32V12L20 4z" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                </svg>
+                <img src={iconComplimentary1} alt="Complimentary service 1" className="icon-img" />
               </div>
-              <p>Free rent for spouse after death</p>
+              <p>Basic home repairs and home maintenance*</p>
             </div>
 
             <div className="complementary-item">
               <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <circle cx="20" cy="16" r="6" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M8 32c0-6 5-10 12-10s12 4 12 10" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconComplimentary2} alt="Complimentary service 2" className="icon-img" />
               </div>
-              <p>Basic proof of age</p>
+              <p>Basic pest control*</p>
             </div>
 
             <div className="complementary-item">
               <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <circle cx="20" cy="20" r="12" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M20 12v8l6 4" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconComplimentary3} alt="Complimentary service 3" className="icon-img" />
               </div>
-              <p>Transfer to a public sector provider</p>
+              <p>Selected fire safety devices provided</p>
             </div>
 
             <div className="complementary-item">
               <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <path d="M8 8h24v24H8z" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M20 8v24M8 20h24" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconComplimentary4} alt="Complimentary service 4" className="icon-img" />
               </div>
-              <p>Free monthly automatic payment</p>
+              <p>Home insurance (for structure only)</p>
             </div>
 
             <div className="complementary-item">
               <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <rect x="8" y="12" width="24" height="20" rx="2" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M12 12V8a8 8 0 0116 0v4" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
+                <img src={iconComplimentary5} alt="Complimentary service 5" className="icon-img" />
               </div>
-              <p>No age limit extending payment options</p>
-            </div>
-
-            <div className="complementary-item">
-              <div className="complementary-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <rect x="6" y="10" width="28" height="20" rx="2" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                  <path d="M10 16h20M10 22h20" stroke="#A8202D" strokeWidth="2"/>
-                </svg>
-              </div>
-              <p>No legal fee and processing</p>
+              <p>Quit rent and assessment charges covered fully</p>
             </div>
           </div>
         </div>
@@ -212,7 +186,7 @@ const HomePage = () => {
       <section className="partnership-section">
         <div className="partnership-container">
           <p className="partnership-label">THE PEOPLE BEHIND E-RUMAH</p>
-          
+
           <div className="partnership-content">
             <div className="partnership-left">
               <div className="partnership-image">
@@ -228,17 +202,13 @@ const HomePage = () => {
             </div>
 
             <div className="partnership-right">
-              <div className="philosophy-header">
-                <h3>Our decisions and actions are guided by these philosophies</h3>
-              </div>
-              
               <div className="philosophy-cards">
                 <div className="philosophy-card">
+                  <h3>Our decisions and actions are guided by these philosophies</h3>
+                </div>
+                <div className="philosophy-card">
                   <div className="philosophy-icon">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                      <circle cx="24" cy="24" r="16" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                      <path d="M24 16v8l6 4" stroke="#A8202D" strokeWidth="2"/>
-                    </svg>
+                    <img src={iconInnovation} alt="Innovation icon" className="icon-img" />
                   </div>
                   <h4>Innovation</h4>
                   <p>Innovate in creating the ecosystem, bringing new solutions to market that aid in the social advancement of our society</p>
@@ -246,10 +216,7 @@ const HomePage = () => {
 
                 <div className="philosophy-card">
                   <div className="philosophy-icon">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                      <circle cx="24" cy="18" r="6" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                      <path d="M12 36c0-6 5-10 12-10s12 4 12 10" stroke="#A8202D" strokeWidth="2"/>
-                    </svg>
+                    <img src={iconImpact} alt="Impact icon" className="icon-img" />
                   </div>
                   <h4>Impact</h4>
                   <p>Inspire in reinforcing shared values and beliefs, and build trust towards achieving our societal goals</p>
@@ -257,9 +224,7 @@ const HomePage = () => {
 
                 <div className="philosophy-card">
                   <div className="philosophy-icon">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                      <path d="M24 8l6 12h12l-10 8 4 12-12-8-12 8 4-12-10-8h12z" stroke="#A8202D" strokeWidth="2" fill="none"/>
-                    </svg>
+                    <img src={iconIntegrity} alt="Integrity icon" className="icon-img" />
                   </div>
                   <h4>Integrity</h4>
                   <p>We are an ethical, efficient representative for you in your lifetime, and in your legacy. We aim to uphold our core values and principles.</p>
@@ -269,15 +234,47 @@ const HomePage = () => {
           </div>
         </div>
       </section>
-                        {/* Partners Section */}
-          <div className="partners-section">
-            <p className="partners-title">e-Rumah partners and investors creating a better tomorrow</p>
-            <div className="partners-logos">
-              <img src="/src/assets/images/hero_apple.png" alt="Apple" className="partner-logo" />
-              <img src="/src/assets/images/hero_tesla.png" alt="Tesla" className="partner-logo" />
-              <img src="/src/assets/images/hero_sunway.png" alt="Sunway" className="partner-logo" />
-            </div>
+
+      {/* Partners Section */}
+      <section className="partners-section">
+        <div className="partners-container">
+          <div className="partners-banner">
+            <p>e-Rumah partners and investors creating a better tomorrow</p>
           </div>
+          <div className="partners-logos">
+            <img src={appleLogo} alt="Apple" className="partner-logo" />
+            <img src={teslaLogo} alt="Tesla" className="partner-logo" />
+            <img src={sunwayLogo} alt="Sunway" className="partner-logo" />
+          </div>
+        </div>
+      </section>
+
+      {/* Important Notice Section */}
+      <section className="notice-section">
+        <div className="notice-container">
+          <div className="notice-left">
+            <h3>Important Notice</h3>
+            <p>Our communications with you start from a safe and trusted place to protect you and the public. As policy to help keep you safe:</p>
+            <ol>
+              <li>We do not appoint individuals other than our employees to represent us.</li>
+              <li>We will never ask you for your banking details or passwords.</li>
+              <li>We will never ask you for any payments or fees as e-Rumah is funded by institutional investors participating in the Scheme.</li>
+              <li>We will never send you links in any SMS or emails from us.</li>
+            </ol>
+            <p className="notice-bottom">When in doubt, always connect with us via the e-Rumah website to verify.</p>
+          </div>
+          <div className="notice-right">
+            <h3>Our Address</h3>
+            <p className="address-lines">
+              e-Rumah Sdn Bhd HeadQuarter<br />
+              219, Jalan Yap Ah Loy<br />
+              50300 Kuala Lumpur<br />
+              Malaysia
+            </p>
+            <button className="btn-outline-light">Connect with Us</button>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 .site-header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 1rem 0;
+  padding: 1.5rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -9,9 +9,9 @@
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 3.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -29,7 +29,7 @@
 }
 
 .logo-image {
-  height: 40px;
+  height: 60px;
   width: auto;
 }
 
@@ -71,47 +71,86 @@
   gap: 1.5rem;
 }
 
-.contact-link {
-  color: #161519;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.contact-link:hover {
-  color: #A8202D;
-}
-
-.login-btn {
+.apply-now-btn {
   background: #A8202D;
   color: white;
-  padding: 0.5rem 1.5rem;
+  padding: 0.65rem 1.25rem;
   border-radius: 20px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.login-btn:hover {
+.apply-now-btn:hover {
   background: #8a1a24;
+}
+
+.apply-now-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.user-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .user-icon-btn {
   background: none;
-  border: 1px solid #A8202D;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  border: none;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background 0.2s;
+  border-radius: 50%;
+  width: 49px;
+  height: 50px;
 }
 
 .user-icon-btn:hover {
+  background: #f9f9f9;
+}
+
+.profile-icon {
+  width: 49px;
+  height: 50px;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 150px;
+  margin-top: 0.5rem;
+  z-index: 101;
+  padding: 0.5rem 0;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 1rem 1.5rem;
+  color: #161519;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: color 0.2s, background 0.2s;
+}
+
+.dropdown-item:hover {
+  color: #A8202D;
   background: #f9f9f9;
 }
 
