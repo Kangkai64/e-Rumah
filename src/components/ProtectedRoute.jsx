@@ -1,11 +1,12 @@
 // Protected Route Component
-// Redirects to login if user is not authenticated
+// Redirects based on user authentication and application status
 
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
-export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth()
+export default function ProtectedRoute({ children, requireRole = null }) {
+  const { user, userRole, applicationStatus, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -13,7 +14,9 @@ export default function ProtectedRoute({ children }) {
         minHeight: '100vh', 
         display: 'flex', 
         alignItems: 'center', 
-        justifyContent: 'center' 
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '1rem'
       }}>
         <div className="loading-spinner"></div>
         <p>Loading...</p>
@@ -21,13 +24,29 @@ export default function ProtectedRoute({ children }) {
     )
   }
 
+  // Not logged in - redirect to login
   if (!user) {
-    // For now, allow access without auth (until auth is fully set up)
-    // Uncomment the line below to enforce authentication:
-    return <Navigate to="/login" replace />
-    
-    // Temporary: Allow access for testing
-    return children
+    return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  // Role-based access control
+  if (requireRole && userRole !== requireRole) {
+    // Redirect to appropriate dashboard based on role
+    if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />
+    if (userRole === 'support') return <Navigate to="/support/dashboard" replace />
+    if (userRole === 'user') {
+      return applicationStatus === 'incomplete' 
+        ? <Navigate to="/application" replace />
+        : <Navigate to="/user/dashboard" replace />
+    }
+  }
+
+  // For regular users with incomplete application
+  if (userRole === 'user' && applicationStatus === 'incomplete') {
+    // Only allow access to /application route
+    if (!location.pathname.startsWith('/application')) {
+      return <Navigate to="/application" replace />
+    }
   }
 
   return children

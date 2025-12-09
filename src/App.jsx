@@ -5,8 +5,9 @@ import Header from './layouts/Header'
 import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
 import ApplicationController from './controllers/ApplicationController.jsx'
-import LoginPage from './components/auth/LoginPage'
-import SignupPage from './components/auth/SignupPage'
+import UserLoginPage from './components/auth/UserLoginPage'
+import StaffLoginPage from './components/auth/StaffLoginPage'
+import RegistrationPage from './components/auth/RegistrationPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -22,8 +23,9 @@ function App() {
             </>
           } />
           
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/login" element={<UserLoginPage />} />
+          <Route path="/staff-login" element={<StaffLoginPage />} />
+          <Route path="/register" element={<RegistrationPage />} />
           
           <Route path="/application" element={
             <ProtectedRoute>
