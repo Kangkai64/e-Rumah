@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import './Header.css'
 import logo from '../assets/images/logo.png'
 import profileIcon from '../assets/icons/icon_profile.svg'
@@ -7,6 +7,22 @@ import applyNowIcon from '../assets/icons/icon_applyNow.svg'
 
 const Header = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const dropdownTimeoutRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    // Clear any pending timeout
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current)
+    }
+    setShowProfileDropdown(true)
+  }
+
+  const handleMouseLeave = () => {
+    // Add a small delay before closing to allow moving to the dropdown
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowProfileDropdown(false)
+    }, 200)
+  }
 
   return (
     <header className="site-header">
@@ -32,15 +48,15 @@ const Header = () => {
           
           <div 
             className="user-icon-container"
-            onMouseEnter={() => setShowProfileDropdown(true)}
-            onMouseLeave={() => setShowProfileDropdown(false)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <button className="user-icon-btn">
               <img src={profileIcon} alt="Profile" className="profile-icon" />
             </button>
             
             {showProfileDropdown && (
-              <div className="profile-dropdown" onMouseEnter={() => setShowProfileDropdown(true)} onMouseLeave={() => setShowProfileDropdown(false)}>
+              <div className="profile-dropdown">
                 <a href="/login" className="dropdown-item">Login</a>
               </div>
             )}
