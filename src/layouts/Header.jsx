@@ -1,11 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../components/context/AuthContext'
 import { signOut } from '../services/authService'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import './Header.css'
 import logo from '../assets/images/logo.png'
 import profileIcon from '../assets/icons/icon_profile.svg'
-import applyNowIcon from '../assets/icons/icon_apply_now.svg'
+import applyNowIcon from '../assets/icons/icon_applyNow.svg'
 
 const Header = () => {
   const { user, userRole, applicationStatus } = useAuth()
@@ -19,6 +19,22 @@ const Header = () => {
   // Guest Header (not logged in)
   if (!user) {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const dropdownTimeoutRef = useRef(null)
+
+  const handleMouseEnter = () => {
+    // Clear any pending timeout
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current)
+    }
+    setShowProfileDropdown(true)
+  }
+
+  const handleMouseLeave = () => {
+    // Add a small delay before closing to allow moving to the dropdown
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowProfileDropdown(false)
+    }, 200)
+  }
 
     return (
         <header className="site-header">
@@ -28,9 +44,9 @@ const Header = () => {
             </Link>
 
           <nav className="main-nav">
-            <a href="#home" className="nav-link">Home</a>
+            <Link to="/" className="nav-link">Home</Link>
             <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
-            <a href="#about" className="nav-link">About Us</a>
+            <Link to="/about" className="nav-link">About Us</Link>
             <a href="#faqs" className="nav-link">FAQs</a>
             <a href="#news" className="nav-link">How to Apply</a>
             <a href="#schedule" className="nav-link">Estimate My Property</a>
@@ -44,15 +60,15 @@ const Header = () => {
             
             <div 
               className="user-icon-container"
-              onMouseEnter={() => setShowProfileDropdown(true)}
-              onMouseLeave={() => setShowProfileDropdown(false)}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
             >
               <button className="user-icon-btn">
                 <img src={profileIcon} alt="Profile" className="profile-icon" />
               </button>
               
               {showProfileDropdown && (
-                <div className="profile-dropdown" onMouseEnter={() => setShowProfileDropdown(true)} onMouseLeave={() => setShowProfileDropdown(false)}>
+                <div className="profile-dropdown">
                   <a href="/login" className="dropdown-item">Login</a>
                 </div>
               )}

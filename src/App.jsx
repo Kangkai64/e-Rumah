@@ -4,7 +4,9 @@ import { AuthProvider } from './components/context/AuthContext'
 import Header from './layouts/Header'
 import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
+import AboutUs from './components/landing/AboutUs'
 import ApplicationController from './controllers/ApplicationController.jsx'
+import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -22,6 +24,14 @@ function App() {
               <Footer />
             </>
           } />
+                    
+          <Route path="/about" element={
+            <>
+              <Header />
+              <AboutUs />
+              <Footer />
+            </>
+          } />
           
           <Route path="/login" element={<UserLoginPage />} />
           <Route path="/staff-login" element={<StaffLoginPage />} />
@@ -32,6 +42,16 @@ function App() {
               <>
                 <Header />
                 <ApplicationController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/maintainApplication/:applicationId" element={
+            <ProtectedRoute>
+              <>
+                <Header />
+                <MaintainApplicationController />
                 <Footer />
               </>
             </ProtectedRoute>
