@@ -5,6 +5,8 @@ import Header from './layouts/Header'
 import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
 import AboutUs from './components/landing/AboutUs'
+import StepByStep from './components/landing/StepByStep'
+import FAQs from './components/landing/FAQs'
 import ApplicationController from './controllers/ApplicationController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import LoginPage from './components/auth/LoginPage'
@@ -43,6 +45,22 @@ function App() {
                 <Footer />
               </>
             </ProtectedRoute>
+          } />
+
+          <Route path="/step-by-step" element={
+            <>
+              <Header />
+              <StepByStep />
+              <Footer />
+            </>
+          } />
+
+          <Route path="/faqs" element={
+            <>
+              <Header />
+              <FAQs />
+              <Footer />
+            </>
           } />
 
           <Route path="/maintainApplication/:applicationId" element={
