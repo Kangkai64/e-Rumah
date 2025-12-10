@@ -5,6 +5,7 @@ import Header from './layouts/Header'
 import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
 import ApplicationController from './controllers/ApplicationController.jsx'
+import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import LoginPage from './components/auth/LoginPage'
 import SignupPage from './components/auth/SignupPage'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -30,6 +31,16 @@ function App() {
               <>
                 <Header />
                 <ApplicationController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/maintainApplication/:applicationId" element={
+            <ProtectedRoute>
+              <>
+                <Header />
+                <MaintainApplicationController />
                 <Footer />
               </>
             </ProtectedRoute>
