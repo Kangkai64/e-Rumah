@@ -47,6 +47,59 @@ function App() {
             </ProtectedRoute>
           } />
 
+          {/* User Dashboard Routes */}
+          <Route path="/user/dashboard" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+                  <h1>User Dashboard</h1>
+                  <p>Welcome to your dashboard!</p>
+                </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/user/application" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+                  <h1>My Application</h1>
+                  <p>Your submitted application details will appear here.</p>
+                </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/user/documents" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+                  <h1>Documents</h1>
+                  <p>Your documents will appear here.</p>
+                </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/user/support" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+                  <h1>Support</h1>
+                  <p>Contact support or view FAQs here.</p>
+                </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           <Route path="/maintainApplication/:applicationId" element={
             <ProtectedRoute>
               <>

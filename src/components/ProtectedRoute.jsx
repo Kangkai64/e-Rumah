@@ -43,10 +43,17 @@ export default function ProtectedRoute({ children, requireRole = null }) {
 
   // For regular users with incomplete application
   if (userRole === 'user' && applicationStatus === 'incomplete') {
-    // Only allow access to /application route
-    if (!location.pathname.startsWith('/application')) {
+    // Only allow access to /application route and landing pages
+    if (!location.pathname.startsWith('/application') && 
+        location.pathname !== '/' && 
+        location.pathname !== '/about') {
       return <Navigate to="/application" replace />
     }
+  }
+
+  // For regular users with complete application trying to access /application
+  if (userRole === 'user' && applicationStatus === 'complete' && location.pathname === '/application') {
+    return <Navigate to="/user/dashboard" replace />
   }
 
   return children

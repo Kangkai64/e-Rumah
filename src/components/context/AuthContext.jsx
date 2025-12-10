@@ -32,60 +32,59 @@ export function AuthProvider({ children }) {
     try {
       console.log('🔍 Fetching user data for:', authUser.id)
       
-      // Fetch user role from users table with timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 5000)
+      // Fetch user role from users table with timeout (reduced to 3s)
+      const userTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('UserTimeout')), 3000)
       )
       
       const fetchPromise = supabase
         .from('users')
         .select('role, type')
         .eq('id', authUser.id)
-        .maybeSingle() // Use maybeSingle instead of single to avoid error if not found
+        .maybeSingle()
 
-      const { data: userData, error: userError } = await Promise.race([
+      const { data: userData } = await Promise.race([
         fetchPromise,
-        timeoutPromise
-      ]).catch(err => {
-        console.error('⏱️ Timeout or error fetching user:', err)
-        return { data: null, error: err }
+        userTimeout
+      ]).catch(() => {
+        // Silently handle timeout - not an error, just slow query
+        return { data: null, error: null }
       })
 
-      if (userError) {
-        console.error('❌ User data fetch error:', userError.message)
-        // If user doesn't exist in users table, default to 'user' role
-        setUserRole('user')
-        setApplicationStatus('incomplete')
-        setUser(authUser)
-        return
+      // Default to 'user' role (will check application status regardless)
+      const role = userData?.role || 'user'
+      setUserRole(role)
+
+      if (!userData) {
+        console.warn('⚠️ User not found in users table, defaulting to user role')
+      } else {
+        console.log('✅ User data:', userData)
       }
 
-      if (userData) {
-        console.log('✅ User data:', userData)
-        // Default to 'user' role if role column doesn't exist or is null
-        const role = userData.role || 'user'
-        setUserRole(role)
+      // Check if user has completed application (for 'user' role) - with timeout
+      if (role === 'user') {
+        const appTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AppTimeout')), 3000)
+        )
+        
+        const appFetchPromise = supabase
+          .from('applications')
+          .select('status')
+          .eq('user_id', authUser.id)
+          .in('status', ['submitted', 'underReviewed', 'approved'])
+          .maybeSingle()
 
-        // Check if user has completed application (only for 'user' role)
-        if (role === 'user') {
-          const { data: appData, error: appError } = await supabase
-            .from('applications')
-            .select('status')
-            .eq('user_id', authUser.id)
-            .in('status', ['submitted', 'underReviewed', 'approved'])
-            .maybeSingle()
+        const { data: appData } = await Promise.race([
+          appFetchPromise,
+          appTimeout
+        ]).catch(() => {
+          console.log('ℹ️ Timeout checking application status')
+          return { data: null, error: null }
+        })
 
-          if (appError) {
-            console.log('ℹ️ No completed application found:', appError.message)
-          }
-
-          setApplicationStatus(appData ? 'complete' : 'incomplete')
-        }
-      } else {
-        // User not in database table, default to 'user' role
-        console.warn('⚠️ User not found in users table, defaulting to user role')
-        setUserRole('user')
-        setApplicationStatus('incomplete')
+        const isComplete = appData ? 'complete' : 'incomplete'
+        console.log('📊 Application status:', isComplete, '- App data:', appData)
+        setApplicationStatus(isComplete)
       }
 
       setUser(authUser)
