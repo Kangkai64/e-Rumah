@@ -53,7 +53,7 @@ const Header = () => {
           </nav>
 
           <div className="header-actions">
-            <Link to="/login" className="apply-now-btn">
+            <Link to="/eligibility-check" className="apply-now-btn">
               <span>Apply Now</span>
               <img src={applyNowIcon} alt="Apply Now" className="apply-now-icon" />
             </Link>

@@ -10,6 +10,7 @@ import MaintainApplicationController from './controllers/MaintainApplicationCont
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
+import EligibilityCheck from './components/eligibility/EligibilityCheck'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             </>
           } />
           
+          <Route path="/eligibility-check" element={<EligibilityCheck />} />
           <Route path="/login" element={<UserLoginPage />} />
           <Route path="/staff-login" element={<StaffLoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />

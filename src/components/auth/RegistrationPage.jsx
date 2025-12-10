@@ -116,13 +116,13 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label>Email</label>
+                <label>Confirm Email</label>
                 <input
                   type="email"
                   name="confirmEmail"
                   value={formData.confirmEmail}
                   onChange={handleChange}
-                  placeholder="Email"
+                  placeholder="Confirm Email"
                   required
                   disabled={loading}
                 />
