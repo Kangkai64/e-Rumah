@@ -7,6 +7,7 @@ import HomePage from './components/landing/HomePage'
 import AboutUs from './components/landing/AboutUs'
 import ApplicationController from './controllers/ApplicationController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
+import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import LoginPage from './components/auth/LoginPage'
 import SignupPage from './components/auth/SignupPage'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -53,6 +54,14 @@ function App() {
                 <Footer />
               </>
             </ProtectedRoute>
+          } />
+
+          <Route path="/property-calculator" element={
+            <>
+              <Header />
+              <PropertyCalculatorController />
+              <Footer />
+            </>
           } />
         </Routes>
       </div>

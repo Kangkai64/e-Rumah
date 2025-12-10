@@ -1,4 +1,5 @@
 import './Footer.css'
+import { Link } from 'react-router-dom'
 import logo from '../assets/images/logo.png'
 
 const Footer = () => {
@@ -40,7 +41,7 @@ const Footer = () => {
               <li><a href="#about">About Us</a></li>
               <li><a href="#faqs">FAQs</a></li>
               <li><a href="#apply">How to Apply</a></li>
-              <li><a href="#estimate">Estimate My Property</a></li>
+              <li><Link to="/property-calculator">Estimate My Property</Link></li>
             </ul>
           </div>
 
@@ -69,9 +70,8 @@ const Footer = () => {
                 Malaysia
               </li>
             </ul>
-          </div>
         </div>
-
+        </div>
         {/* Copyright */}
         <div className="footer-bottom">
           <p>&copy; 2025, e-Rumah Services Sdn Bhd. All Rights Reserved. Patent Pending.</p>
@@ -79,6 +79,6 @@ const Footer = () => {
       </div>
     </footer>
   )
-}
+} 
 
 export default Footer
