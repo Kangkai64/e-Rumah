@@ -3,7 +3,7 @@ import { useState } from 'react'
 import './Header.css'
 import logo from '../assets/images/logo.png'
 import profileIcon from '../assets/icons/icon_profile.svg'
-import applyNowIcon from '../assets/icons/icon_apply_now.svg'
+import applyNowIcon from '../assets/icons/icon_applyNow.svg'
 
 const Header = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
@@ -16,9 +16,9 @@ const Header = () => {
         </Link>
 
         <nav className="main-nav">
-          <a href="#home" className="nav-link">Home</a>
+          <Link to="/" className="nav-link">Home</Link>
           <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
-          <a href="#about" className="nav-link">About Us</a>
+          <Link to="/about" className="nav-link">About Us</Link>
           <a href="#faqs" className="nav-link">FAQs</a>
           <a href="#news" className="nav-link">How to Apply</a>
           <a href="#schedule" className="nav-link">Estimate My Property</a>
