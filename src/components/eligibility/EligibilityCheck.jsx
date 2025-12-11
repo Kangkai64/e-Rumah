@@ -1,0 +1,729 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import './EligibilityCheck.css'
+import logo from '../../assets/images/logo.png'
+import eligibilityBg from '../../assets/images/eligibity_check/eligibityCheckBg.png'
+
+const EligibilityCheck = () => {
+  const navigate = useNavigate()
+  const [formData, setFormData] = useState({
+    isMalaysian: '',
+    postalCode: '',
+    dateOfBirth: '',
+    isPrimaryResidence: '',
+    propertyType: '',
+    leaseTenure: '',
+    isSoleOwner: '',
+    ownedByTwo: '',
+    isFamilyMember: '',
+    isOtherOwner55Plus: '',
+    isMortgageFree: '',
+    loanLowerThanMax: '',
+    willSettleOutstanding: '',
+    isFreeFromEncumbrances: ''
+  })
+
+  const [currentField, setCurrentField] = useState(1)
+  const [errors, setErrors] = useState({})
+  
+  // Valid postal codes list for Kuala Lumpur
+  const validPostalCodes = [
+    '50000', '50050', '50088', '50100', '50150', '50200', '50250', '50300',
+    '50350', '50400', '50450', '50460', '50470', '50480', '50490', '50500',
+    '50502', '50504', '50505', '50506', '50507', '50508', '50509', '50510',
+    '50511', '50512', '50514', '50515', '50516', '50517', '50518', '50519',
+    '50550', '50560', '50562', '50564', '50566', '50568', '50570', '50572',
+    '50576', '50578', '50580', '50582', '50586', '50588', '50590', '50592',
+    '50594', '50596', '50598', '50600', '50603', '50604', '50605', '50608',
+    '50609', '50610', '50612', '50614', '50620', '50621', '50622', '50623',
+    '50626', '50632', '50634', '50636', '50638', '50640', '50642', '50644',
+    '50646', '50648', '50650', '50652', '50660', '50670', '50672', '50676',
+    '50677', '50678', '50680', '50682', '50688', '50694', '50700', '50702',
+    '50704', '50706', '50708', '50710', '50712', '50714', '50716', '50718',
+    '50722', '50724', '50726', '50728', '50730', '50732', '50734', '50736',
+    '50738', '50740', '50742', '50744', '50746', '50748', '50750', '50752',
+    '50754', '50758', '50760', '50762', '50764', '50766', '50768', '50770',
+    '50772', '50774', '50776', '50778', '50780', '50782', '50784', '50786',
+    '50788', '50790', '50792', '50794', '50796', '50798', '50800', '50802',
+    '50804', '50806', '50808', '50810', '50812', '50814', '50816', '50818',
+    '50900', '50902', '50904', '50906', '50908', '50910', '50912', '50914',
+    '50916', '50918', '50920', '50922', '50924', '50926', '50928', '50930',
+    '50932', '50934', '50936', '50938', '50940', '50942', '50944', '50946',
+    '50948', '50950', '50960', '50962', '50964', '50966', '50968', '50970',
+    '50972', '50974', '50976', '50978', '50980', '50982', '50984', '50986',
+    '50988', '50990', '51000', '51100', '51200'
+  ]
+
+  // Handle dropdown/radio changes
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    setErrors(prev => ({ ...prev, [field]: null }))
+    
+    const isValid = validateField(field, value)
+    
+    // Clear subsequent fields if not valid
+    if (!isValid) {
+      clearSubsequentFields(field)
+      // Reset currentField to lock subsequent fields (grey them out)
+      const fieldNumbers = {
+        'isMalaysian': 1,
+        'postalCode': 2,
+        'dateOfBirth': 3,
+        'isPrimaryResidence': 4,
+        'propertyType': 5,
+        'leaseTenure': 5.5,
+        'isSoleOwner': 6,
+        'ownedByTwo': 6.1,
+        'isFamilyMember': 6.2,
+        'isOtherOwner55Plus': 6.3,
+        'isMortgageFree': 7,
+        'loanLowerThanMax': 7.1,
+        'willSettleOutstanding': 7.2,
+        'isFreeFromEncumbrances': 8
+      }
+      setCurrentField(fieldNumbers[field])
+    }
+    
+    // Advance to next field
+    setTimeout(() => {
+      advanceToNextField(field, value, isValid)
+    }, 100)
+  }
+
+  // Handle text input changes
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    setErrors(prev => ({ ...prev, [field]: null }))
+  }
+
+  // Handle field blur for text inputs
+  const handleFieldBlur = (field, value) => {
+    const isValid = validateField(field, value)
+    
+    if (!isValid) {
+      clearSubsequentFields(field)
+    } else {
+      setTimeout(() => {
+        advanceToNextField(field, value, isValid)
+      }, 100)
+    }
+  }
+
+  // Clear subsequent fields when answer is ineligible
+  const clearSubsequentFields = (fromField) => {
+    const fieldsToClear = {
+      'isMalaysian': ['postalCode', 'dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'postalCode': ['dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'dateOfBirth': ['isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isPrimaryResidence': ['propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'propertyType': ['leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'leaseTenure': ['isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isSoleOwner': ['ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'ownedByTwo': ['isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isFamilyMember': ['isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isOtherOwner55Plus': ['isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isMortgageFree': ['loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'loanLowerThanMax': ['willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'willSettleOutstanding': ['isFreeFromEncumbrances']
+    }
+
+    if (fieldsToClear[fromField]) {
+      setFormData(prev => {
+        const newData = { ...prev }
+        fieldsToClear[fromField].forEach(field => {
+          newData[field] = ''
+        })
+        return newData
+      })
+    }
+  }
+
+  // Advance to next field based on current field and values
+  const advanceToNextField = (currentFieldName, newValue, isValid) => {
+    if (!isValid) {
+      // Don't advance if invalid - stay at current field
+      return
+    }
+
+    if (currentFieldName === 'isMalaysian' && newValue === 'yes') {
+      setCurrentField(2)
+    } else if (currentFieldName === 'postalCode') {
+      setCurrentField(3)
+    } else if (currentFieldName === 'dateOfBirth') {
+      setCurrentField(4)
+    } else if (currentFieldName === 'isPrimaryResidence' && newValue === 'yes') {
+      setCurrentField(5)
+    } else if (currentFieldName === 'propertyType') {
+      if (newValue === 'freehold') {
+        setCurrentField(6)
+      } else if (newValue === 'leasehold') {
+        setCurrentField(5.5)
+      }
+    } else if (currentFieldName === 'leaseTenure' && newValue === 'yes') {
+      setCurrentField(6)
+    } else if (currentFieldName === 'isSoleOwner') {
+      if (newValue === 'yes') {
+        setCurrentField(7)
+      } else {
+        setCurrentField(6.1)
+      }
+    } else if (currentFieldName === 'ownedByTwo' && newValue === 'yes') {
+      setCurrentField(6.2)
+    } else if (currentFieldName === 'isFamilyMember' && newValue === 'yes') {
+      setCurrentField(6.3)
+    } else if (currentFieldName === 'isOtherOwner55Plus' && newValue === 'yes') {
+      setCurrentField(7)
+    } else if (currentFieldName === 'isMortgageFree') {
+      if (newValue === 'yes') {
+        setCurrentField(8)
+      } else {
+        setCurrentField(7.1)
+      }
+    } else if (currentFieldName === 'loanLowerThanMax') {
+      if (newValue === 'yes') {
+        setCurrentField(8)
+      } else {
+        setCurrentField(7.2)
+      }
+    } else if (currentFieldName === 'willSettleOutstanding' && newValue === 'yes') {
+      setCurrentField(8)
+    } else if (currentFieldName === 'isFreeFromEncumbrances' && newValue === 'yes') {
+      setCurrentField(9)
+    }
+  }
+
+  // Validate individual field
+  const validateField = (field, value) => {
+    switch (field) {
+      case 'isMalaysian':
+        if (value !== 'yes') {
+          setErrors(prev => ({ ...prev, [field]: 'Only Malaysian citizens are eligible' }))
+          return false
+        }
+        return true
+      
+      case 'postalCode':
+        if (!validPostalCodes.includes(value)) {
+          setErrors(prev => ({ ...prev, [field]: 'This postal code is not within the eligible areas (Kuala Lumpur only)' }))
+          return false
+        }
+        return true
+      
+      case 'dateOfBirth':
+        if (!value) {
+          setErrors(prev => ({ ...prev, [field]: 'Please enter your date of birth' }))
+          return false
+        }
+        const birthDate = new Date(value)
+        const today = new Date()
+        let age = today.getFullYear() - birthDate.getFullYear()
+        const monthDiff = today.getMonth() - birthDate.getMonth()
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--
+        }
+        
+        if (age < 55) {
+          setErrors(prev => ({ ...prev, [field]: 'You must be at least 55 years old' }))
+          return false
+        }
+        return true
+      
+      case 'isPrimaryResidence':
+        if (value !== 'yes') {
+          setErrors(prev => ({ ...prev, [field]: 'Property must be your primary place of residence' }))
+          return false
+        }
+        return true
+      
+      case 'propertyType':
+        return value === 'freehold' || value === 'leasehold'
+      
+      case 'leaseTenure':
+        if (value !== 'yes') {
+          setErrors(prev => ({ ...prev, [field]: 'Lease tenure must be renewed to at least 90 years before submission' }))
+          return false
+        }
+        return true
+      
+      case 'isSoleOwner':
+        return value === 'yes' || value === 'no'
+      
+      case 'ownedByTwo':
+        if (value === 'no') {
+          setErrors(prev => ({ ...prev, [field]: 'Property must be owned by maximum 2 people to be eligible' }))
+          return false
+        }
+        return true
+      
+      case 'isFamilyMember':
+        if (value === 'no') {
+          setErrors(prev => ({ ...prev, [field]: 'The other owner must be a family member' }))
+          return false
+        }
+        return true
+      
+      case 'isOtherOwner55Plus':
+        if (value === 'no') {
+          setErrors(prev => ({ ...prev, [field]: 'The other owner must be 55 years old or above' }))
+          return false
+        }
+        return true
+      
+      case 'isMortgageFree':
+        return value === 'yes' || value === 'no'
+      
+      case 'loanLowerThanMax':
+        return value === 'yes' || value === 'no'
+      
+      case 'willSettleOutstanding':
+        if (value === 'no') {
+          setErrors(prev => ({ ...prev, [field]: 'You must settle the outstanding loan/financing amount to be eligible' }))
+          return false
+        }
+        return true
+      
+      case 'isFreeFromEncumbrances':
+        if (value !== 'yes') {
+          setErrors(prev => ({ ...prev, [field]: 'Property must be free from encumbrances' }))
+          return false
+        }
+        return true
+      
+      default:
+        return true
+    }
+  }
+
+  // Check if field should be enabled
+  const isFieldEnabled = (fieldNumber) => {
+    return currentField >= fieldNumber
+  }
+
+  // Handle submit
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    alert('Congratulations! You are eligible for e-Rumah. Please create an account to continue.')
+    navigate('/register')
+  }
+
+  return (
+    <div className="eligibility-page">
+      <header className="eligibility-header">
+        <Link to="/" className="logo">
+          <img src={logo} alt="e-Rumah" />
+        </Link>
+        <Link to="/login" className="login-btn">LOGIN</Link>
+      </header>
+
+      <div className="eligibility-content">
+        {/* Left side - Background with overlay */}
+        <div className="eligibility-left">
+          <img src={eligibilityBg} alt="Elderly couple" className="eligibility-bg-image" />
+          <div className="eligibility-overlay">
+            <h1 className="hero-title">Eligibility Criteria</h1>
+            <p className="hero-subtitle">
+              If you have already done eligibility criteria check, please proceed to Login.
+            </p>
+            <Link to="/login" className="hero-login-btn">LOGIN</Link>
+          </div>
+        </div>
+
+        {/* Right side - Form */}
+        <div className="eligibility-right">
+          <form onSubmit={handleSubmit} className="eligibility-form">
+            {/* Question 1: Are you Malaysian? */}
+            <div className={`eligibility-question ${isFieldEnabled(1) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">1</div>
+              <div className="question-content">
+                <label className="question-label">Are you Malaysian?</label>
+                <select
+                  className="dropdown-input"
+                  value={formData.isMalaysian}
+                  onChange={(e) => handleChange('isMalaysian', e.target.value)}
+                  disabled={!isFieldEnabled(1)}
+                >
+                  <option value="">Select...</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+                {errors.isMalaysian && <p className="error-message">{errors.isMalaysian}</p>}
+              </div>
+            </div>
+
+            {/* Question 2: Postal Code */}
+            <div className={`eligibility-question ${isFieldEnabled(2) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">2</div>
+              <div className="question-content">
+                <label className="question-label">Please provide postal code of your residential property</label>
+                <select
+                  className="dropdown-input"
+                  value={formData.postalCode}
+                  onChange={(e) => handleChange('postalCode', e.target.value)}
+                  disabled={!isFieldEnabled(2)}
+                >
+                  <option value="">Select postal code...</option>
+                  {validPostalCodes.map(code => (
+                    <option key={code} value={code}>{code}</option>
+                  ))}
+                </select>
+                {errors.postalCode && <p className="error-message">{errors.postalCode}</p>}
+              </div>
+            </div>
+
+            {/* Question 3: Date of Birth */}
+            <div className={`eligibility-question ${isFieldEnabled(3) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">3</div>
+              <div className="question-content">
+                <label className="question-label">Date of Birth</label>
+                <input
+                  type="date"
+                  className="date-input"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                  onBlur={(e) => handleFieldBlur('dateOfBirth', e.target.value)}
+                  disabled={!isFieldEnabled(3)}
+                />
+                {errors.dateOfBirth && <p className="error-message">{errors.dateOfBirth}</p>}
+              </div>
+            </div>
+
+            {/* Question 4: Primary Residence */}
+            <div className={`eligibility-question ${isFieldEnabled(4) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">4</div>
+              <div className="question-content">
+                <label className="question-label">Is the property your primary place of residence?</label>
+                <select
+                  className="dropdown-input"
+                  value={formData.isPrimaryResidence}
+                  onChange={(e) => handleChange('isPrimaryResidence', e.target.value)}
+                  disabled={!isFieldEnabled(4)}
+                >
+                  <option value="">Select...</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+                {errors.isPrimaryResidence && <p className="error-message">{errors.isPrimaryResidence}</p>}
+              </div>
+            </div>
+
+            {/* Question 5: Property Type */}
+            <div className={`eligibility-question ${isFieldEnabled(5) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">5</div>
+              <div className="question-content">
+                <label className="question-label">Freehold or Leasehold?</label>
+                <div className="radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="propertyType"
+                      checked={formData.propertyType === 'freehold'}
+                      onChange={() => handleChange('propertyType', 'freehold')}
+                      disabled={!isFieldEnabled(5)}
+                    />
+                    <span>Freehold</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="propertyType"
+                      checked={formData.propertyType === 'leasehold'}
+                      onChange={() => handleChange('propertyType', 'leasehold')}
+                      disabled={!isFieldEnabled(5)}
+                    />
+                    <span>Leasehold</span>
+                  </label>
+                </div>
+                {errors.propertyType && <p className="error-message">{errors.propertyType}</p>}
+
+                {/* Inline sub-question 5.1 */}
+                {formData.propertyType === 'leasehold' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">
+                      If leasehold, is the lease tenure renewed to at least 90 years before submission of application to Cagamas?
+                    </label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="leaseTenure"
+                          checked={formData.leaseTenure === 'yes'}
+                          onChange={() => handleChange('leaseTenure', 'yes')}
+                          disabled={!isFieldEnabled(5.5)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="leaseTenure"
+                          checked={formData.leaseTenure === 'no'}
+                          onChange={() => handleChange('leaseTenure', 'no')}
+                          disabled={!isFieldEnabled(5.5)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.leaseTenure && <p className="error-message">{errors.leaseTenure}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Question 6: Sole Owner */}
+            <div className={`eligibility-question ${isFieldEnabled(6) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">6</div>
+              <div className="question-content">
+                <label className="question-label">Are you the sole owner of the property?</label>
+                <div className="radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isSoleOwner"
+                      checked={formData.isSoleOwner === 'yes'}
+                      onChange={() => handleChange('isSoleOwner', 'yes')}
+                      disabled={!isFieldEnabled(6)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isSoleOwner"
+                      checked={formData.isSoleOwner === 'no'}
+                      onChange={() => handleChange('isSoleOwner', 'no')}
+                      disabled={!isFieldEnabled(6)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
+                {errors.isSoleOwner && <p className="error-message">{errors.isSoleOwner}</p>}
+
+                {/* Inline sub-question 6.1 */}
+                {formData.isSoleOwner === 'no' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">If no, is the property owned by 2 people?</label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="ownedByTwo"
+                          checked={formData.ownedByTwo === 'yes'}
+                          onChange={() => handleChange('ownedByTwo', 'yes')}
+                          disabled={!isFieldEnabled(6.1)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="ownedByTwo"
+                          checked={formData.ownedByTwo === 'no'}
+                          onChange={() => handleChange('ownedByTwo', 'no')}
+                          disabled={!isFieldEnabled(6.1)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.ownedByTwo && <p className="error-message">{errors.ownedByTwo}</p>}
+                  </div>
+                )}
+
+                {/* Inline sub-question 6.2 */}
+                {formData.isSoleOwner === 'no' && formData.ownedByTwo === 'yes' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">Is the other owner your family member?</label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="isFamilyMember"
+                          checked={formData.isFamilyMember === 'yes'}
+                          onChange={() => handleChange('isFamilyMember', 'yes')}
+                          disabled={!isFieldEnabled(6.2)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="isFamilyMember"
+                          checked={formData.isFamilyMember === 'no'}
+                          onChange={() => handleChange('isFamilyMember', 'no')}
+                          disabled={!isFieldEnabled(6.2)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.isFamilyMember && <p className="error-message">{errors.isFamilyMember}</p>}
+                  </div>
+                )}
+
+                {/* Inline sub-question 6.3 */}
+                {formData.isSoleOwner === 'no' && formData.ownedByTwo === 'yes' && formData.isFamilyMember === 'yes' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">Is the other owner 55 years old or above?</label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="isOtherOwner55Plus"
+                          checked={formData.isOtherOwner55Plus === 'yes'}
+                          onChange={() => handleChange('isOtherOwner55Plus', 'yes')}
+                          disabled={!isFieldEnabled(6.3)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="isOtherOwner55Plus"
+                          checked={formData.isOtherOwner55Plus === 'no'}
+                          onChange={() => handleChange('isOtherOwner55Plus', 'no')}
+                          disabled={!isFieldEnabled(6.3)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.isOtherOwner55Plus && <p className="error-message">{errors.isOtherOwner55Plus}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Question 7: Mortgage Free */}
+            <div className={`eligibility-question ${isFieldEnabled(7) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">7</div>
+              <div className="question-content">
+                <label className="question-label">
+                  Is your property mortgage free i.e., no home loans/financing remaining outstanding?
+                </label>
+                <select
+                  className="dropdown-input"
+                  value={formData.isMortgageFree}
+                  onChange={(e) => handleChange('isMortgageFree', e.target.value)}
+                  disabled={!isFieldEnabled(7)}
+                >
+                  <option value="">Select...</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+                {errors.isMortgageFree && <p className="error-message">{errors.isMortgageFree}</p>}
+
+                {/* Inline sub-question 7.1 */}
+                {formData.isMortgageFree === 'no' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">
+                      If no, does the current outstanding loan/financing amount lower than the Maximum Lumpsum Amount 
+                      (Click the Reverse Mortgage Calculator below)?
+                    </label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="loanLowerThanMax"
+                          checked={formData.loanLowerThanMax === 'yes'}
+                          onChange={() => handleChange('loanLowerThanMax', 'yes')}
+                          disabled={!isFieldEnabled(7.1)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="loanLowerThanMax"
+                          checked={formData.loanLowerThanMax === 'no'}
+                          onChange={() => handleChange('loanLowerThanMax', 'no')}
+                          disabled={!isFieldEnabled(7.1)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.loanLowerThanMax && <p className="error-message">{errors.loanLowerThanMax}</p>}
+                  </div>
+                )}
+
+                {/* Inline sub-question 7.2 */}
+                {formData.isMortgageFree === 'no' && formData.loanLowerThanMax === 'no' && (
+                  <div className="inline-sub-question">
+                    <label className="question-label">
+                      Do you intend to settle all remaining outstanding loan/financing amount by yourself 
+                      to redeem your property from bank/current financer?
+                    </label>
+                    <div className="radio-group">
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="willSettleOutstanding"
+                          checked={formData.willSettleOutstanding === 'yes'}
+                          onChange={() => handleChange('willSettleOutstanding', 'yes')}
+                          disabled={!isFieldEnabled(7.2)}
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="radio-label">
+                        <input
+                          type="radio"
+                          name="willSettleOutstanding"
+                          checked={formData.willSettleOutstanding === 'no'}
+                          onChange={() => handleChange('willSettleOutstanding', 'no')}
+                          disabled={!isFieldEnabled(7.2)}
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                    {errors.willSettleOutstanding && <p className="error-message">{errors.willSettleOutstanding}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Question 8: Free from Encumbrances */}
+            <div className={`eligibility-question ${isFieldEnabled(8) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">8</div>
+              <div className="question-content">
+                <label className="question-label">Is your property free from encumbrances?</label>
+                <p className="question-description">
+                  Of concern: If you or your family have other financial obligations, such as an 
+                  outstanding home equity loan or charges against title etc (including the amount 
+                  loaned by government to pay monthly rent) (Monthly financial obligations), 
+                  you are probably in some charge/lien with the property.
+                </p>
+                <select
+                  className="dropdown-input"
+                  value={formData.isFreeFromEncumbrances}
+                  onChange={(e) => handleChange('isFreeFromEncumbrances', e.target.value)}
+                  disabled={!isFieldEnabled(8)}
+                >
+                  <option value="">Select...</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+                {errors.isFreeFromEncumbrances && <p className="error-message">{errors.isFreeFromEncumbrances}</p>}
+              </div>
+            </div>
+
+            {/* Success Message */}
+            {currentField === 9 && (
+              <div className="success-message">
+                <div className="success-icon">✓</div>
+                <h3>You are eligible!</h3>
+                <p>You meet all the criteria for the e-Rumah program.</p>
+              </div>
+            )}
+
+            {/* Create Account Button */}
+            <button 
+              type="submit" 
+              className="submit-btn"
+              disabled={currentField < 9}
+            >
+              Create Account
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default EligibilityCheck

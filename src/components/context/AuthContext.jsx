@@ -3,6 +3,7 @@
 
 import { createContext, useContext, useState, useEffect } from 'react'
 import { getCurrentUser, onAuthStateChange } from '../../services/authService'
+import { supabase } from '../../config/supabase'
 
 const AuthContext = createContext({})
 
@@ -16,14 +17,92 @@ export const useAuth = () => {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [userRole, setUserRole] = useState(null)
+  const [applicationStatus, setApplicationStatus] = useState(null) // 'incomplete' or 'complete'
   const [loading, setLoading] = useState(true)
+
+  const fetchUserData = async (authUser) => {
+    if (!authUser) {
+      setUser(null)
+      setUserRole(null)
+      setApplicationStatus(null)
+      return
+    }
+
+    try {
+      console.log('🔍 Fetching user data for:', authUser.id)
+      
+      // Fetch user role from users table with timeout (reduced to 3s)
+      const userTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('UserTimeout')), 3000)
+      )
+      
+      const fetchPromise = supabase
+        .from('users')
+        .select('role, type')
+        .eq('id', authUser.id)
+        .maybeSingle()
+
+      const { data: userData } = await Promise.race([
+        fetchPromise,
+        userTimeout
+      ]).catch(() => {
+        // Silently handle timeout - not an error, just slow query
+        return { data: null, error: null }
+      })
+
+      // Default to 'user' role (will check application status regardless)
+      const role = userData?.role || 'user'
+      setUserRole(role)
+
+      if (!userData) {
+        console.warn('⚠️ User not found in users table, defaulting to user role')
+      } else {
+        console.log('✅ User data:', userData)
+      }
+
+      // Check if user has completed application (for 'user' role) - with timeout
+      if (role === 'user') {
+        const appTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AppTimeout')), 3000)
+        )
+        
+        const appFetchPromise = supabase
+          .from('applications')
+          .select('status')
+          .eq('user_id', authUser.id)
+          .in('status', ['submitted', 'underReviewed', 'approved'])
+          .maybeSingle()
+
+        const { data: appData } = await Promise.race([
+          appFetchPromise,
+          appTimeout
+        ]).catch(() => {
+          console.log('ℹ️ Timeout checking application status')
+          return { data: null, error: null }
+        })
+
+        const isComplete = appData ? 'complete' : 'incomplete'
+        console.log('📊 Application status:', isComplete, '- App data:', appData)
+        setApplicationStatus(isComplete)
+      }
+
+      setUser(authUser)
+    } catch (error) {
+      console.error('❌ Error fetching user data:', error)
+      // Fallback: set user with default role
+      setUserRole('user')
+      setApplicationStatus('incomplete')
+      setUser(authUser)
+    }
+  }
 
   useEffect(() => {
     // Check current session on mount
     const initAuth = async () => {
       try {
-        const { user } = await getCurrentUser()
-        setUser(user)
+        const { user: authUser } = await getCurrentUser()
+        await fetchUserData(authUser)
       } catch (error) {
         console.error('Error getting user:', error)
       } finally {
@@ -34,8 +113,8 @@ export function AuthProvider({ children }) {
     initAuth()
 
     // Listen to auth state changes
-    const { data: { subscription } } = onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
+      await fetchUserData(session?.user ?? null)
       setLoading(false)
     })
 
@@ -46,6 +125,8 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    userRole,
+    applicationStatus,
     loading
   }
 

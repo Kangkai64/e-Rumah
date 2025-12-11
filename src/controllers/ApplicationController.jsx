@@ -528,10 +528,11 @@ function ApplicationController() {
       const pdfBlob = await generatePDF(formData)
       downloadPDF(pdfBlob)
       
-      alert('Application submitted successfully! PDF has been downloaded.')
+      alert('Application submitted successfully! Redirecting to your dashboard...')
       
-      // Optional: navigate away or show success page
-      // navigate('/success')
+      // 3. Navigate to user dashboard
+      // Reload the page to refresh auth context and application status
+      window.location.href = '/user/dashboard'
     } catch (error) {
       console.error('Error during submission:', error)
       alert('Error submitting application. Please try again.')
