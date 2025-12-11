@@ -1,18 +1,19 @@
-// Signup Page
+// Customer Registration Page
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { signUp } from '../../services/authService'
 import './auth.css'
+import logo from '../../assets/images/logo.png'
+import bgImage from '../../assets/images/loginPageBg.jpg'
 
 export default function SignupPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
     fullName: '',
-    icNumber: '',
-    phone: ''
+    email: '',
+    confirmEmail: '',
+    password: '',
+    confirmPassword: ''
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,6 +30,11 @@ export default function SignupPage() {
     setError('')
 
     // Validation
+    if (formData.email !== formData.confirmEmail) {
+      setError('Emails do not match')
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
       return
@@ -46,9 +52,7 @@ export default function SignupPage() {
         formData.email,
         formData.password,
         {
-          full_name: formData.fullName,
-          ic_number: formData.icNumber,
-          phone: formData.phone
+          full_name: formData.fullName
         }
       )
 
@@ -60,18 +64,8 @@ export default function SignupPage() {
 
       if (user) {
         console.log('✅ Signup successful')
-        
-        // Check if email confirmation is required
-        if (user.confirmed_at) {
-          // Email confirmed - go directly to application
-          alert('Account created successfully!')
-          navigate('/application')
-        } else {
-          // Email not confirmed yet
-          alert('Account created! For full access, please check your email to verify your account. You can still use the application.')
-          // Allow them to use the app anyway (or redirect to login)
-          navigate('/application')
-        }
+        alert('Account created successfully!')
+        navigate('/login')
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -80,19 +74,25 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-box">
-          <h1>Create Account</h1>
-          <p className="auth-subtitle">Sign up to start your SSB application</p>
+    <div className="auth-layout">
+      <div className="auth-content">
+        <div className="auth-form-side">
+          <div className="auth-form-container">
+            <div className="auth-logo">
+              <img src={logo} alt="e-Rumah" />
+              <span>e-Rumah</span>
+            </div>
 
-          {error && <div className="error-box">{error}</div>}
+            <h2 className="auth-title">Customer Registration</h2>
+            <p className="auth-description">Enter your details to create your account</p>
 
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input
-                type="text"
+            {error && <div className="error-box">{error}</div>}
+
+            <form onSubmit={handleSubmit} className="auth-form">
+              <div className="form-group">
+                <label>Full Name</label>
+                <input
+                  type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
@@ -181,6 +181,7 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

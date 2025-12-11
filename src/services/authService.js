@@ -127,6 +127,10 @@ export const getCurrentUser = async () => {
     if (error) throw error
     return { user, error: null }
   } catch (error) {
+    // Silently handle missing session - this is normal when not logged in
+    if (error.name === 'AuthSessionMissingError') {
+      return { user: null, error: null }
+    }
     console.error('Get user error:', error)
     return { user: null, error }
   }

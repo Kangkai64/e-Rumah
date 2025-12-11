@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../components/context/AuthContext'
+import { signOut } from '../services/authService'
 import { useState, useRef } from 'react'
 import './Header.css'
 import logo from '../assets/images/logo.png'
@@ -6,8 +8,15 @@ import profileIcon from '../assets/icons/icon_profile.svg'
 import applyNowIcon from '../assets/icons/icon_applyNow.svg'
 
 const Header = () => {
+  const { user, userRole, applicationStatus } = useAuth()
+  const navigate = useNavigate()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const dropdownTimeoutRef = useRef(null)
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/')
+  }
 
   const handleMouseEnter = () => {
     // Clear any pending timeout
@@ -24,47 +33,172 @@ const Header = () => {
     }, 200)
   }
 
-  return (
-    <header className="site-header">
-      <div className="header-container">
-        <Link to="/" className="logo">
-          <img src={logo} alt="e-Rumah" className="logo-image" />
-        </Link>
+  // Guest Header (not logged in)
+  if (!user) {
 
-        <nav className="main-nav">
-          <Link to="/" className="nav-link">Home</Link>
-          <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
-          <Link to="/about" className="nav-link">About Us</Link>
-          <a href="#faqs" className="nav-link">FAQs</a>
-          <a href="#news" className="nav-link">How to Apply</a>
-          <a href="#schedule" className="nav-link">Estimate My Property</a>
-        </nav>
+    return (
+        <header className="site-header">
+          <div className="header-container">
+            <Link to="/" className="logo">
+              <img src={logo} alt="e-Rumah" className="logo-image" />
+            </Link>
 
-        <div className="header-actions">
-          <a href="#contact" className="apply-now-btn">
-            <span>Apply Now</span>
-            <img src={applyNowIcon} alt="Apply Now" className="apply-now-icon" />
-          </a>
-          
-          <div 
-            className="user-icon-container"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            <button className="user-icon-btn">
-              <img src={profileIcon} alt="Profile" className="profile-icon" />
-            </button>
+          <nav className="main-nav">
+            <Link to="/" className="nav-link">Home</Link>
+            <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
+            <Link to="/about" className="nav-link">About Us</Link>
+            <a href="#faqs" className="nav-link">FAQs</a>
+            <a href="#news" className="nav-link">How to Apply</a>
+            <a href="#schedule" className="nav-link">Estimate My Property</a>
+          </nav>
+
+          <div className="header-actions">
+            <Link to="/eligibility-check" className="apply-now-btn">
+              <span>Apply Now</span>
+              <img src={applyNowIcon} alt="Apply Now" className="apply-now-icon" />
+            </Link>
             
-            {showProfileDropdown && (
-              <div className="profile-dropdown">
-                <a href="/login" className="dropdown-item">Login</a>
-              </div>
-            )}
+            <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn">
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <Link to="/login" className="dropdown-item">Login</Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
-  )
+      </header>
+    )
+  }
+
+  // User Header (logged in with incomplete application)
+  if (userRole === 'user' && applicationStatus === 'incomplete') {
+    return (
+      <header className="site-header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            <img src={logo} alt="e-Rumah" className="logo-image" />
+          </Link>
+
+          <nav className="main-nav">
+            <Link to="/" className="nav-link">Home</Link>
+            <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
+            <Link to="/about" className="nav-link">About Us</Link>
+            <a href="#faqs" className="nav-link">FAQs</a>
+            <a href="#news" className="nav-link">How to Apply</a>
+            <a href="#schedule" className="nav-link">Estimate My Property</a>
+          </nav>
+
+          <div className="header-actions">
+            <Link to="/application" className="apply-now-btn">
+              <span>Apply Now</span>
+              <img src={applyNowIcon} alt="Apply Now" className="apply-now-icon" />
+            </Link>
+            
+            <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn">
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
+  // User Header (logged in with complete application)
+  if (userRole === 'user' && applicationStatus === 'complete') {
+    return (
+      <header className="site-header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            <img src={logo} alt="e-Rumah" className="logo-image" />
+          </Link>
+
+          <nav className="main-nav">
+            <Link to="/user/dashboard" className="nav-link">Dashboard</Link>
+            <Link to="/user/application" className="nav-link">My Application</Link>
+            <Link to="/user/documents" className="nav-link">Documents</Link>
+            <Link to="/user/support" className="nav-link">Support</Link>
+          </nav>
+
+          <div className="header-actions">
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
+  // Admin Header
+  if (userRole === 'admin') {
+    return (
+      <header className="site-header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            <img src={logo} alt="e-Rumah" className="logo-image" />
+          </Link>
+
+          <nav className="main-nav">
+            <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
+            <Link to="/admin/applications" className="nav-link">Applications</Link>
+            <Link to="/admin/users" className="nav-link">Users</Link>
+            <Link to="/admin/reports" className="nav-link">Reports</Link>
+            <Link to="/admin/settings" className="nav-link">Settings</Link>
+          </nav>
+
+          <div className="header-actions">
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
+  // Support Header
+  if (userRole === 'support') {
+    return (
+      <header className="site-header">
+        <div className="header-container">
+          <Link to="/" className="logo">
+            <img src={logo} alt="e-Rumah" className="logo-image" />
+          </Link>
+
+          <nav className="main-nav">
+            <Link to="/support/dashboard" className="nav-link">Dashboard</Link>
+            <Link to="/support/inquiries" className="nav-link">Inquiries</Link>
+            <Link to="/support/applications" className="nav-link">Applications</Link>
+            <Link to="/support/knowledge-base" className="nav-link">Knowledge Base</Link>
+          </nav>
+
+          <div className="header-actions">
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
+  // Fallback (shouldn't reach here)
+  return null
 }
 
 export default Header
