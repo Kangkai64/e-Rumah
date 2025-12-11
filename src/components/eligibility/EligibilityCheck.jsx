@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import './EligibilityCheck.css'
-import logo from '../../assets/images/logo.png'
+import Header from '../../layouts/Header'
 import eligibilityBg from '../../assets/images/eligibity_check/eligibityCheckBg.png'
 
 const EligibilityCheck = () => {
@@ -17,6 +17,7 @@ const EligibilityCheck = () => {
     ownedByTwo: '',
     isFamilyMember: '',
     isOtherOwner55Plus: '',
+    hasLegalProceedings: '',
     isMortgageFree: '',
     loanLowerThanMax: '',
     willSettleOutstanding: '',
@@ -76,10 +77,11 @@ const EligibilityCheck = () => {
         'ownedByTwo': 6.1,
         'isFamilyMember': 6.2,
         'isOtherOwner55Plus': 6.3,
-        'isMortgageFree': 7,
-        'loanLowerThanMax': 7.1,
-        'willSettleOutstanding': 7.2,
-        'isFreeFromEncumbrances': 8
+        'hasLegalProceedings': 7,
+        'isMortgageFree': 8,
+        'loanLowerThanMax': 8.1,
+        'willSettleOutstanding': 8.2,
+        'isFreeFromEncumbrances': 9
       }
       setCurrentField(fieldNumbers[field])
     }
@@ -112,16 +114,17 @@ const EligibilityCheck = () => {
   // Clear subsequent fields when answer is ineligible
   const clearSubsequentFields = (fromField) => {
     const fieldsToClear = {
-      'isMalaysian': ['postalCode', 'dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'postalCode': ['dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'dateOfBirth': ['isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'isPrimaryResidence': ['propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'propertyType': ['leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'leaseTenure': ['isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'isSoleOwner': ['ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'ownedByTwo': ['isFamilyMember', 'isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'isFamilyMember': ['isOtherOwner55Plus', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
-      'isOtherOwner55Plus': ['isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isMalaysian': ['postalCode', 'dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'postalCode': ['dateOfBirth', 'isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'dateOfBirth': ['isPrimaryResidence', 'propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isPrimaryResidence': ['propertyType', 'leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'propertyType': ['leaseTenure', 'isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'leaseTenure': ['isSoleOwner', 'ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isSoleOwner': ['ownedByTwo', 'isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'ownedByTwo': ['isFamilyMember', 'isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isFamilyMember': ['isOtherOwner55Plus', 'hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'isOtherOwner55Plus': ['hasLegalProceedings', 'isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
+      'hasLegalProceedings': ['isMortgageFree', 'loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
       'isMortgageFree': ['loanLowerThanMax', 'willSettleOutstanding', 'isFreeFromEncumbrances'],
       'loanLowerThanMax': ['willSettleOutstanding', 'isFreeFromEncumbrances'],
       'willSettleOutstanding': ['isFreeFromEncumbrances']
@@ -173,22 +176,24 @@ const EligibilityCheck = () => {
       setCurrentField(6.3)
     } else if (currentFieldName === 'isOtherOwner55Plus' && newValue === 'yes') {
       setCurrentField(7)
+    } else if (currentFieldName === 'hasLegalProceedings' && newValue === 'no') {
+      setCurrentField(8)
     } else if (currentFieldName === 'isMortgageFree') {
       if (newValue === 'yes') {
-        setCurrentField(8)
+        setCurrentField(9)
       } else {
-        setCurrentField(7.1)
+        setCurrentField(8.1)
       }
     } else if (currentFieldName === 'loanLowerThanMax') {
       if (newValue === 'yes') {
-        setCurrentField(8)
+        setCurrentField(9)
       } else {
-        setCurrentField(7.2)
+        setCurrentField(8.2)
       }
     } else if (currentFieldName === 'willSettleOutstanding' && newValue === 'yes') {
-      setCurrentField(8)
-    } else if (currentFieldName === 'isFreeFromEncumbrances' && newValue === 'yes') {
       setCurrentField(9)
+    } else if (currentFieldName === 'isFreeFromEncumbrances' && newValue === 'yes') {
+      setCurrentField(10)
     }
   }
 
@@ -269,6 +274,13 @@ const EligibilityCheck = () => {
         }
         return true
       
+      case 'hasLegalProceedings':
+        if (value === 'yes') {
+          setErrors(prev => ({ ...prev, [field]: 'You cannot have any legal or bankruptcy proceedings to be eligible' }))
+          return false
+        }
+        return true
+      
       case 'isMortgageFree':
         return value === 'yes' || value === 'no'
       
@@ -308,18 +320,14 @@ const EligibilityCheck = () => {
 
   return (
     <div className="eligibility-page">
-      <header className="eligibility-header">
-        <Link to="/" className="logo">
-          <img src={logo} alt="e-Rumah" />
-        </Link>
-        <Link to="/login" className="login-btn">LOGIN</Link>
-      </header>
+      {/* Header */}
+      <Header role="guest" />
 
-      <div className="eligibility-content">
-        {/* Left side - Background with overlay */}
-        <div className="eligibility-left">
-          <img src={eligibilityBg} alt="Elderly couple" className="eligibility-bg-image" />
-          <div className="eligibility-overlay">
+      {/* Hero Section */}
+      <div className="eligibility-hero">
+        <img src={eligibilityBg} alt="Elderly couple" className="eligibility-bg-image" />
+        <div className="eligibility-hero-overlay">
+          <div className="eligibility-hero-content">
             <h1 className="hero-title">Eligibility Criteria</h1>
             <p className="hero-subtitle">
               If you have already done eligibility criteria check, please proceed to Login.
@@ -327,25 +335,41 @@ const EligibilityCheck = () => {
             <Link to="/login" className="hero-login-btn">LOGIN</Link>
           </div>
         </div>
+      </div>
 
-        {/* Right side - Form */}
-        <div className="eligibility-right">
-          <form onSubmit={handleSubmit} className="eligibility-form">
+      {/* Form Section */}
+      <div className="eligibility-form-section">
+        <form onSubmit={handleSubmit} className="eligibility-form">
+          <div className="questions-grid">
+            {/* Left Column - Questions 1-6 */}
+            <div className="questions-column">
             {/* Question 1: Are you Malaysian? */}
             <div className={`eligibility-question ${isFieldEnabled(1) ? 'enabled' : 'disabled'}`}>
               <div className="question-number">1</div>
               <div className="question-content">
                 <label className="question-label">Are you Malaysian?</label>
-                <select
-                  className="dropdown-input"
-                  value={formData.isMalaysian}
-                  onChange={(e) => handleChange('isMalaysian', e.target.value)}
-                  disabled={!isFieldEnabled(1)}
-                >
-                  <option value="">Select...</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="eligibility-radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isMalaysian"
+                      checked={formData.isMalaysian === 'yes'}
+                      onChange={() => handleChange('isMalaysian', 'yes')}
+                      disabled={!isFieldEnabled(1)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isMalaysian"
+                      checked={formData.isMalaysian === 'no'}
+                      onChange={() => handleChange('isMalaysian', 'no')}
+                      disabled={!isFieldEnabled(1)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
                 {errors.isMalaysian && <p className="error-message">{errors.isMalaysian}</p>}
               </div>
             </div>
@@ -392,16 +416,28 @@ const EligibilityCheck = () => {
               <div className="question-number">4</div>
               <div className="question-content">
                 <label className="question-label">Is the property your primary place of residence?</label>
-                <select
-                  className="dropdown-input"
-                  value={formData.isPrimaryResidence}
-                  onChange={(e) => handleChange('isPrimaryResidence', e.target.value)}
-                  disabled={!isFieldEnabled(4)}
-                >
-                  <option value="">Select...</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="eligibility-radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isPrimaryResidence"
+                      checked={formData.isPrimaryResidence === 'yes'}
+                      onChange={() => handleChange('isPrimaryResidence', 'yes')}
+                      disabled={!isFieldEnabled(4)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isPrimaryResidence"
+                      checked={formData.isPrimaryResidence === 'no'}
+                      onChange={() => handleChange('isPrimaryResidence', 'no')}
+                      disabled={!isFieldEnabled(4)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
                 {errors.isPrimaryResidence && <p className="error-message">{errors.isPrimaryResidence}</p>}
               </div>
             </div>
@@ -411,7 +447,7 @@ const EligibilityCheck = () => {
               <div className="question-number">5</div>
               <div className="question-content">
                 <label className="question-label">Freehold or Leasehold?</label>
-                <div className="radio-group">
+                <div className="eligibility-radio-group">
                   <label className="radio-label">
                     <input
                       type="radio"
@@ -441,7 +477,7 @@ const EligibilityCheck = () => {
                     <label className="question-label">
                       If leasehold, is the lease tenure renewed to at least 90 years before submission of application to Cagamas?
                     </label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
@@ -474,7 +510,7 @@ const EligibilityCheck = () => {
               <div className="question-number">6</div>
               <div className="question-content">
                 <label className="question-label">Are you the sole owner of the property?</label>
-                <div className="radio-group">
+                <div className="eligibility-radio-group">
                   <label className="radio-label">
                     <input
                       type="radio"
@@ -502,7 +538,7 @@ const EligibilityCheck = () => {
                 {formData.isSoleOwner === 'no' && (
                   <div className="inline-sub-question">
                     <label className="question-label">If no, is the property owned by 2 people?</label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
@@ -532,7 +568,7 @@ const EligibilityCheck = () => {
                 {formData.isSoleOwner === 'no' && formData.ownedByTwo === 'yes' && (
                   <div className="inline-sub-question">
                     <label className="question-label">Is the other owner your family member?</label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
@@ -562,7 +598,7 @@ const EligibilityCheck = () => {
                 {formData.isSoleOwner === 'no' && formData.ownedByTwo === 'yes' && formData.isFamilyMember === 'yes' && (
                   <div className="inline-sub-question">
                     <label className="question-label">Is the other owner 55 years old or above?</label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
@@ -589,41 +625,95 @@ const EligibilityCheck = () => {
                 )}
               </div>
             </div>
+              </div> {/* End questions-column (left) */}
 
-            {/* Question 7: Mortgage Free */}
+              {/* Right Column - Questions 7-9 */}
+              <div className="questions-column">
+            {/* Question 7: Legal Proceedings */}
             <div className={`eligibility-question ${isFieldEnabled(7) ? 'enabled' : 'disabled'}`}>
               <div className="question-number">7</div>
               <div className="question-content">
                 <label className="question-label">
+                  Do you or/and the joint owner
+                </label>
+                <p className="question-description">
+                  (i) have any legal proceedings, suit or action (whether criminal or civil) is instituted against 
+                  you or/and the joint owner? or<br/><br/>
+                  (ii) have any bankruptcy proceedings or petition is being commenced against you or/and the 
+                  joint owner?
+                </p>
+                <div className="eligibility-radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="hasLegalProceedings"
+                      checked={formData.hasLegalProceedings === 'yes'}
+                      onChange={() => handleChange('hasLegalProceedings', 'yes')}
+                      disabled={!isFieldEnabled(7)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="hasLegalProceedings"
+                      checked={formData.hasLegalProceedings === 'no'}
+                      onChange={() => handleChange('hasLegalProceedings', 'no')}
+                      disabled={!isFieldEnabled(7)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
+                {errors.hasLegalProceedings && <p className="error-message">{errors.hasLegalProceedings}</p>}
+              </div>
+            </div>
+
+            {/* Question 8: Mortgage Free */}
+            <div className={`eligibility-question ${isFieldEnabled(8) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">8</div>
+              <div className="question-content">
+                <label className="question-label">
                   Is your property mortgage free i.e., no home loans/financing remaining outstanding?
                 </label>
-                <select
-                  className="dropdown-input"
-                  value={formData.isMortgageFree}
-                  onChange={(e) => handleChange('isMortgageFree', e.target.value)}
-                  disabled={!isFieldEnabled(7)}
-                >
-                  <option value="">Select...</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="eligibility-radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isMortgageFree"
+                      checked={formData.isMortgageFree === 'yes'}
+                      onChange={() => handleChange('isMortgageFree', 'yes')}
+                      disabled={!isFieldEnabled(8)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isMortgageFree"
+                      checked={formData.isMortgageFree === 'no'}
+                      onChange={() => handleChange('isMortgageFree', 'no')}
+                      disabled={!isFieldEnabled(8)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
                 {errors.isMortgageFree && <p className="error-message">{errors.isMortgageFree}</p>}
 
-                {/* Inline sub-question 7.1 */}
+                {/* Inline sub-question 8.1 */}
                 {formData.isMortgageFree === 'no' && (
                   <div className="inline-sub-question">
                     <label className="question-label">
                       If no, does the current outstanding loan/financing amount lower than the Maximum Lumpsum Amount 
                       (Click the Reverse Mortgage Calculator below)?
                     </label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
                           name="loanLowerThanMax"
                           checked={formData.loanLowerThanMax === 'yes'}
                           onChange={() => handleChange('loanLowerThanMax', 'yes')}
-                          disabled={!isFieldEnabled(7.1)}
+                          disabled={!isFieldEnabled(8.1)}
                         />
                         <span>Yes</span>
                       </label>
@@ -642,21 +732,21 @@ const EligibilityCheck = () => {
                   </div>
                 )}
 
-                {/* Inline sub-question 7.2 */}
+                {/* Inline sub-question 8.2 */}
                 {formData.isMortgageFree === 'no' && formData.loanLowerThanMax === 'no' && (
                   <div className="inline-sub-question">
                     <label className="question-label">
                       Do you intend to settle all remaining outstanding loan/financing amount by yourself 
                       to redeem your property from bank/current financer?
                     </label>
-                    <div className="radio-group">
+                    <div className="eligibility-radio-group">
                       <label className="radio-label">
                         <input
                           type="radio"
                           name="willSettleOutstanding"
                           checked={formData.willSettleOutstanding === 'yes'}
                           onChange={() => handleChange('willSettleOutstanding', 'yes')}
-                          disabled={!isFieldEnabled(7.2)}
+                          disabled={!isFieldEnabled(8.2)}
                         />
                         <span>Yes</span>
                       </label>
@@ -677,9 +767,9 @@ const EligibilityCheck = () => {
               </div>
             </div>
 
-            {/* Question 8: Free from Encumbrances */}
-            <div className={`eligibility-question ${isFieldEnabled(8) ? 'enabled' : 'disabled'}`}>
-              <div className="question-number">8</div>
+            {/* Question 9: Free from Encumbrances */}
+            <div className={`eligibility-question ${isFieldEnabled(9) ? 'enabled' : 'disabled'}`}>
+              <div className="question-number">9</div>
               <div className="question-content">
                 <label className="question-label">Is your property free from encumbrances?</label>
                 <p className="question-description">
@@ -688,22 +778,36 @@ const EligibilityCheck = () => {
                   loaned by government to pay monthly rent) (Monthly financial obligations), 
                   you are probably in some charge/lien with the property.
                 </p>
-                <select
-                  className="dropdown-input"
-                  value={formData.isFreeFromEncumbrances}
-                  onChange={(e) => handleChange('isFreeFromEncumbrances', e.target.value)}
-                  disabled={!isFieldEnabled(8)}
-                >
-                  <option value="">Select...</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="eligibility-radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isFreeFromEncumbrances"
+                      checked={formData.isFreeFromEncumbrances === 'yes'}
+                      onChange={() => handleChange('isFreeFromEncumbrances', 'yes')}
+                      disabled={!isFieldEnabled(9)}
+                    />
+                    <span>Yes</span>
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="isFreeFromEncumbrances"
+                      checked={formData.isFreeFromEncumbrances === 'no'}
+                      onChange={() => handleChange('isFreeFromEncumbrances', 'no')}
+                      disabled={!isFieldEnabled(9)}
+                    />
+                    <span>No</span>
+                  </label>
+                </div>
                 {errors.isFreeFromEncumbrances && <p className="error-message">{errors.isFreeFromEncumbrances}</p>}
               </div>
             </div>
+              </div> {/* End questions-column (right) */}
+            </div> {/* End questions-grid */}
 
             {/* Success Message */}
-            {currentField === 9 && (
+            {currentField === 10 && (
               <div className="success-message">
                 <div className="success-icon">✓</div>
                 <h3>You are eligible!</h3>
@@ -715,13 +819,12 @@ const EligibilityCheck = () => {
             <button 
               type="submit" 
               className="submit-btn"
-              disabled={currentField < 9}
+              disabled={currentField < 10}
             >
               Create Account
             </button>
           </form>
         </div>
-      </div>
     </div>
   )
 }

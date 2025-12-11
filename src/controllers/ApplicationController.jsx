@@ -28,6 +28,7 @@ function ApplicationController() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const saveTimeoutRef = useRef(null)
+  const isInitialized = useRef(false)
   
   // Initialize form data - will be loaded from Supabase
   const [formData, setFormData] = useState({
@@ -201,6 +202,12 @@ function ApplicationController() {
   // ==========================================
   useEffect(() => {
     const initializeApplication = async () => {
+      // Prevent double-initialization in React Strict Mode
+      if (isInitialized.current) {
+        return
+      }
+      isInitialized.current = true
+
       try {
         setIsLoading(true)
 
