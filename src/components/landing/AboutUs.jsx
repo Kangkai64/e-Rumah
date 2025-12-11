@@ -1,302 +1,481 @@
 import './AboutUs.css'
-import heroImage from '../../assets/images/about_us/hero_contactUs.jpg'
-import ourPurposeImage from '../../assets/images/about_us/image_ourPurpose.jpg'
-import jeffreyCheahImage from '../../assets/images/about_us/image_jeffreyCheah.png'
+import { useState, useRef } from 'react'
+import ReCAPTCHA from 'react-google-recaptcha'
+import Button from '../common/Button'
+import { validateEnquiryForm } from '../../utils/enquiryFormValidation'
+import { sendEnquiryEmail } from '../../services/emailService'
+import heroBanner from '../../assets/images/about_us_page/hero_aboutUs.jpeg'
+import heroContactUs from '../../assets/images/about_us_page/hero_contactUs.jpg'
+import ourPurposeImage from '../../assets/images/about_us_page/image_ourPurpose.jpg'
+import founderImage from '../../assets/images/about_us_page/image_jeffreyCheah.png'
 import iconEmail from '../../assets/icons/about_us_page/icon_email.svg'
 import iconContact from '../../assets/icons/about_us_page/icon_contact.svg'
 
+// Create a separate component for the form to use the validation
+const EnquiryForm = ({ onSubmit }) => {
+  const recaptchaRef = useRef(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    contactNumber: '',
+    email: '',
+    subject: '',
+    message: '',
+    captcha: null,
+  })
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }))
+    }
+  }
+
+  const handleRecaptchaChange = (token) => {
+    setFormData(prev => ({
+      ...prev,
+      captcha: token
+    }))
+    // Clear captcha error when user completes it
+    if (errors.captcha) {
+      setErrors(prev => ({
+        ...prev,
+        captcha: ''
+      }))
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    // Validate form
+    const validationErrors = validateEnquiryForm(formData)
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors)
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      // Call parent component handler with form data
+      await onSubmit(formData)
+      
+      // Reset form on success
+      setFormData({
+        name: '',
+        contactNumber: '',
+        email: '',
+        subject: '',
+        message: '',
+        captcha: null,
+      })
+      setErrors({})
+      // Reset reCAPTCHA
+      if (recaptchaRef.current) {
+        recaptchaRef.current.reset()
+      }
+    } catch (error) {
+      console.error('Submission error:', error)
+      setErrors({ submit: 'Failed to submit enquiry. Please try again.' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="enquiry-form" onSubmit={handleSubmit}>
+      <div className="form-group">
+        <label>
+          Name <span className="required">*</span>
+        </label>
+        <input 
+          type="text"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="John Doe"
+          className={errors.name ? 'input-error' : ''}
+        />
+        {errors.name && <span className="error-message">{errors.name}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>
+          Contact Number <span className="required">*</span>
+        </label>
+        <input 
+          type="tel"
+          name="contactNumber"
+          value={formData.contactNumber}
+          onChange={handleChange}
+          placeholder="012-3456789 or +6012-3456789"
+          className={errors.contactNumber ? 'input-error' : ''}
+        />
+        {errors.contactNumber && <span className="error-message">{errors.contactNumber}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>
+          Email address <span className="required">*</span>
+        </label>
+        <input 
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="example@email.com"
+          className={errors.email ? 'input-error' : ''}
+        />
+        {errors.email && <span className="error-message">{errors.email}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>
+          Subject <span className="required">*</span>
+        </label>
+        <input 
+          type="text"
+          name="subject"
+          value={formData.subject}
+          onChange={handleChange}
+          placeholder="Enquiry about SSB Loan"
+          className={errors.subject ? 'input-error' : ''}
+        />
+        {errors.subject && <span className="error-message">{errors.subject}</span>}
+      </div>
+
+      <div className="form-group">
+        <label>
+          Message <span className="required">*</span>
+        </label>
+        <textarea 
+          rows="5"
+          name="message"
+          value={formData.message}
+          onChange={handleChange}
+          placeholder="Please share your enquiry or questions here..."
+          className={errors.message ? 'input-error' : ''}
+        ></textarea>
+        {errors.message && <span className="error-message">{errors.message}</span>}
+      </div>
+
+      <div className="captcha-section">
+        <ReCAPTCHA
+          ref={recaptchaRef}
+          sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+          onChange={handleRecaptchaChange}
+        />
+        {errors.captcha && <span className="error-message" style={{marginTop: '8px'}}>{errors.captcha}</span>}
+      </div>
+
+      <div className="captcha-info">
+        <p>This site is protected by reCAPTCHA and the Google <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a> apply.</p>
+      </div>
+
+      {errors.submit && <div className="form-error-summary">{errors.submit}</div>}
+
+      <Button variant="primary" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
+      </Button>
+    </form>
+  )
+}
+
 const AboutUs = () => {
+  const [showSubmittedModal, setShowSubmittedModal] = useState(false)
+
+  const handleSubmitEnquiry = async (formData) => {
+    try {
+      // Send enquiry email to user
+      const emailResult = await sendEnquiryEmail(formData)
+      
+      if (!emailResult.success) {
+        console.warn('Email sending failed:', emailResult.error)
+        // Continue to show success modal even if email fails
+        // Users should know their enquiry was submitted
+      }
+
+      // Show the success modal
+      setShowSubmittedModal(true)
+      
+      // Auto-hide modal after 3 seconds
+      setTimeout(() => {
+        setShowSubmittedModal(false)
+      }, 3000)
+    } catch (error) {
+      console.error('Submission error:', error)
+      throw error
+    }
+  }
+
   return (
     <div className="about-us-page">
-      {/* Hero Section */}
-      <section className="about-hero">
-        <div className="about-hero-content">
-          <img src={heroImage} alt="About Us" className="about-hero-image" />
-          <div className="about-hero-overlay">
-            <h1>About Us</h1>
+        {/* Hero Section */}
+        <section className="about-hero">
+          <div className="about-hero-content">
+            <img src={heroBanner} alt="About Us" className="about-hero-image" />
+            <div className="about-hero-overlay">
+              <h1>About Us</h1>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Our Purpose Section */}
-      <section className="our-purpose-section">
-        <div className="our-purpose-container">
-          <div className="our-purpose-image">
-            <img src={ourPurposeImage} alt="Our Purpose" />
-          </div>
-          <div className="our-purpose-content">
-            <p className="section-label">ADDRESSING THE HEALTHCARE AND RETIREMENT NEEDS OF MALAYSIA'S SENIORS</p>
-            <h2>Our Purpose</h2>
-            <div className="purpose-text">
-              <p>
-                Malaysia faces a looming crisis where less than 4% of EPF contributors can afford to 
-                retire. The lack of adequate savings, coupled with insufficient private health insurance 
-                coverage leave many seniors financially vulnerable to major health shocks including serious 
-                illnesses such as cancer.
-              </p>
-              <p>
-                Close to a third of all people diagnosed with cancer annually are above the age of 65 
-                and the number of senior cancer patients are expected to double to over 43,000 
-                annually by 2040.
-              </p>
-              <p>
-                Retirees have limited options when it comes to financing their cancer treatments as 
-                they are not eligible for personal loans due to their age and lack of income. They 
-                could choose to sell their home and pay rent for the rest of their lives – but this is 
-                a perilous route fraught with uncertainty of tenure, which no one should have to face 
-                in their twilight years.
-              </p>
-              <p>
-                Reverse mortgages are another option, but these are inherently costly due to hefty 
-                transaction expenses, debt accruing with interest over time and the loan being 
-                repaid typically via auction when the borrower passes on.
-              </p>
-              <p>
-                e-Rumah was created by Sunway Mortgage Foundation in partnership with Tesla, to 
-                provide seniors with an alternative method to unlock wealth from their biggest 
-                asset: their homes.
-              </p>
-              <p>
-                e-Rumah operates as a reverse mortgage scheme integrated with Big Data and AI 
-                analytics, where qualified seniors can sell their home titles at market value to 
-                receive lump sum payouts and monthly lifetime annuities while being able to age in 
-                place without moving. When they pass on, their residence is sold and capital is 
-                returned to investors.
-              </p>
+        {/* Our Purpose Section */}
+        <section className="our-purpose-section">
+          <div className="our-purpose-container">
+            <div className="our-purpose-image">
+              <img src={ourPurposeImage} alt="Our Purpose" />
+            </div>
+            <div className="our-purpose-content">
+              <p className="section-label">ADDRESSING THE HEALTHCARE AND RETIREMENT NEEDS OF MALAYSIA'S SENIORS</p>
+              <h2>Our Purpose</h2>
+              <div className="purpose-text">
+                <p>
+                  Malaysia faces a looming crisis where less than 4% of EPF contributors can afford to 
+                  retire. The lack of adequate savings, coupled with insufficient private health insurance 
+                  coverage leave many seniors financially vulnerable to major health shocks including serious 
+                  illnesses such as cancer.
+                </p>
+                <p>
+                  Close to a third of all people diagnosed with cancer annually are above the age of 65 
+                  and the number of senior cancer patients are expected to double to over 43,000 
+                  annually by 2040.
+                </p>
+                <p>
+                  Retirees have limited options when it comes to financing their cancer treatments as 
+                  they are not eligible for personal loans due to their age and lack of income. They 
+                  could choose to sell their home and pay rent for the rest of their lives – but this is 
+                  a perilous route fraught with uncertainty of tenure, which no one should have to face 
+                  in their twilight years.
+                </p>
+                <p>
+                  Reverse mortgages are another option, but these are inherently costly due to hefty 
+                  transaction expenses, debt accruing with interest over time and the loan being 
+                  repaid typically via auction when the borrower passes on.
+                </p>
+                <p>
+                  e-Rumah was created by Sunway Mortgage Foundation in partnership with Tesla, to 
+                  provide seniors with an alternative method to unlock wealth from their biggest 
+                  asset: their homes.
+                </p>
+                <p>
+                  e-Rumah operates as a reverse mortgage scheme integrated with Big Data and AI 
+                  analytics, where qualified seniors can sell their home titles at market value to 
+                  receive lump sum payouts and monthly lifetime annuities while being able to age in 
+                  place without moving. When they pass on, their residence is sold and capital is 
+                  returned to investors.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Founder Section */}
-      <section className="founder-section">
-        <div className="founder-container">
-          <div className="founder-content">
-            <p className="section-label">FOUNDER AND CEO</p>
-            <h2>Jeffrey Cheah</h2>
-            <div className="founder-text">
-              <p>
-                Jeffrey Cheah founded Sunway Reverse Mortgage Foundation in Malaysia as the 
-                innovation and administrative partner of the e-Rumah.
-              </p>
-              <p>
-                e-Rumah is Asia's reverse mortgage scheme pioneers, harnessing the power of 
-                innovation and capital markets to address the needs of Malaysia's aging population. 
-                The Scheme enables seniors to unlock wealth from their homes to finance their 
-                healthcare needs and enhance their financial resilience in retirement whilst 
-                aging-in-place in the comfort of their homes and familiarity of communities.
-              </p>
+        {/* Founder Section */}
+        <section className="founder-section">
+          <div className="founder-container">
+            <div className="founder-content">
+              <p className="section-label">FOUNDER AND CEO</p>
+              <h2>Jeffrey Cheah</h2>
+              <div className="founder-text">
+                <p>
+                  Jeffrey Cheah founded Sunway Reverse Mortgage Foundation in Malaysia as the 
+                  innovation and administrative partner of the e-Rumah.
+                </p>
+                <p>
+                  e-Rumah is Asia's reverse mortgage scheme pioneers, harnessing the power of 
+                  innovation and capital markets to address the needs of Malaysia's aging population. 
+                  The Scheme enables seniors to unlock wealth from their homes to finance their 
+                  healthcare needs and enhance their financial resilience in retirement whilst 
+                  aging-in-place in the comfort of their homes and familiarity of communities.
+                </p>
+              </div>
+            </div>
+            <div className="founder-image">
+              <img src={founderImage} alt="Jeffrey Cheah" />
             </div>
           </div>
-          <div className="founder-image">
-            <img src={jeffreyCheahImage} alt="Jeffrey Cheah" />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Contact Us Section */}
-      <section className="contact-us-section">
-        <div className="contact-us-hero">
-          <div className="contact-us-left">
-            <h1>Contact Us</h1>
-            <p>Let's get in touch today</p>
+        {/* Contact Us Section */}
+        <section className="contact-us-section">
+          <div className="contact-us-hero">
+            <div className="contact-us-left">
+              <h1>Contact Us</h1>
+              <p>Let's get in touch today</p>
+            </div>
+            <div className="contact-us-right">
+              <img src={heroContactUs} alt="Contact Us" />
+            </div>
           </div>
-          <div className="contact-us-right">
-            <img src={heroImage} alt="Contact Us" />
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Branches Section */}
-      <section className="branches-section">
-        <div className="branches-container">
-          <h2>Walk-in to any of the EPF/AKPK Designated Branches below:</h2>
-          
-          {/* EPF Branches */}
-          <div className="branches-grid">
-            <div className="branch-card">
-              <h3>EPF Kuala Lumpur</h3>
-              <p>Ground Floor, KWSP Building</p>
-              <p>Jalan Raja Laut</p>
-              <p>50350 Kuala Lumpur</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Petaling Jaya</h3>
-              <p>EPF Building</p>
-              <p>Jalan Gasing</p>
-              <p>46000 Petaling Jaya</p>
-              <p>Tel.: 154, Persekaran Barat</p>
-              <p>46050 Petaling Jaya, Selangor</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Johor Bahru</h3>
-              <p>KWSP, Lot 111 & 112, Ground Floor, AKPK</p>
-              <p>Johor</p>
-              <p>80000, Johor Bahru, Johor</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Seberang Jaya</h3>
-              <p>No. 3070, Mk 13</p>
-              <p>Jalan Perusahaan</p>
-              <p>Prai Industrial Estate</p>
-              <p>13600, SPT, Lebuh Tenggiri 2</p>
-              <p>Bandar Seberang Jaya</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Ipoh</h3>
-              <p>No. 1, 3, 5, Ground Floor</p>
-              <p>Persiaran AKPK, Greentown</p>
-              <p>30450 Ipoh, Perak</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Seremban</h3>
-              <p>70/80 Jalan Dato Bandar Tunggal</p>
-              <p>70000, Seremban, Negeri Sembilan</p>
-            </div>
-            <div className="branch-card">
-              <h3>EPF Melaka</h3>
-              <p>KWSP, Lot 1831, Jalan Hang Jebat</p>
-              <p>Kampung Satu, AKPK Melaka</p>
-              <p>75200 Kota Melaka, Melaka</p>
-            </div>
-          </div>
-
-          {/* AKPK Branches */}
-          <h3 className="akpk-heading">AKPK Branches</h3>
-          <div className="branches-grid">
-            <div className="branch-card">
-              <h3>AKPK Kuala Lumpur*</h3>
-              <p>Ground Floor, Wisma Bank Rakyat</p>
-              <p>No.1, Jalan Travers</p>
-              <p>Kuala Lumpur</p>
-              <p>50470 Kuala Lumpur</p>
-              <p className="branch-note">*for Selangor, Negeri Sembilan & Kuala Lumpur.</p>
-            </div>
-            <div className="branch-card">
-              <h3>AKPK Johor Bahru</h3>
-              <p>Level 2A, Wisma AKPK (Blok B), Menara Ansar</p>
-              <p>Johor Bahru Headquarters</p>
-              <p>65 Jalan Trus</p>
-              <p>80000 Johor Bahru, Johor</p>
-            </div>
-            <div className="branch-card">
-              <h3>AKPK Penang</h3>
-              <p>Block 3A Level 11, Komtar</p>
-              <p>Jalan Penang</p>
-              <p>10000 Penang</p>
-              <p>Tel: 04 Penang Lebih</p>
-              <p>016 Jalan Ujong</p>
-            </div>
-            <div className="branch-card">
-              <h3>AKPK Ipoh</h3>
-              <p>AKPK Ipoh, Wisma Bank Rakyat</p>
-              <p>Jalan CMS Sultan Idris Shah</p>
-              <p>30000 Ipoh, Perak</p>
-            </div>
-            <div className="branch-card">
-              <h3>AKPK Melaka</h3>
-              <p>Greenland 30, Wisma Al-Bukhary</p>
-              <p>Lot 2, 3, & 5, Ground Floor</p>
-              <p>Jalan Kota Laksamana 3</p>
-              <p>Taman Kota Laksamana</p>
-              <p>75200 Melaka</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Enquiry Section */}
-      <section className="enquiry-section">
-        <div className="enquiry-container">
-          <div className="enquiry-left">
-            <h2>Let's get in touch</h2>
-            <p>
-              Need to get in touch with us to learn more about the Skim Saraan
-              Bercagar (SSB) Skim Saraan Bercagar Loan? Contact us via email
-              at <a href="mailto:info@e-rumah.com.my">info@e-rumah.com.my</a> or call{' '}
-              <a href="tel:03-5883-0000">03-5883-0000</a>.
-            </p>
+        {/* Branches Section */}
+        <section className="branches-section">
+          <div className="branches-container">
+            <h2>Walk-in to any of the EPF/AKPK Designated Branches below:</h2>
             
-            <div className="contact-cards">
-              <div className="contact-card">
-                <img src={iconEmail} alt="Email" />
-                <div>
-                  <h4>Email</h4>
-                  <a href="mailto:info@e-rumah.com.my">info@e-rumah.com.my</a>
-                </div>
+            {/* EPF Branches */}
+            <div className="branches-grid">
+              <div className="branch-card">
+                <h3>EPF Kuala Lumpur</h3>
+                <p>Ground Floor, KWSP Building,</p>
+                <p>Jalan Raja Laut,</p>
+                <p>50350 Kuala Lumpur</p>
               </div>
-              <div className="contact-card">
-                <img src={iconContact} alt="Phone" />
-                <div>
-                  <h4>Phone Number</h4>
-                  <a href="tel:03-5883-0000">03-5883-0000</a>
-                </div>
+              <div className="branch-card">
+                <h3>EPF Petaling Jaya</h3>
+                <p>PJX-HM Shah Tower,</p>
+                <p>Lot A, Ground Level,</p>
+                <p>No. 16A, Persiaran Barat,</p>
+                <p>46050 Petaling Jaya, Selangor</p>
+              </div>
+              <div className="branch-card">
+                <h3>EPF Johor Bahru</h3>
+                <p>Tingkat 1, 12-18, Bangunan KWSP,</p>
+                <p>Jalan Dato' Dalam,</p>
+                <p>80000, Johor Bahru, Johor</p>
+              </div>
+              <div className="branch-card">
+                <h3>EPF Seberang Jaya</h3>
+                <p>EPF Building Seberang Jaya,</p>
+                <p>No. 3009, Off Lebuh Tenggiri 2,</p>
+                <p>Bandar Seberang Jaya,</p>
+                <p>13700 Prai, Pulau Pinang</p>
+              </div>
+              <div className="branch-card">
+                <h3>EPF Ipoh</h3>
+                <p>Tingkat Bawah, 5,6,7, & 8,</p>
+                <p>Bangunan KWSP, Jalan Greentown,</p>
+                <p>30450 Ipoh, Perak</p>
+              </div>
+              <div className="branch-card">
+                <h3>EPF Seremban</h3>
+                <p>No1, Jalan Dato’ As Dawood,</p>
+                <p>70100 Seremban, Negeri Sembilan</p>
+              </div>
+              <div></div> {/* Empty div for grid alignment */}
+              <div className="branch-card">
+                <h3>EPF Melaka</h3>
+                <p>KWSP Bandar Melaka, Bangunan KWSP,</p>
+                <p>Jalan MITC, Hang Tuah Jaya,</p>
+                <p>75450 Ayer Keroh, Melaka</p>
+              </div>
+            </div>
+
+            {/* AKPK Branches */}
+            <h3 className="akpk-heading">AKPK Branches</h3>
+            <div className="branches-grid">
+              <div className="branch-card">
+                <h3>AKPK Kuala Lumpur*</h3>
+                <p>Ground Floor, Menara Aras Raya &#40;Formerly</p>
+                <p>known as Menara Bumiputra Commerce&#41;,</p>
+                <p>Jalan Raja Laut,</p>
+                <p>50350 Kuala Lumpur</p>
+                <p className="branch-note">*for Selangor, Negeri Sembilan & Kuala Lumpur.</p>
+              </div>
+              <div className="branch-card">
+                <h3>AKPK Johor Bahru</h3>
+                <p>Level G, Bangunan Bank Negara Malaysia,</p>
+                <p>Jalan Bukit Timbalan,</p>
+                <p>80720 Johor Bahru</p>
+              </div>
+              <div className="branch-card">
+                <h3>AKPK Penang</h3>
+                <p>Bangunan Bank Negara Malaysia,</p>
+                <p>No.27 Lebuh Light,</p>
+                <p>10200 Penang</p>
+              </div>
+              <div className="branch-card">
+                <h3>AKPK Ipoh</h3>
+                <p>Unit B-2-1 Greentown Square,</p>
+                <p>Jalan Dato' Seri Ahmad Said,</p>
+                <p>30450 Ipoh, Perak</p>
+              </div>
+              <div className="branch-card">
+                <h3>AKPK Melaka</h3>
+                <p>Ground & Mezzanine Floor, No 179,</p>
+                <p>Bangunan Munshi Abdullah Jalan Munshi</p>
+                <p>Abdullah,</p>
+                <p>75100 Melaka</p>
               </div>
             </div>
           </div>
+        </section>
 
-          <div className="enquiry-right">
-            <div className="enquiry-form-container">
-              <h3>Enquire Now</h3>
-              <form className="enquiry-form">
-                <div className="form-group">
-                  <label>
-                    Name <span className="required">*</span>
-                  </label>
-                  <input type="text" required />
-                </div>
-                <div className="form-group">
-                  <label>
-                    Contact Number <span className="required">*</span>
-                  </label>
-                  <input type="tel" required />
-                </div>
-                <div className="form-group">
-                  <label>
-                    Email address <span className="required">*</span>
-                  </label>
-                  <input type="email" required />
-                </div>
-                <div className="form-group">
-                  <label>
-                    Subject <span className="required">*</span>
-                  </label>
-                  <input type="text" required />
-                </div>
-                <div className="form-group">
-                  <label>
-                    Message <span className="required">*</span>
-                  </label>
-                  <textarea rows="5" required></textarea>
-                </div>
-                
-                <div className="captcha-section">
-                  <p className="captcha-label">CAPTCHA</p>
-                  <p className="captcha-description">
-                    This question is for testing whether or not you are a human visitor and to 
-                    prevent automated spam submissions.
-                  </p>
-                  <div className="captcha-container">
-                    <div className="captcha-checkbox">
-                      <input type="checkbox" id="not-robot" />
-                      <label htmlFor="not-robot">I'm not a robot</label>
-                    </div>
-                    <div className="captcha-logo">
-                      <span>reCAPTCHA</span>
-                    </div>
+        {/* Enquiry Section */}
+        <section className="enquiry-section">
+          <div className="enquiry-container">
+            <div className="enquiry-left">
+              <h2>Let's get in touch</h2>
+              <p>
+                Need to get in touch with us to learn more about the Skim Saraan
+                Bercagar (SSB) Skim Saraan Bercagar Loan? Contact us via email
+                at <a href="mailto:ssb@erumah.com.my">ssb@erumah.com.my</a> or call{' '}
+                <a href="tel:03-2367 8888">03-2367 8888</a>.
+              </p>
+              
+              <div className="contact-cards">
+                <div className="contact-card">
+                  <img src={iconEmail} alt="Email" />
+                  <div>
+                    <h4>Email</h4>
+                    <a href="mailto:ssb@erumah.com.my">ssb@erumah.com.my</a>
                   </div>
                 </div>
+                <div className="contact-card">
+                  <img src={iconContact} alt="Phone" />
+                  <div>
+                    <h4>Phone Number</h4>
+                    <a href="tel:03-2367 8888">03-2367 8888</a>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                <button type="submit" className="submit-button">
-                  Submit Enquiry
-                </button>
-              </form>
+            <div className="enquiry-right">
+              <div className="enquiry-form-container">
+                <h3>Enquire Now</h3>
+                <EnquiryForm onSubmit={handleSubmitEnquiry} />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
-    </div>
-  )
+        </section>
+
+        {/* Confirmation Modal */}
+        {showSubmittedModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <button 
+                className="modal-close"
+                onClick={() => setShowSubmittedModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+              <div className="modal-checkmark">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="11" fill="#22c55e" stroke="none"/>
+                  <path d="M7 12.5L10.5 16L17 8" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <h2 className="modal-title">Enquiry Submitted</h2>
+              <p className="modal-message">We will contact you shortly</p>
+            </div>
+          </div>
+        )}
+      </div>
+    )
 }
 
 export default AboutUs

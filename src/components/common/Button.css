@@ -1,10 +1,13 @@
 .btn {
-  padding: 1rem 2.5rem;
+  padding: 0.8rem;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   border: 2px solid;
+  border-radius: 25px;
+  text-decoration: none;
+  width: fit-content;
 }
 
 .btn-primary {
@@ -14,9 +17,8 @@
 }
 
 .btn-primary:hover {
-  background: #161519;
-  color: #F5F5F5;
-  border-color: #161519;
+  background: transparent;
+  color: #A8202D;
 }
 
 .btn-secondary {
@@ -28,7 +30,33 @@
 .btn-secondary:hover {
   background: #F5F5F5;
   color: #A8202D;
-  border-color: #F5F5F5;
+}
+
+.btn .icon-arrow-right {
+  margin: 0 0 -0.2rem 0.5rem;
+}
+
+.btn:hover .icon-arrow-right {
+  filter: invert();
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: #A8202D;
+  border-color: #A8202D;
+}
+
+.btn-tertiary:hover {
+  background: #A8202D;
+  color: #F5F5F5;
+}
+
+.btn-tertiary .icon-arrow-right {
+  filter: invert();
+}
+
+.btn-tertiary:hover .icon-arrow-right {
+  filter: none;
 }
 
 .btn-login {
