@@ -217,39 +217,6 @@
   flex-wrap: wrap;
 }
 
-.btn-outline {
-  background: transparent;
-  border: 2px solid white;
-  color: white;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-outline:hover {
-  background: white;
-  color: #A8202D;
-}
-
-.btn-primary {
-  background: white;
-  border: none;
-  color: #A8202D;
-  padding: 0.6rem 1.5rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background: #f0f0f0;
-}
-
 .eligibility-image {
   position: relative;
   overflow: hidden;
@@ -429,11 +396,6 @@
   transition: all 0.2s;
 }
 
-.btn-outline-dark:hover {
-  background: #a8202d;
-  color: white;
-}
-
 .btn-filled {
   background: #A8202D;
   border: none;
@@ -444,10 +406,6 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.btn-filled:hover {
-  background: #8a1a24;
 }
 
 .partnership-right {
@@ -694,21 +652,4 @@
   margin: 0;
   line-height: 1.6;
   font-weight: 600;
-}
-
-.btn-outline-light {
-  background: transparent;
-  border: 2px solid white;
-  color: white;
-  padding: 0.65rem 1.6rem;
-  border-radius: 999px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  align-self: flex-start;
-}
-
-.btn-outline-light:hover {
-  background: white;
-  color: #A8202D;
 }

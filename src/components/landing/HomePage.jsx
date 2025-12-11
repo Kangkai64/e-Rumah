@@ -1,5 +1,6 @@
 import './HomePage.css'
 import { useNavigate } from 'react-router-dom'
+import Button from '../common/Button.jsx'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'
 import partnershipImage from '../../assets/images/main_page/hero_aboutUs.jpeg'
@@ -52,6 +53,7 @@ const HomePage = () => {
             <h2 className="services-heading">
               We invest in people to create a progressive society that is meaningfully invested in each other.
             </h2>
+            <Button className="btn btn-tertiary" showArrow={true} to={"/about"}>Our Impact</Button>
           </div>
 
           <div className="services-grid">
@@ -108,9 +110,9 @@ const HomePage = () => {
               <li>Meets e-Rumah evaluation criteria</li>
             </ul>
             <div className="eligibility-buttons">
-              <button className="btn-outline">FAQs</button>
-              <button className="btn-outline">Excluded Postcodes</button>
-              <button className="btn-primary">Brochure</button>
+              <Button className="btn btn-secondary" showArrow={true}>FAQs</Button>
+              <Button className="btn btn-secondary" showArrow={true}>Excluded Postcodes</Button>
+              <Button className="btn btn-secondary" showArrow={true}>Brochure</Button>
             </div>
           </div>
           <div className="eligibility-image">
@@ -202,8 +204,8 @@ const HomePage = () => {
               <div className="partnership-text">
                 <h2>A partnership with innovation and impact at its core</h2>
                 <div className="partnership-buttons">
-                  <button className="btn-outline-dark">About Us</button>
-                  <button className="btn-filled">Get Started</button>
+                  <Button variant="tertiary" to="/about" showArrow={true}>About Us</Button>
+                  <Button variant="primary" to="/get-started" showArrow={true}>Our Impact</Button>
                 </div>
               </div>
             </div>
@@ -278,7 +280,7 @@ const HomePage = () => {
               50300 Kuala Lumpur<br />
               Malaysia
             </p>
-            <button className="btn-outline-light">Connect with Us</button>
+            <Button variant="secondary" to="/about" showArrow={true}>Connect with Us</Button>
           </div>
         </div>
       </section>
