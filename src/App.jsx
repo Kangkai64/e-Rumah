@@ -111,6 +111,14 @@ function App() {
               </>
             </ProtectedRoute>
           } />
+
+          <Route path="/property-calculator" element={
+            <>
+              <Header />
+              <PropertyCalculatorController />
+              <Footer />
+            </>
+          } />
         </Routes>
       </div>
     </AuthProvider>
