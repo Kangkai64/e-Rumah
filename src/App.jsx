@@ -8,6 +8,8 @@ import AboutUs from './components/landing/AboutUs'
 import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
+import CustomerSupportController from './controllers/CustomerSupportController.jsx'
+import CustomerSupportUpdateView from './views/CustomerSupportUpdateView.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -120,6 +122,10 @@ function App() {
               <Footer />
             </>
           } />
+
+          {/* Customer Support Routes */}
+          <Route path="/customer-support" element={<CustomerSupportController />} />
+          <Route path="/update-customer-support" element={<CustomerSupportUpdateView />} />
         </Routes>
       </div>
     </AuthProvider>
