@@ -74,17 +74,22 @@ export function AuthProvider({ children }) {
           .in('status', ['submitted', 'underReviewed', 'approved'])
           .maybeSingle()
 
-        const { data: appData } = await Promise.race([
+        const result = await Promise.race([
           appFetchPromise,
           appTimeout
-        ]).catch(() => {
+        ]).catch((err) => {
           console.log('ℹ️ Timeout checking application status')
-          return { data: null, error: null }
+          return { data: null, error: err, timedOut: true }
         })
 
-        const isComplete = appData ? 'complete' : 'incomplete'
-        console.log('📊 Application status:', isComplete, '- App data:', appData)
-        setApplicationStatus(isComplete)
+        // Only update status if query succeeded (not timed out)
+        if (!result.timedOut) {
+          const isComplete = result.data ? 'complete' : 'incomplete'
+          console.log('📊 Application status:', isComplete, '- App data:', result.data)
+          setApplicationStatus(isComplete)
+        } else {
+          console.log('⚠️ Keeping existing application status due to timeout')
+        }
       }
 
       setUser(authUser)
@@ -114,7 +119,13 @@ export function AuthProvider({ children }) {
 
     // Listen to auth state changes
     const { data: { subscription } } = onAuthStateChange(async (event, session) => {
-      await fetchUserData(session?.user ?? null)
+      // Only fetch full user data on SIGNED_IN or SIGNED_OUT events
+      // Don't refetch on TOKEN_REFRESHED to avoid unnecessary queries
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        await fetchUserData(session?.user ?? null)
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 Token refreshed, keeping existing user data')
+      }
       setLoading(false)
     })
 

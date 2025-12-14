@@ -5,6 +5,7 @@
 
 import { useRef, useEffect } from 'react'
 import '../components/application/applicationForm.css'
+import DocumentUpload from '../components/application/DocumentUpload'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)
@@ -172,7 +173,7 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
 // ============================================================================
 
 // Step 1: Personal Information
-function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
+function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
   return (
     <div className="step-container">
       <h2>Personal Information</h2>
@@ -548,6 +549,107 @@ function Step1PersonalInfo({ formData, handleChange, errors = {} }) {
         <ErrorMessage error={errors.purposeOfApplication} />
       </div>
 
+      {/* Identity Documents */}
+      <div className="documents-section" style={{marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f5f5f5', borderRadius: '8px'}}>
+        <h3 style={{marginTop: 0}}>Identity Documents</h3>
+        
+        <DocumentUpload
+          label="Applicant NRIC"
+          required
+          documentData={formData.documents?.applicantNRIC}
+          onUpload={(e) => handleFileUpload(e, 'applicantNRIC')}
+          onDelete={() => handleFileDelete('applicantNRIC')}
+          uploading={uploadProgress?.applicantNRIC}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload a clear copy of your NRIC (Max 10MB)"
+        />
+
+        {formData.isJointApplicant && (
+          <DocumentUpload
+            label="Joint Applicant NRIC"
+            required
+            documentData={formData.documents?.jointApplicantNRIC}
+            onUpload={(e) => handleFileUpload(e, 'jointApplicantNRIC')}
+            onDelete={() => handleFileDelete('jointApplicantNRIC')}
+            uploading={uploadProgress?.jointApplicantNRIC}
+            accept=".pdf,.jpg,.jpeg,.png"
+            hint="Upload a clear copy of joint applicant's NRIC (Max 10MB)"
+          />
+        )}
+
+        <DocumentUpload
+          label="Birth Certificate"
+          documentData={formData.documents?.birthCertificate}
+          onUpload={(e) => handleFileUpload(e, 'birthCertificate')}
+          onDelete={() => handleFileDelete('birthCertificate')}
+          uploading={uploadProgress?.birthCertificate}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload birth certificate if applicable (Max 10MB)"
+        />
+
+        {formData.maritalStatus === 'Married' && (
+          <DocumentUpload
+            label="Marriage Certificate"
+            documentData={formData.documents?.marriageCertificate}
+            onUpload={(e) => handleFileUpload(e, 'marriageCertificate')}
+            onDelete={() => handleFileDelete('marriageCertificate')}
+            uploading={uploadProgress?.marriageCertificate}
+            accept=".pdf,.jpg,.jpeg,.png"
+            hint="Upload marriage certificate (Max 10MB)"
+          />
+        )}
+      </div>
+
+      {/* Financial Documents */}
+      <div className="documents-section" style={{marginTop: '1.5rem', padding: '1.5rem', backgroundColor: '#f5f5f5', borderRadius: '8px'}}>
+        <h3 style={{marginTop: 0}}>Financial Documents</h3>
+        
+        <div style={{marginBottom: '1rem'}}>
+          <h4 style={{marginBottom: '0.5rem'}}>Latest 3 Months Payslips *</h4>
+          {[0, 1, 2].map((index) => (
+            <DocumentUpload
+              key={index}
+              label={`Payslip ${index + 1}`}
+              required
+              documentData={formData.documents?.payslips?.[index]}
+              onUpload={(e) => handleFileUpload(e, 'payslips', index)}
+              onDelete={() => handleFileDelete('payslips', index)}
+              uploading={uploadProgress?.[`payslips_${index}`]}
+              accept=".pdf,.jpg,.jpeg,.png"
+              hint={`Upload payslip for month ${index + 1} (Max 10MB)`}
+            />
+          ))}
+        </div>
+
+        <div style={{marginBottom: '1rem'}}>
+          <h4 style={{marginBottom: '0.5rem'}}>Latest 6 Months Bank Statements *</h4>
+          {[0, 1, 2, 3, 4, 5].map((index) => (
+            <DocumentUpload
+              key={index}
+              label={`Bank Statement ${index + 1}`}
+              required
+              documentData={formData.documents?.bankStatements?.[index]}
+              onUpload={(e) => handleFileUpload(e, 'bankStatements', index)}
+              onDelete={() => handleFileDelete('bankStatements', index)}
+              uploading={uploadProgress?.[`bankStatements_${index}`]}
+              accept=".pdf,.jpg,.jpeg,.png"
+              hint={`Upload bank statement for month ${index + 1} (Max 10MB)`}
+            />
+          ))}
+        </div>
+
+        <DocumentUpload
+          label="Latest EPF Statement"
+          required
+          documentData={formData.documents?.epfStatement}
+          onUpload={(e) => handleFileUpload(e, 'epfStatement')}
+          onDelete={() => handleFileDelete('epfStatement')}
+          uploading={uploadProgress?.epfStatement}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload your latest EPF statement (Max 10MB)"
+        />
+      </div>
+
       <div className="form-group">
         <label>Payout Option</label>
         <div className="radio-group">
@@ -913,7 +1015,7 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
 // Step 3: Property Details
 // Step 3: Property Details
-function Step3PropertyDetails({ formData, handleChange, errors = {} }) {
+function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
   return (
     <div className="step-container">
       <h2>Property Information</h2>
@@ -1140,6 +1242,68 @@ function Step3PropertyDetails({ formData, handleChange, errors = {} }) {
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="cagamasRenew" checked={formData.renewalFireInsurance === 'cagamasRenew'} onChange={handleChange} /> To be renewed by Cagamas</label>
           </div>
         </div>
+      </section>
+
+      {/* Property Documents */}
+      <section className="form-section" style={{marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f5f5f5', borderRadius: '8px'}}>
+        <h3 style={{marginTop: 0}}>Property Documents</h3>
+        
+        <DocumentUpload
+          label="Grant / Title Deed"
+          required
+          documentData={formData.documents?.grantTitle}
+          onUpload={(e) => handleFileUpload(e, 'grantTitle')}
+          onDelete={() => handleFileDelete('grantTitle')}
+          uploading={uploadProgress?.grantTitle}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload copy of Grant or Title Deed (Max 10MB)"
+        />
+
+        <DocumentUpload
+          label="Sale & Purchase Agreement / Deed of Assignment"
+          required
+          documentData={formData.documents?.saleAgreement}
+          onUpload={(e) => handleFileUpload(e, 'saleAgreement')}
+          onDelete={() => handleFileDelete('saleAgreement')}
+          uploading={uploadProgress?.saleAgreement}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload Sale & Purchase Agreement or Deed of Assignment (Max 10MB)"
+        />
+
+        <DocumentUpload
+          label="Valuation Report"
+          required
+          documentData={formData.documents?.valuationReport}
+          onUpload={(e) => handleFileUpload(e, 'valuationReport')}
+          onDelete={() => handleFileDelete('valuationReport')}
+          uploading={uploadProgress?.valuationReport}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload property valuation report (Max 10MB)"
+        />
+
+        <DocumentUpload
+          label="Fire Insurance Policy"
+          required
+          documentData={formData.documents?.fireInsurance}
+          onUpload={(e) => handleFileUpload(e, 'fireInsurance')}
+          onDelete={() => handleFileDelete('fireInsurance')}
+          uploading={uploadProgress?.fireInsurance}
+          accept=".pdf,.jpg,.jpeg,.png"
+          hint="Upload copy of fire insurance policy (Max 10MB)"
+        />
+
+        {formData.propertyEncumbered === 'yes' && (
+          <DocumentUpload
+            label="Property Loan Statement"
+            required
+            documentData={formData.documents?.propertyLoanStatement}
+            onUpload={(e) => handleFileUpload(e, 'propertyLoanStatement')}
+            onDelete={() => handleFileDelete('propertyLoanStatement')}
+            uploading={uploadProgress?.propertyLoanStatement}
+            accept=".pdf,.jpg,.jpeg,.png"
+            hint="Upload property loan statement (Max 10MB)"
+          />
+        )}
       </section>
     </div>
   )
@@ -2177,16 +2341,19 @@ export default function ApplicationFormView({
   handleBack,
   handleSubmit,
   isLoading = false,
-  isSaving = false
+  isSaving = false,
+  handleFileUpload,
+  handleFileDelete,
+  uploadProgress
 }) {
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return <Step1PersonalInfo formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step1PersonalInfo formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} />
       case 2:
         return <Step2JointApplicant formData={formData} handleChange={handleChange} errors={errors} />
       case 3:
-        return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} />
       case 4:
         return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} />
       case 5:

@@ -17,6 +17,8 @@ import {
   saveToLocalStorage,
   loadFromLocalStorage 
 } from '../services/applicationService'
+import { uploadDocument, deleteDocument } from '../services/fileUploadService'
+import { supabase } from '../config/supabase'
 
 function ApplicationController() {
   const navigate = useNavigate()
@@ -27,8 +29,10 @@ function ApplicationController() {
   const [applicationId, setApplicationId] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({})
   const saveTimeoutRef = useRef(null)
   const isInitialized = useRef(false)
+  const hasRedirected = useRef(false)
   
   // Initialize form data - will be loaded from Supabase
   const [formData, setFormData] = useState({
@@ -195,6 +199,33 @@ function ApplicationController() {
       // Privacy & Documents
       privacyConsent: false,
       acknowledgeDeclaration: false,
+      
+      // Supporting Documents (URLs stored after upload)
+      documents: {
+        applicantNRIC: { url: '', fileName: '', uploadedAt: '' },
+        jointApplicantNRIC: { url: '', fileName: '', uploadedAt: '' },
+        birthCertificate: { url: '', fileName: '', uploadedAt: '' },
+        marriageCertificate: { url: '', fileName: '', uploadedAt: '' },
+        payslips: [
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' }
+        ],
+        bankStatements: [
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' },
+          { url: '', fileName: '', uploadedAt: '' }
+        ],
+        epfStatement: { url: '', fileName: '', uploadedAt: '' },
+        grantTitle: { url: '', fileName: '', uploadedAt: '' },
+        saleAgreement: { url: '', fileName: '', uploadedAt: '' },
+        valuationReport: { url: '', fileName: '', uploadedAt: '' },
+        fireInsurance: { url: '', fileName: '', uploadedAt: '' },
+        propertyLoanStatement: { url: '', fileName: '', uploadedAt: '' }
+      }
   })
 
   // ==========================================
@@ -241,6 +272,7 @@ function ApplicationController() {
           console.log('📂 Using localStorage fallback')
         } else {
           // Successfully loaded from Supabase
+          // Note: ProtectedRoute handles redirecting submitted applications to dashboard
           setFormData(prev => ({ ...prev, ...loadedData }))
           setCurrentStep(loadedStep)
           setApplicationId(application?.id)
@@ -479,6 +511,139 @@ function ApplicationController() {
   }
 
   /**
+   * Handle file upload
+   */
+  const handleFileUpload = async (e, documentType, arrayIndex = null) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!currentUser) {
+      alert('Please log in to upload files')
+      return
+    }
+
+    try {
+      const uploadKey = arrayIndex !== null ? `${documentType}_${arrayIndex}` : documentType
+      
+      // Show uploading indicator
+      setUploadProgress(prev => ({
+        ...prev,
+        [uploadKey]: { uploading: true }
+      }))
+
+      // Upload file with numbered suffix for array items
+      const uploadDocType = arrayIndex !== null 
+        ? `${documentType}_${arrayIndex + 1}` 
+        : documentType
+      
+      const { url, fileName, uploadedAt, error } = await uploadDocument(
+        file,
+        currentUser.id,
+        uploadDocType
+      )
+
+      if (error) {
+        alert('Upload failed: ' + error.message)
+        setUploadProgress(prev => ({
+          ...prev,
+          [uploadKey]: { uploading: false }
+        }))
+        return
+      }
+
+      // Update form data with file URL
+      setFormData(prev => {
+        const newData = { ...prev }
+        
+        if (arrayIndex !== null) {
+          // Handle array documents (payslips, bank statements)
+          const fieldName = documentType.includes('payslip') ? 'payslips' : 'bankStatements'
+          const newArray = [...newData.documents[fieldName]]
+          newArray[arrayIndex] = { url, fileName, uploadedAt }
+          newData.documents[fieldName] = newArray
+        } else {
+          // Handle single documents
+          newData.documents[documentType] = { url, fileName, uploadedAt }
+        }
+        
+        return newData
+      })
+
+      // Clear upload progress
+      setUploadProgress(prev => ({
+        ...prev,
+        [uploadKey]: { uploading: false }
+      }))
+
+      console.log('✅ File uploaded:', fileName)
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Upload failed. Please try again.')
+      const uploadKey = arrayIndex !== null ? `${documentType}_${arrayIndex}` : documentType
+      setUploadProgress(prev => ({
+        ...prev,
+        [uploadKey]: { uploading: false }
+      }))
+    }
+  }
+
+  /**
+   * Handle file deletion
+   */
+  const handleFileDelete = async (documentType, arrayIndex = null) => {
+    if (!currentUser) {
+      alert('Please log in to delete files')
+      return
+    }
+
+    if (!window.confirm('Are you sure you want to delete this file?')) {
+      return
+    }
+
+    try {
+      let fileUrl = ''
+      
+      if (arrayIndex !== null) {
+        const fieldName = documentType.includes('payslip') ? 'payslips' : 'bankStatements'
+        fileUrl = formData.documents[fieldName][arrayIndex].url
+      } else {
+        fileUrl = formData.documents[documentType].url
+      }
+
+      if (!fileUrl) return
+
+      // Delete from storage
+      const { success, error } = await deleteDocument(fileUrl, currentUser.id)
+
+      if (error) {
+        alert('Delete failed: ' + error.message)
+        return
+      }
+
+      // Update form data
+      setFormData(prev => {
+        const newData = { ...prev }
+        
+        if (arrayIndex !== null) {
+          const fieldName = documentType.includes('payslip') ? 'payslips' : 'bankStatements'
+          const newArray = [...newData.documents[fieldName]]
+          newArray[arrayIndex] = { url: '', fileName: '', uploadedAt: '' }
+          newData.documents[fieldName] = newArray
+        } else {
+          newData.documents[documentType] = { url: '', fileName: '', uploadedAt: '' }
+        }
+        
+        return newData
+      })
+
+      console.log('✅ File deleted')
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete file. Please try again.')
+    }
+  }
+
+  /**
    * Validate and move to next step
    */
   const handleNext = () => {
@@ -533,11 +698,34 @@ function ApplicationController() {
       // 2. Generate PDF
       console.log('📄 Generating PDF...')
       const pdfBlob = await generatePDF(formData)
-      downloadPDF(pdfBlob)
+      
+      // 3. Upload PDF to Supabase Storage
+      console.log('☁️ Uploading PDF to storage...')
+      const fileName = `SSB_Application_${formData.nricNo?.replace(/[^0-9]/g, '')}.pdf`
+      const filePath = `${currentUser.id}/${fileName}`
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('application-forms')
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: true
+        })
+      
+      if (uploadError) {
+        console.error('❌ PDF upload failed:', uploadError)
+        alert('Warning: PDF was generated but failed to upload to storage. Downloading locally...')
+        downloadPDF(pdfBlob)
+      } else {
+        console.log('✅ PDF uploaded to storage')
+        
+        // Download PDF for user
+        downloadPDF(pdfBlob)
+      }
       
       alert('Application submitted successfully! Redirecting to your dashboard...')
       
-      // 3. Navigate to user dashboard
+      // 4. Navigate to user dashboard
       // Reload the page to refresh auth context and application status
       window.location.href = '/user/dashboard'
     } catch (error) {
@@ -884,6 +1072,9 @@ function ApplicationController() {
       handleNext={handleNext}
       handleBack={handleBack}
       handleSubmit={handleSubmit}
+      handleFileUpload={handleFileUpload}
+      handleFileDelete={handleFileDelete}
+      uploadProgress={uploadProgress}
       isLoading={isLoading}
       isSaving={isSaving}
     />
