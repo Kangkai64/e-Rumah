@@ -6,6 +6,7 @@ import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
 import AboutUs from './components/landing/AboutUs'
 import ApplicationController from './controllers/ApplicationController.jsx'
+import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
@@ -110,6 +111,14 @@ function App() {
                 <Footer />
               </>
             </ProtectedRoute>
+          } />
+
+          <Route path="/property-calculator" element={
+            <>
+              <Header />
+              <PropertyCalculatorController />
+              <Footer />
+            </>
           } />
         </Routes>
       </div>

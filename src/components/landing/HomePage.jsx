@@ -1,4 +1,5 @@
 import './HomePage.css'
+import { useNavigate } from 'react-router-dom'
 import Button from '../common/Button.jsx'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'
@@ -24,6 +25,12 @@ import iconImpact from '../../assets/icons/main_page/icon_impact.png'
 import iconIntegrity from '../../assets/icons/main_page/icon_integrity.png'
 
 const HomePage = () => {
+  const navigate = useNavigate()
+
+  const handlePropertyEstimation = () => {
+    navigate('/property-estimation')
+  }
+
   return (
     <div className="home-page">
       {/* Hero Section */}
