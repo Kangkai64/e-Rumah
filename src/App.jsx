@@ -5,6 +5,8 @@ import Header from './layouts/Header'
 import Footer from './layouts/Footer'
 import HomePage from './components/landing/HomePage'
 import AboutUs from './components/landing/AboutUs'
+import StepByStep from './components/landing/StepByStep'
+import FAQs from './components/landing/FAQs'
 import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
@@ -69,10 +71,7 @@ function App() {
             <ProtectedRoute requireRole="user">
               <>
                 <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>My Application</h1>
-                  <p>Your submitted application details will appear here.</p>
-                </div>
+                <MaintainApplicationController />
                 <Footer />
               </>
             </ProtectedRoute>
@@ -104,14 +103,20 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/user/health-reports" element={
-            <ProtectedRoute requireRole="user">
-              <>
-                <Header />
-                <HealthReportController />
-                <Footer />
-              </>
-            </ProtectedRoute>
+          <Route path="/step-by-step" element={
+            <>
+              <Header />
+              <StepByStep />
+              <Footer />
+            </>
+          } />
+
+          <Route path="/faqs" element={
+            <>
+              <Header />
+              <FAQs />
+              <Footer />
+            </>
           } />
 
           <Route path="/maintainApplication/:applicationId" element={

@@ -133,25 +133,51 @@ export const saveApplicationData = async (applicationId, formData, currentStep) 
 }
 
 /**
- * Load application data for user
+ * Load application data for user (for view/maintain operations)
+ * Fetches submitted application with all related data
  * @param {string} userId - User ID
- * @returns {Promise<{formData, currentStep, application, error}>}
+ * @returns {Promise<{application, applicationData, error}>}
  */
 export const loadApplicationData = async (userId) => {
   try {
-    const { application, applicationData, error } = await getOrCreateApplication(userId)
+    // Fetch the last submitted/underReviewed/approved application for this user
+    const { data: application, error: fetchError } = await supabase
+      .from('applications')
+      .select(`
+        *,
+        application_data(*)
+      `)
+      .eq('user_id', userId)
+      .in('status', ['submitted', 'underReviewed', 'approved'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
 
-    if (error) throw error
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw fetchError
+    }
+
+    if (!application) {
+      return {
+        application: null,
+        applicationData: null,
+        error: 'No submitted application found'
+      }
+    }
+
+    // Extract application_data (it comes as an array)
+    const applicationData = Array.isArray(application.application_data)
+      ? application.application_data[0]
+      : application.application_data
 
     return {
-      formData: applicationData?.form_data || {},
-      currentStep: applicationData?.current_step || 1,
       application: application,
+      applicationData: applicationData,
       error: null
     }
   } catch (error) {
     console.error('Error loading application data:', error)
-    return { formData: {}, currentStep: 1, application: null, error }
+    return { application: null, applicationData: null, error }
   }
 }
 

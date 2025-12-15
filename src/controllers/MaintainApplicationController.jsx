@@ -10,7 +10,7 @@ import { getCurrentUser } from '../services/authService'
 import MaintainApplicationView from '../views/MaintainApplicationView'
 
 function MaintainApplicationController() {
-  const { applicationId } = useParams()
+  const { applicationId: urlApplicationId } = useParams() // Optional from URL
   const navigate = useNavigate()
   
   const [isLoading, setIsLoading] = useState(true)
@@ -25,7 +25,7 @@ function MaintainApplicationController() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const user = await getCurrentUser()
+        const { user } = await getCurrentUser()
         setCurrentUser(user)
       } catch (err) {
         console.error('Error fetching user:', err)
@@ -38,15 +38,49 @@ function MaintainApplicationController() {
   
   // Fetch application details
   useEffect(() => {
-    if (!applicationId) return
+    if (!currentUser) return
     
     const fetchApplicationData = async () => {
       setIsLoading(true)
       try {
-        // DUMMY DATA - Remove this when real data is ready
-        const dummyData = {
-          id: applicationId,
-          user_id: 'user-123',
+        // Fetch application for current user
+        const { loadApplicationData } = await import('../services/applicationService')
+        const { application: appData, applicationData, error: loadError } = await loadApplicationData(currentUser.id)
+        
+        if (loadError) {
+          setError('No application found. Please submit an application first.')
+          setIsLoading(false)
+          return
+        }
+        
+        if (!appData) {
+          setError('Your application has not been submitted yet.')
+          setIsLoading(false)
+          return
+        }
+        
+        // Attach the form_data from application_data to the application object
+        // This allows the view to access it as application.submitted_form_data
+        const enrichedApplication = {
+          ...appData,
+          submitted_form_data: applicationData?.form_data || {}
+        }
+        
+        setApplication(enrichedApplication)
+        setApplicationStatus(appData.status)
+        
+        // Extract approved amount from form_data
+        if (applicationData?.form_data?.approvedAmount) {
+          setApprovedAmount(parseFloat(applicationData.form_data.approvedAmount))
+        }
+        
+        buildTimeline(appData)
+        setError(null)
+        
+        // DUMMY DATA FOR TESTING - Remove this block when real data structure is confirmed
+        /* const dummyData = {
+          id: appData.id,
+          user_id: currentUser.id,
           status: 'approved',
           submitted_at: '2025-11-15T10:30:00Z',
           updated_at: '2025-12-01T14:20:00Z',
@@ -88,11 +122,11 @@ function MaintainApplicationController() {
         setApplicationStatus(dummyData.status)
         setApprovedAmount(parseFloat(dummyData.submitted_form_data.approvedAmount))
         buildTimeline(dummyData)
-        setError(null)
+        setError(null) */
         
-        // Uncomment below when ready to use real data from database
+        // Old code kept for reference
         /*
-        const result = await Application.getById(applicationId)
+        const result = await Application.getById(urlApplicationId || appData.id)
         
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch application')
@@ -129,7 +163,7 @@ function MaintainApplicationController() {
     }
     
     fetchApplicationData()
-  }, [applicationId])
+  }, [currentUser])
   
   // Build timeline from application data
   const buildTimeline = (appData) => {
