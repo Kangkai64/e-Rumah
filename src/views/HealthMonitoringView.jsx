@@ -1,9 +1,11 @@
 // HealthReport View - Pure Presentational Component
 // Receives all props from HealthReportController
 // NO business logic - only UI rendering
+// Now includes both User and Admin views with conditional rendering based on userRole
 
 import { useRef } from 'react'
 import '../components/application/maintainApplication.css'
+import './AdminHealthReportDashboard.css'
 
 // Embedded CSS Styles
 const styles = `
@@ -1290,10 +1292,395 @@ function ReportsTable({
 }
 
 // ============================================================================
-// MAIN HEALTH REPORT VIEW COMPONENT
+// ADMIN VIEW COMPONENT
 // ============================================================================
 
-export default function HealthReportView({
+function AdminHealthReportDashboardView({
+  // State
+  isLoading,
+  statistics,
+  reports,
+  selectedReport,
+  alerts,
+  error,
+  successMessage,
+  searchKey,
+  filters,
+  sortBy,
+  sortOrder,
+  activeTab,
+
+  // Handlers
+  onSearchChange,
+  onFilterChange,
+  onSort,
+  onReportSelect,
+  onReviewClick,
+  onUpdateClick,
+  onGenerateReport,
+  onViewReport,
+  onShareReport,
+  onArchiveReport,
+  onTabChange
+}) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="admin-dashboard-container">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading health reports...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="admin-dashboard-container">
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <div className="alert alert-success">
+          <span>✓</span> {successMessage}
+        </div>
+      )}
+      {error && (
+        <div className="alert alert-error">
+          <span>⚠</span> {error}
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="dashboard-content">
+        {/* Heading */}
+        <div className="section-heading">
+          <h1>Health Report Dashboard</h1>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="statistics-cards">
+          <div className="stat-card">
+            <div className="stat-label">Pending Reports</div>
+            <div className="stat-value">{statistics?.pending || 0}</div>
+            <div className="stat-sublabel">Awaiting review</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">Approved</div>
+            <div className="stat-value">{statistics?.approved || 0}</div>
+            <div className="stat-sublabel">Active health records</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-label">Flagged</div>
+            <div className="stat-value">{statistics?.flagged || 0}</div>
+            <div className="stat-sublabel">Requires attention</div>
+          </div>
+
+          <div className="stat-card stat-card-small">
+            <div className="stat-label">Reports Generated</div>
+            <div className="stat-value">{statistics?.generated || 0}</div>
+            <div className="stat-sublabel">This month</div>
+          </div>
+        </div>
+
+        {/* Records Management Section */}
+        <div className="records-management">
+          {/* Records Table */}
+          <div className="records-table-container">
+            <div className="table-heading">
+              <h3>Records</h3>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="search-filter-bar">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search applicants, reports, IDs"
+                value={searchKey}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+
+              <div className="filter-group">
+                <span className="filter-label">Filter field:</span>
+                <select
+                  className="filter-select"
+                  value={filters.field || 'status'}
+                  onChange={(e) => onFilterChange('field', e.target.value)}
+                >
+                  <option value="status">Status</option>
+                  <option value="reportType">Report Type</option>
+                  <option value="date">Date</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Value:</span>
+                <select
+                  className="filter-select"
+                  value={filters.value || 'pending'}
+                  onChange={(e) => onFilterChange('value', e.target.value)}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="flagged">Flagged</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <span className="filter-label">Sort:</span>
+                <select
+                  className="filter-select"
+                  value={sortBy}
+                  onChange={(e) => onSort(e.target.value)}
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="name">Name</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Record Type Tabs */}
+            <div className="record-tabs">
+              <button
+                className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+                onClick={() => onTabChange('reports')}
+              >
+                Health Reports
+              </button>
+              <button
+                className={`tab-button ${activeTab === 'patients' ? 'active' : ''}`}
+                onClick={() => onTabChange('patients')}
+              >
+                Patients
+              </button>
+              <div className="tab-info">
+                Use filters to refine by status, dates, report type and more.
+              </div>
+            </div>
+
+            {/* Table Headers */}
+            <div className="table-header">
+              <div className="table-col">Applicant</div>
+              <div className="table-col">Report Type</div>
+              <div className="table-col">Submitted</div>
+              <div className="table-col">Status</div>
+              <div className="table-col">Actions</div>
+            </div>
+
+            {/* Table Rows */}
+            <div className="table-body">
+              {reports && reports.length > 0 ? (
+                reports.map((report) => (
+                  <div
+                    key={report.id}
+                    className={`table-row ${selectedReport?.id === report.id ? 'selected' : ''}`}
+                    onClick={() => onReportSelect(report)}
+                  >
+                    <div className="table-col">
+                      <span className="applicant-name">{report.applicantName || 'N/A'}</span>
+                    </div>
+                    <div className="table-col">
+                      <span className="report-type">{report.reportType || 'General'}</span>
+                    </div>
+                    <div className="table-col">
+                      <span className="date">{report.submittedDate || 'N/A'}</span>
+                    </div>
+                    <div className="table-col">
+                      <span className={`status-badge status-${report.status?.toLowerCase() || 'pending'}`}>
+                        {report.status || 'Pending'}
+                      </span>
+                    </div>
+                    <div className="table-col actions-col">
+                      <button
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReviewClick(report)
+                        }}
+                      >
+                        Review
+                      </button>
+                      <button
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUpdateClick(report)
+                        }}
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <p>No health reports found</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Report Details Card */}
+          <div className="report-details-card">
+            <div className="details-heading">
+              <h3>Report Details</h3>
+            </div>
+
+            <div className="details-tabs">
+              <button className="details-tab active">Overview</button>
+              <button className="details-tab">Documents</button>
+              <button className="details-tab">History</button>
+            </div>
+
+            {selectedReport ? (
+              <>
+                {/* Applicant and Report Info */}
+                <div className="info-section">
+                  <div className="info-group">
+                    <div className="info-item">
+                      <div className="info-label">Applicant</div>
+                      <div className="info-value primary">{selectedReport.applicantName || 'N/A'}</div>
+                      <div className="info-sublabel">IC: {selectedReport.applicantIC || 'N/A'}</div>
+                    </div>
+                  </div>
+
+                  <div className="info-group">
+                    <div className="info-item text-right">
+                      <div className="info-label">Report Type</div>
+                      <div className="info-value primary">{selectedReport.reportType || 'General'}</div>
+                      <div className="info-sublabel">Date: {selectedReport.reportDate || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Healthcare Provider */}
+                <div className="info-section">
+                  <div className="info-label">Healthcare Provider</div>
+                  <div className="info-value large">{selectedReport.healthcareProvider || 'N/A'}</div>
+                  <div className="info-sublabel">{selectedReport.providerAddress || 'Address not provided'}</div>
+                </div>
+
+                {/* Key Findings */}
+                <div className="findings-section">
+                  <ul className="findings-list">
+                    <li>Report uploaded and verified</li>
+                    <li>Medical history reviewed</li>
+                    <li>No risk flags detected</li>
+                  </ul>
+                </div>
+
+                {/* Action Buttons */}
+                <button className="btn-primary-action">Approve Report</button>
+
+                {/* Additional Info */}
+                <div className="additional-info">
+                  <div className="info-row">
+                    <div className="info-col">
+                      <div className="info-label">Notes</div>
+                      <div className="info-sublabel">{selectedReport.notes || 'No additional notes'}</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="empty-selection">
+                <p>Select a report to view details</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reports Section */}
+        <div className="reports-section">
+          <div className="reports-header">
+            <h3>Reports</h3>
+            <div className="filter-group">
+              <span className="filter-label">Filter</span>
+              <select className="filter-select">
+                <option>This month</option>
+                <option>Last month</option>
+                <option>This year</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Reports Table */}
+          <div className="reports-table">
+            <div className="reports-table-header">
+              <div className="report-col">Report name</div>
+              <div className="report-col">Generated on</div>
+              <div className="report-col"></div>
+              <div className="report-col">Actions</div>
+            </div>
+
+            <div className="reports-table-body">
+              <div className="report-row">
+                <div className="report-col">
+                  <span className="report-name">Health Report - Nov 2025</span>
+                </div>
+                <div className="report-col">
+                  <span className="report-date">01 Dec 2025</span>
+                </div>
+                <div className="report-col"></div>
+                <div className="report-col actions-col">
+                  <button className="action-btn-sm" onClick={() => onViewReport('report-1')}>View</button>
+                  <button className="action-btn-sm" onClick={() => onShareReport('report-1')}>Share</button>
+                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-1')}>Archive</button>
+                </div>
+              </div>
+
+              <div className="report-row">
+                <div className="report-col">
+                  <span className="report-name">Health Report - OCT 2025</span>
+                </div>
+                <div className="report-col">
+                  <span className="report-date">28 Nov 2025</span>
+                </div>
+                <div className="report-col"></div>
+                <div className="report-col actions-col">
+                  <button className="action-btn-sm" onClick={() => onViewReport('report-2')}>View</button>
+                  <button className="action-btn-sm" onClick={() => onShareReport('report-2')}>Share</button>
+                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-2')}>Archive</button>
+                </div>
+              </div>
+
+              <div className="report-row">
+                <div className="report-col">
+                  <span className="report-name">Health Report - Sep 2025</span>
+                </div>
+                <div className="report-col">
+                  <span className="report-date">30 Sep 2025</span>
+                </div>
+                <div className="report-col"></div>
+                <div className="report-col actions-col">
+                  <button className="action-btn-sm" onClick={() => onViewReport('report-3')}>View</button>
+                  <button className="action-btn-sm" onClick={() => onShareReport('report-3')}>Share</button>
+                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-3')}>Archive</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Generate Report Footer */}
+          <div className="reports-footer">
+            <p className="footer-note">Store and access reports securely for audit and Compliance.</p>
+            <button className="btn-generate-report" onClick={onGenerateReport}>
+              Generate Health Analysis Report (PDF)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// USER VIEW COMPONENT
+// ============================================================================
+
+function UserHealthReportView({
   // State
   alerts,
   successMessage,
@@ -1399,5 +1786,142 @@ export default function HealthReportView({
         onShareFormSubmit={onShareFormSubmit}
       />
     </div>
+  )
+}
+
+export default function HealthMonitoringView({
+  // User role
+  userRole,
+
+  // Admin props
+  isLoading,
+  statistics,
+  selectedReport,
+  activeTab,
+  onReviewClick,
+  onUpdateClick,
+  onGenerateReport,
+  onViewReport,
+  onShareReport,
+  onArchiveReport,
+  onTabChange,
+
+  // Common and user props
+  alerts,
+  errorMessage,
+  reports,
+  uploadForm,
+  shareForm,
+  searchKey,
+  filters,
+  sortBy,
+  sortOrder,
+  showUploadModal,
+  showShareModal,
+  showFilters,
+  isDragging,
+  errors,
+  successMessage,
+
+  // User handlers
+  onUploadClick,
+  onCancelUploadModal,
+  onUploadFormChange,
+  onDragEnter,
+  onDragLeave,
+  onDragOver,
+  onDrop,
+  onFileSelect,
+  onUploadSubmit,
+  onCancelShareModal,
+  onShareFormChange,
+  onShareFormSubmit,
+  onSearchChange,
+  onSearch,
+  onFilter,
+  onSetShowFilters,
+  onSort,
+  onDownload,
+  onShareClick,
+  onDelete,
+
+  // Admin handlers
+  onFilterChange,
+  onReportSelect,
+  
+  // Aliases
+  onAdminSort
+}) {
+  // Render Admin Dashboard if user is admin
+  if (userRole === 'admin') {
+    return (
+      <AdminHealthReportDashboardView
+        isLoading={isLoading}
+        statistics={statistics}
+        reports={reports}
+        selectedReport={selectedReport}
+        alerts={alerts}
+        error={errorMessage}
+        successMessage={successMessage}
+        searchKey={searchKey}
+        filters={filters}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        activeTab={activeTab}
+        onSearchChange={onSearchChange}
+        onFilterChange={onFilterChange}
+        onSort={onAdminSort || onSort}
+        onReportSelect={onReportSelect}
+        onReviewClick={onReviewClick}
+        onUpdateClick={onUpdateClick}
+        onGenerateReport={onGenerateReport}
+        onViewReport={onViewReport}
+        onShareReport={onShareReport}
+        onArchiveReport={onArchiveReport}
+        onTabChange={onTabChange}
+      />
+    )
+  }
+
+  // Render User Health Monitoring View otherwise
+  return (
+    <UserHealthReportView
+      alerts={alerts}
+      successMessage={successMessage}
+      errorMessage={errorMessage}
+      reports={reports}
+      uploadForm={uploadForm}
+      shareForm={shareForm}
+      searchKey={searchKey}
+      filters={filters}
+      sortBy={sortBy}
+      sortOrder={sortOrder}
+      showUploadModal={showUploadModal}
+      showShareModal={showShareModal}
+      showFilters={showFilters}
+      isDragging={isDragging}
+      errors={errors}
+      onUploadClick={onUploadClick}
+      onCancelUploadModal={onCancelUploadModal}
+      onUploadFormChange={onUploadFormChange}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onFileSelect={onFileSelect}
+      onUploadSubmit={onUploadSubmit}
+      onCancelShareModal={onCancelShareModal}
+      onShareFormChange={onShareFormChange}
+      onShareFormSubmit={onShareFormSubmit}
+      onSearchChange={onSearchChange}
+      onSearch={onSearch}
+      onFilterChange={onFilter}
+      onFilter={onFilter}
+      onSetShowFilters={onSetShowFilters}
+      onSort={onSort}
+      onDownload={onDownload}
+      onShareClick={onShareClick}
+      onDelete={onDelete}
+    />
   )
 }

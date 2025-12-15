@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import HealthReportView from '../views/HealthReportView'
+import HealthMonitoringView from '../views/HealthMonitoringView'
 import { 
   getHealthReports, 
   uploadHealthReport, 
@@ -15,9 +15,11 @@ import {
   getDueReports
 } from '../services/healthReportService'
 import { getCurrentUser } from '../services/authService'
+import { useAuth } from '../components/context/AuthContext'
 
 function HealthReportController() {
   const navigate = useNavigate()
+  const { user, userRole } = useAuth()
   const [currentUser, setCurrentUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [reports, setReports] = useState([])
@@ -31,6 +33,13 @@ function HealthReportController() {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [activeTab, setActiveTab] = useState('reports')
+  const [statistics, setStatistics] = useState({
+    pending: 0,
+    approved: 0,
+    flagged: 0,
+    generated: 0
+  })
 
   // Filter and sort state
   const [searchKey, setSearchKey] = useState('')
@@ -380,16 +389,53 @@ function HealthReportController() {
     setError(null)
   }, [])
 
-  // Handle help
-  const handleHelp = useCallback(() => {
-    // Navigate to help page or show help modal
-    navigate('/help')
-  }, [navigate])
-
   // Handle exit
   const handleExit = useCallback(() => {
-    navigate('/home')
+    navigate('/')
   }, [navigate])
+
+  // Calculate statistics for admin
+  useEffect(() => {
+    if (reports && reports.length > 0) {
+      const stats = {
+        pending: reports.filter(r => r.status === 'pending').length,
+        approved: reports.filter(r => r.status === 'approved').length,
+        flagged: reports.filter(r => r.status === 'flagged' || r.status === 'rejected').length,
+        generated: reports.length
+      }
+      setStatistics(stats)
+    }
+  }, [reports])
+
+  // Handle admin-specific actions
+  const handleReviewClick = useCallback((report) => {
+    setSelectedReport(report)
+    // Navigate to review page or open modal
+  }, [])
+
+  const handleUpdateClick = useCallback((report) => {
+    setSelectedReport(report)
+    // Open update modal
+  }, [])
+
+  const handleGenerateReport = useCallback(() => {
+    // Generate PDF report logic
+    console.log('Generating report...')
+  }, [])
+
+  const handleViewReport = useCallback((reportId) => {
+    // View report logic
+    console.log('Viewing report:', reportId)
+  }, [])
+
+  const handleArchiveReport = useCallback((reportId) => {
+    // Archive report logic
+    console.log('Archiving report:', reportId)
+  }, [])
+
+  const handleTabChange = useCallback((tab) => {
+    setActiveTab(tab)
+  }, [])
 
   // Auto-hide success messages
   useEffect(() => {
@@ -401,15 +447,29 @@ function HealthReportController() {
     }
   }, [successMessage])
 
-  // Render view
+  // Render view with role-based conditional rendering
   return (
-    <HealthReportView
-      // State
+    <HealthMonitoringView
+      // User role
+      userRole={userRole}
+
+      // Admin props
       isLoading={isLoading}
-      reports={filteredReports}
+      statistics={statistics}
       selectedReport={selectedReport}
+      activeTab={activeTab}
+      onReviewClick={handleReviewClick}
+      onUpdateClick={handleUpdateClick}
+      onGenerateReport={handleGenerateReport}
+      onViewReport={handleViewReport}
+      onShareReport={handleShareClick}
+      onArchiveReport={handleArchiveReport}
+      onTabChange={handleTabChange}
+
+      // Common props
+      reports={filteredReports}
       alerts={alerts}
-      error={error}
+      errorMessage={error}
       successMessage={successMessage}
       isDragging={isDragging}
       isUploading={isUploading}
@@ -428,11 +488,13 @@ function HealthReportController() {
       shareForm={shareForm}
       
       // Handlers
+      onSearchChange={setSearchKey}
+      onFilterChange={(field, value) => setFilters(prev => ({ ...prev, [field]: value }))}
+      onAdminSort={handleSort}
+      onReportSelect={handleReportSelect}
       onSearch={handleSearch}
       onSearchKeyChange={setSearchKey}
       onFilter={handleFilter}
-      onFilterChange={setFilters}
-      onSort={handleSort}
       onFileSelect={handleFileSelect}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -440,15 +502,18 @@ function HealthReportController() {
       onDrop={handleDrop}
       onUploadFormChange={handleUploadFormChange}
       onUploadSubmit={handleUploadSubmit}
-      onReportSelect={handleReportSelect}
       onShareClick={handleShareClick}
       onShareFormChange={handleShareFormChange}
-      onShareSubmit={handleShareSubmit}
+      onShareFormSubmit={handleShareSubmit}
       onDelete={handleDelete}
       onCancel={handleCancel}
-      onHelp={handleHelp}
       onExit={handleExit}
-      onShowUploadModal={() => setShowUploadModal(true)}
+      onUploadClick={() => setShowUploadModal(true)}
+      onCancelUploadModal={handleCancel}
+      onCancelShareModal={handleCancel}
+      onSetShowFilters={() => {}}
+      onSort={handleSort}
+      onDownload={(reportId) => handleViewReport(reportId)}
     />
   )
 }

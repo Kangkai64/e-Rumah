@@ -12,6 +12,7 @@ import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
 import EligibilityCheck from './components/eligibility/EligibilityCheck'
+import HealthReportController from './controllers/HealthReportController.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -103,6 +104,16 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/user/health-reports" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <HealthReportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           <Route path="/maintainApplication/:applicationId" element={
             <ProtectedRoute>
               <>
@@ -119,6 +130,17 @@ function App() {
               <PropertyCalculatorController />
               <Footer />
             </>
+          } />
+
+          {/* Admin Routes */}
+          <Route path="/admin/health-reports" element={
+            <ProtectedRoute requireRole="admin">
+              <>
+                <Header />
+                <HealthReportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
           } />
         </Routes>
       </div>

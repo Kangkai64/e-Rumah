@@ -92,7 +92,7 @@ const Header = () => {
             <Link to="/" className="nav-link">Home</Link>
             <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
             <Link to="/about" className="nav-link">About Us</Link>
-            <a href="#faqs" className="nav-link">FAQs</a>
+            <a href="/faqs" className="nav-link">FAQs</a>
             <a href="#news" className="nav-link">How to Apply</a>
             <Link to="/property-calculator" className="nav-link">Estimate My Property</Link>
           </nav>
@@ -136,6 +136,7 @@ const Header = () => {
           <nav className="main-nav">
             <Link to="/user/dashboard" className="nav-link">Dashboard</Link>
             <Link to="/user/application" className="nav-link">My Application</Link>
+            <Link to="/user/health-reports" className="nav-link">Health Reports</Link>
             <Link to="/user/documents" className="nav-link">Documents</Link>
             <Link to="/user/support" className="nav-link">Support</Link>
           </nav>
@@ -160,6 +161,7 @@ const Header = () => {
           <nav className="main-nav">
             <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
             <Link to="/admin/applications" className="nav-link">Applications</Link>
+            <Link to="/admin/health-reports" className="nav-link">Health Reports</Link>
             <Link to="/admin/users" className="nav-link">Users</Link>
             <Link to="/admin/reports" className="nav-link">Reports</Link>
             <Link to="/admin/settings" className="nav-link">Settings</Link>
