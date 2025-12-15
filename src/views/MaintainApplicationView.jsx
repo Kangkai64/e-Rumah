@@ -51,6 +51,50 @@ function MaintainApplicationView({
   const formData = application.submitted_form_data || {}
   const statusColor = getStatusColor(applicationStatus)
 
+  // Helper function to calculate age from DOB
+  const calculateAge = (day, month, year) => {
+    if (!day || !month || !year) return null
+    const birthDate = new Date(year, month - 1, day)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    return age
+  }
+
+  // Helper function to calculate property ownership duration
+  const calculateOwnershipDuration = (purchaseYear) => {
+    if (!purchaseYear) return null
+    return new Date().getFullYear() - parseInt(purchaseYear)
+  }
+
+  // Build nominees array from individual nominee fields
+  const buildNomineesArray = () => {
+    const nominees = []
+    if (formData.nominee1Name) {
+      nominees.push({
+        name: formData.nominee1Name,
+        nric: formData.nominee1Ic,
+        relationship: formData.nominee1Relationship
+      })
+    }
+    if (formData.hasSecondNominee && formData.nominee2Name) {
+      nominees.push({
+        name: formData.nominee2Name,
+        nric: formData.nominee2Ic,
+        relationship: formData.nominee2Relationship
+      })
+    }
+    return nominees
+  }
+
+  const nominees = buildNomineesArray()
+  const applicantAge = calculateAge(formData.dobDay, formData.dobMonth, formData.dobYear)
+  const jointApplicantAge = calculateAge(formData.jDobDay, formData.jDobMonth, formData.jDobYear)
+  const propertyOwnershipDuration = calculateOwnershipDuration(formData.purchaseYear)
+
   return (
     <Container>
       <div className="maintain-application-wrapper">
@@ -84,7 +128,7 @@ function MaintainApplicationView({
                 </div>
                 <div className="info-row">
                   <span className="label">Age</span>
-                  <span className="value">{formData.age || '-'}</span>
+                  <span className="value">{applicantAge ? `${applicantAge} years` : '-'}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Email</span>
@@ -120,7 +164,7 @@ function MaintainApplicationView({
                   </div>
                   <div className="info-row">
                     <span className="label">Age</span>
-                    <span className="value">{formData.jAge || '-'}</span>
+                    <span className="value">{jointApplicantAge ? `${jointApplicantAge} years` : '-'}</span>
                   </div>
                   <div className="info-row">
                     <span className="label">Email</span>
@@ -148,21 +192,21 @@ function MaintainApplicationView({
                 </div>
                 <div className="info-row">
                   <span className="label">Property Age</span>
-                  <span className="value">{formData.ownershipDuration || '-'}</span>
+                  <span className="value">{propertyOwnershipDuration ? `${propertyOwnershipDuration} years` : '-'}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Estimated Value</span>
-                  <span className="value">RM {formatCurrency(formData.propertyValue) || '-'}</span>
+                  <span className="value">RM {formatCurrency(formData.purchasePrice) || '-'}</span>
                 </div>
               </div>
             </section>
 
             {/* Nominees */}
-            {formData.nominees && formData.nominees.length > 0 && (
+            {nominees && nominees.length > 0 && (
               <section className="maintain-application-section">
                 <h3>Nominees</h3>
                 <div className="nominees-grid">
-                  {formData.nominees.map((nominee, index) => (
+                  {nominees.map((nominee, index) => (
                     <div key={index} className="nominee-item">
                       <div className="nominee-header">NOMINEE {index + 1}</div>
                       <div className="nominee-content">
@@ -223,7 +267,7 @@ function MaintainApplicationView({
                     </div>
                     <div className="approved-item">
                       <span className="label">PROPERTY VALUE</span>
-                      <span className="amount">RM {formatCurrency(formData.propertyValue)}</span>
+                      <span className="amount">RM {formatCurrency(formData.purchasePrice)}</span>
                     </div>
                   </div>
                 </section>

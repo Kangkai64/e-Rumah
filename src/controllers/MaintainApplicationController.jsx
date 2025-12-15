@@ -45,7 +45,7 @@ function MaintainApplicationController() {
       try {
         // Fetch application for current user
         const { loadApplicationData } = await import('../services/applicationService')
-        const { application: appData, error: loadError } = await loadApplicationData(currentUser.id)
+        const { application: appData, applicationData, error: loadError } = await loadApplicationData(currentUser.id)
         
         if (loadError) {
           setError('No application found. Please submit an application first.')
@@ -53,18 +53,25 @@ function MaintainApplicationController() {
           return
         }
         
-        if (appData.status !== 'submitted' && appData.status !== 'underReviewed' && appData.status !== 'approved') {
+        if (!appData) {
           setError('Your application has not been submitted yet.')
           setIsLoading(false)
           return
         }
         
-        setApplication(appData)
+        // Attach the form_data from application_data to the application object
+        // This allows the view to access it as application.submitted_form_data
+        const enrichedApplication = {
+          ...appData,
+          submitted_form_data: applicationData?.form_data || {}
+        }
+        
+        setApplication(enrichedApplication)
         setApplicationStatus(appData.status)
         
-        // Extract approved amount if available
-        if (appData.form_data?.approvedAmount) {
-          setApprovedAmount(parseFloat(appData.form_data.approvedAmount))
+        // Extract approved amount from form_data
+        if (applicationData?.form_data?.approvedAmount) {
+          setApprovedAmount(parseFloat(applicationData.form_data.approvedAmount))
         }
         
         buildTimeline(appData)
