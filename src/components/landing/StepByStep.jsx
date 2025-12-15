@@ -35,24 +35,26 @@ function StepByStep() {
 
   // Hero/banner image
   const hero = {
-    image: '/src/assets/images/step_by_step_page/Section.png',
-    title: 'How to Apply',
-    subtitle: 'Follow these simple steps to apply for the e-Rumah scheme.'
+    image: '/src/assets/images/step_by_step_page/banner1.png',
+    title: 'Reverse Mortgage Scheme',
+    subtitle1: 'Enabling retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence to cater to potential increases in the cost of living.',
+    subtitle2: 'From 3 December 2025, Reverse Mortgage Schme will be available in Klang Valley, Johor Bahru, Penang Island, Ipoh, Seremban and Malacca City. Customer can now submit application online.'
   }
 
   return (
     <Container>
-      <div className="step-by-step-wrapper">
-        <div className="step-hero">
-          <div className="hero-content">
-            <h1 className="hero-title">{hero.title}</h1>
-            <p className="hero-subtitle">{hero.subtitle}</p>
-            <a className="hero-cta" href="/application">Apply Now</a>
-          </div>
-          <div className="hero-image">
-            <img src={hero.image} alt="how to apply" />
-          </div>
+      <div className="hero-section">
+        <div>
+          <h1 className="hero-title">{hero.title}</h1>
+          <p className="hero-subtitle">{hero.subtitle1}</p>
+          <p className="hero-subtitle">{hero.subtitle2}</p>
         </div>
+        <div className="hero-image">
+          <img src={hero.image} alt="how to apply" />
+        </div>
+      </div>
+
+      <div className="step-by-step-wrapper">
 
         <div className="steps-list">
           {steps.map((s) => (
