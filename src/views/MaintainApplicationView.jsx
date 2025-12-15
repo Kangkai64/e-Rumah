@@ -58,7 +58,7 @@ function MaintainApplicationView({
         <div className="maintain-application-header">
           <h1>Application Status</h1>
           <div className={`status-badge ${statusColor}`}>
-            • {applicationStatus?.toUpperCase()}
+            {applicationStatus?.toUpperCase()}
           </div>
         </div>
 
@@ -96,7 +96,7 @@ function MaintainApplicationView({
                 </div>
                 <div className="info-row">
                   <span className="label">Dependents</span>
-                  <span className="value">{formatDependents(formData) || '-'}</span>
+                  <span className="value">{formData.maritalStatus || '-'}</span>
                 </div>
               </div>
             </section>
@@ -143,20 +143,16 @@ function MaintainApplicationView({
                   <span className="value">{formData.propertyAddress || '-'}</span>
                 </div>
                 <div className="info-row">
-                  <span className="label">Ownership Type</span>
-                  <span className="value">{formatTenureTitle(formData.tenureTitle) || '-'}</span>
+                  <span className="label">Property Type</span>
+                  <span className="value">{formData.propertyType || '-'}</span>
                 </div>
                 <div className="info-row">
-                  <span className="label">Property Type</span>
-                  <span className="value">{formatPropertyType(formData.propertyType) || '-'}</span>
+                  <span className="label">Property Age</span>
+                  <span className="value">{formData.ownershipDuration || '-'}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Estimated Value</span>
                   <span className="value">RM {formatCurrency(formData.propertyValue) || '-'}</span>
-                </div>
-                <div className="info-row">
-                  <span className="label">Property Age</span>
-                  <span className="value">{formData.ownershipDuration ? `${formData.ownershipDuration} years` : '-'}</span>
                 </div>
               </div>
             </section>
@@ -210,7 +206,7 @@ function MaintainApplicationView({
 
           {/* Right Column - Approved Amount & Actions */}
           <div className="maintain-application-right">
-            {/* Approved Amount Section - Only show when approved */}
+            {/* Approved Amount Section */}
             {applicationStatus === 'approved' && (
               <>
                 <section className="maintain-application-section approved-section">
@@ -219,7 +215,7 @@ function MaintainApplicationView({
                     <div className="approved-item primary-item">
                       <span className="label">MONTHLY PAYOUT</span>
                       <span className="amount">RM {formatCurrency(approvedAmount)}</span>
-                      <span className="date">Starting {getPaymentStartDate(application)}</span>
+                      <span className="date">Starting Dec 2025</span>
                     </div>
                     <div className="approved-item">
                       <span className="label">TOTAL APPROVED</span>
@@ -268,20 +264,11 @@ function MaintainApplicationView({
 
 // Helper function to get status color
 function getStatusColor(status) {
-  if (!status) return 'status-default'
-  
-  const statusLower = status.toLowerCase()
-  switch (statusLower) {
+  switch (status?.toLowerCase()) {
     case 'approved':
       return 'status-approved'
     case 'pending':
-    case 'draft':
       return 'status-pending'
-    case 'submitted':
-      return 'status-submitted'
-    case 'underreviewed':
-    case 'under_reviewed':
-      return 'status-underReviewed'
     case 'rejected':
       return 'status-rejected'
     case 'terminated':
@@ -300,72 +287,15 @@ function formatCurrency(value) {
   })
 }
 
-// Helper function to format date (short format: "15 Nov 2024")
+// Helper function to format date
 function formatDate(dateString) {
   if (!dateString) return '-'
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-GB', {
+  return date.toLocaleDateString('en-MY', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric'
   })
-}
-
-// Helper function to format dependents
-function formatDependents(formData) {
-  if (formData.numOfDependents && parseInt(formData.numOfDependents) > 0) {
-    const ages = []
-    for (let i = 1; i <= 5; i++) {
-      if (formData[`dependentAge${i}`]) {
-        ages.push(formData[`dependentAge${i}`])
-      }
-    }
-    if (ages.length > 0) {
-      return `${formData.numOfDependents} (Ages: ${ages.join(', ')})`
-    }
-    return formData.numOfDependents
-  }
-  return formData.numOfDependents
-}
-
-// Helper function to format property type
-function formatPropertyType(type) {
-  if (!type) return '-'
-  const typeMap = {
-    'terrace': 'Terrace House',
-    'semi-detached': 'Semi-Detached House',
-    'bungalow': 'Bungalow',
-    'condo': 'Condominium',
-    'apartment': 'Apartment',
-    'townhouse': 'Townhouse'
-  }
-  return typeMap[type.toLowerCase()] || type
-}
-
-// Helper function to format tenure title
-function formatTenureTitle(tenure) {
-  if (!tenure) return '-'
-  const tenureMap = {
-    'freehold': 'Freehold',
-    'leasehold': 'Leasehold'
-  }
-  return tenureMap[tenure.toLowerCase()] || tenure
-}
-
-// Helper function to get payment start date
-function getPaymentStartDate(application) {
-  if (!application) return 'Dec 2024'
-  const approvedDate = application.approved_at || application.updated_at
-  if (approvedDate) {
-    const date = new Date(approvedDate)
-    // Payment starts the month after approval
-    date.setMonth(date.getMonth() + 1)
-    return date.toLocaleDateString('en-GB', {
-      year: 'numeric',
-      month: 'short'
-    })
-  }
-  return 'Dec 2024'
 }
 
 export default MaintainApplicationView

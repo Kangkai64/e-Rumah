@@ -1,292 +1,134 @@
-/* StepByStep Page Styling */
-
+/* StepByStep page styling - matches Figma layout */
 .step-by-step-wrapper {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: #f9fafb;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
 }
 
 .step-hero {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.hero-image {
-  width: 100%;
-  height: auto;
-  display: block;
-  margin: 0;
-  padding: 0;
-}
-
-.step-section {
-  background-color: #f9fafb;
-  padding: 3rem 0;
-}
-
-.step-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
-
-.step-header {
-  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 1.5rem;
+  align-items: center;
   margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #dc2626;
 }
 
-.step-title-main {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-  line-height: 1.3;
+.hero-content {
+  background: white;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
-.step-subtitle-main {
-  font-size: 0.95rem;
+.hero-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.75rem;
+  color: #111827;
+}
+
+.hero-subtitle {
+  margin: 0 0 1rem 0;
   color: #6b7280;
-  margin: 0.5rem 0 0 0;
+}
+
+.hero-cta {
+  display: inline-block;
+  background: #A8202D;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hero-image img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+  border: 1px solid #e5e7eb;
 }
 
 .steps-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
 .step-card {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   background: white;
   border: 1px solid #e5e7eb;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  align-items: flex-start;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-.step-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transform: translateY(-2px);
-}
-
-.step-icon {
-  flex-shrink: 0;
+  padding: 1rem;
+  border-radius: 8px;
+  align-items: center;
 }
 
 .step-icon img {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
 }
 
-.step-body {
-  flex: 1;
+.step-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
 }
 
-.step-card-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.step-card-desc {
+.step-desc {
   margin: 0;
   color: #6b7280;
   font-size: 0.9rem;
-  line-height: 1.5;
 }
 
-.resource-section {
-  background-color: #ffffff;
-  padding: 3rem 0;
-}
-
-.resource-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-}
-
-.resource-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 2rem 0;
-  text-align: left;
-  padding-bottom: 1.5rem;
-  border-bottom: 2px solid #dc2626;
+.additional-resources {
+  margin-top: 1rem;
 }
 
 .resources-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .resource-card {
   background: white;
   border: 1px solid #e5e7eb;
-  padding: 1.5rem;
+  padding: 0.75rem;
   display: flex;
-  gap: 1.5rem;
-  border-radius: 0.5rem;
+  gap: 0.75rem;
+  border-radius: 8px;
   align-items: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-.resource-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  transform: translateY(-2px);
 }
 
 .resource-card img {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
   border-radius: 6px;
-  flex-shrink: 0;
-}
-
-.resource-meta {
-  flex: 1;
 }
 
 .resource-meta h4 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.resource-meta p {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
 }
 
 .resource-link {
-  color: #dc2626;
+  color: #A8202D;
   font-weight: 600;
   text-decoration: none;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
-  display: inline-block;
 }
 
-.resource-link:hover {
-  text-decoration: underline;
-  color: #b91c1c;
-}
-
-.cta-section {
-  background-color: #f9fafb;
-  padding: 3rem 0;
-}
-
-.cta-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  align-items: center;
-}
-
-.cta-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.cta-title {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-  line-height: 1.3;
-}
-
-.cta-description {
-  font-size: 0.95rem;
-  color: #6b7280;
-  margin: 0;
-  line-height: 1.6;
-}
-
-.cta-button {
-  display: inline-block;
-  background-color: #dc2626;
-  color: #ffffff;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  width: fit-content;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-}
-
-.cta-button:hover {
-  background-color: #b91c1c;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.cta-image {
-  width: 100%;
-  height: 100%;
-}
-
-.cta-image img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .step-container,
-  .resource-container,
-  .cta-container {
-    padding: 0 1rem;
+@media (max-width: 900px) {
+  .step-hero {
+    grid-template-columns: 1fr;
   }
 
-  .step-title-main,
-  .resource-title {
-    font-size: 1.5rem;
+  .steps-list {
+    grid-template-columns: 1fr;
   }
 
-  .steps-list,
   .resources-grid {
     grid-template-columns: 1fr;
-  }
-
-  .step-section,
-  .resource-section {
-    padding: 2rem 0;
-  }
-
-  .cta-container {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-
-  .cta-title {
-    font-size: 1.5rem;
   }
 }

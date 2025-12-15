@@ -47,7 +47,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/stepByStep" element={
+          <Route path="/step-by-step" element={
             <>
               <Header />
               <StepByStep />
