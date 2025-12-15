@@ -70,10 +70,7 @@ function App() {
             <ProtectedRoute requireRole="user">
               <>
                 <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>My Application</h1>
-                  <p>Your submitted application details will appear here.</p>
-                </div>
+                <MaintainApplicationController />
                 <Footer />
               </>
             </ProtectedRoute>
