@@ -6,6 +6,8 @@ import './Header.css'
 import logo from '../assets/images/logo.png'
 import profileIcon from '../assets/icons/icon_profile.svg'
 import applyNowIcon from '../assets/icons/icon_applyNow.svg'
+import { useAuth } from '../components/context/AuthContext'
+import Application from '../models/Application'
 
 const Header = () => {
   const { user, userRole, applicationStatus } = useAuth()
