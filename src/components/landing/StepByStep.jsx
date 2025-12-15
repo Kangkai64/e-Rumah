@@ -2,10 +2,9 @@
 // Displays the step-by-step guide for applying to e-Rumah scheme
 
 import './StepByStep.css'
-import Container from '../common/Container'
 
 function StepByStep() {
-  // Dummy structured steps matching the Figma flow
+
   const steps = [
     {
       id: 1,
@@ -35,41 +34,48 @@ function StepByStep() {
 
   // Hero/banner image
   const hero = {
-    image: '/src/assets/images/step_by_step_page/Section.png',
-    title: 'How to Apply',
-    subtitle: 'Follow these simple steps to apply for the e-Rumah scheme.'
+    image: '/src/assets/images/step_by_step_page/banner1.png',
+    title: 'Reverse Mortgage Scheme',
+    subtitle: 'Enabling retired home owners to gain access to a lifetime of supplemental income\nstream for daily subsistence to cater to potentail increases in the cost of living.'
   }
 
   return (
-    <Container>
-      <div className="step-by-step-wrapper">
-        <div className="step-hero">
-          <div className="hero-content">
-            <h1 className="hero-title">{hero.title}</h1>
-            <p className="hero-subtitle">{hero.subtitle}</p>
-            <a className="hero-cta" href="/application">Apply Now</a>
+    <div className="step-by-step-wrapper">
+
+      {/* Hero Section */}
+      <div className="step-hero">
+        <h2 className="hero-">{hero.title}</h2>
+        <img src={hero.image} alt="how to apply" className="hero" />
+      </div>
+
+      {/* Steps Section */}
+      <div className="step-section">
+        <div className="step-container">
+          <div className="step-header">
+            <h2 className="step-title-main">{hero.title}</h2>
+            <p className="step-subtitle-main">{hero.subtitle}</p>
           </div>
-          <div className="hero-image">
-            <img src={hero.image} alt="how to apply" />
+
+          <div className="steps-list">
+            {steps.map((s) => (
+              <div key={s.id} className="step-card">
+                <div className="step-icon">
+                  <img src={s.icon} alt={s.title} />
+                </div>
+                <div className="step-body">
+                  <h3 className="step-card-title">{s.title}</h3>
+                  <p className="step-card-desc">{s.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        <div className="steps-list">
-          {steps.map((s) => (
-            <div key={s.id} className="step-card">
-              <div className="step-icon">
-                <img src={s.icon} alt={s.title} />
-              </div>
-              <div className="step-body">
-                <h3 className="step-title">{s.title}</h3>
-                <p className="step-desc">{s.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="additional-resources">
-          <h2>Helpful Resources</h2>
+      {/* Resources Section */}
+      <div className="resource-section">
+        <div className="resource-container">
+          <h2 className="resource-title">Helpful Resources</h2>
           <div className="resources-grid">
             <div className="resource-card">
               <img src="/src/assets/images/step_by_step_page/Get a peace of mind with Cagamas.png" alt="guide" />
@@ -79,7 +85,7 @@ function StepByStep() {
               </div>
             </div>
 
-            <div className="resource-card small">
+            <div className="resource-card">
               <img src="/src/assets/images/step_by_step_page/Image.png" alt="guide2" />
               <div className="resource-meta">
                 <h4>What to Prepare</h4>
@@ -89,7 +95,27 @@ function StepByStep() {
           </div>
         </div>
       </div>
-    </Container>
+
+      {/* CTA Section */}
+      <div className="cta-section">
+        <div className="cta-container">
+          <div className="cta-content">
+            <h2 className="cta-title">Want to talk to us about Reverse Mortgage?</h2>
+            <p className="cta-description">We're here to answer your questions and guide you through the Reverse Mortgage Scheme process.</p>
+            <a href="#" className="cta-button">Contact Us</a>
+          </div>
+          <div className="cta-image">
+            <img src="/src/assets/images/step_by_step_page/coffeeCouple.png" alt="Contact us" />
+          </div>
+        </div>
+      </div>
+
+      {/* Hero Section */}
+      <div className="step-hero">
+        <img src={hero.image} alt="how to apply" className="hero-image" />
+      </div>
+
+    </div>
   )
 }
 

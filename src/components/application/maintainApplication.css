@@ -14,6 +14,7 @@
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  position: relative;
 }
 
 .maintain-application-header h1 {
@@ -23,44 +24,57 @@
   margin: 0;
 }
 
-.status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+/* Status Badge - In header top right */
+.maintain-application-header .status-badge {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .status-badge.status-approved {
-  background-color: #d1fae5;
-  color: #065f46;
+  background-color: #10b981;
+  color: white;
 }
 
 .status-badge.status-pending {
-  background-color: #fef3c7;
-  color: #92400e;
+  background-color: #fbbf24;
+  color: white;
 }
 
 .status-badge.status-rejected {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: #ef4444;
+  color: white;
 }
 
 .status-badge.status-terminated {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: #6b7280;
+  color: white;
 }
 
 .status-badge.status-default {
-  background-color: #f3f4f6;
-  color: #6b7280;
+  background-color: #9ca3af;
+  color: white;
+}
+
+.status-badge.status-submitted {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.status-badge.status-underReviewed {
+  background-color: #8b5cf6;
+  color: white;
 }
 
 /* Content Layout - Two Columns */
 .maintain-application-content {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 380px;
   gap: 2rem;
 }
 
@@ -76,9 +90,10 @@
 .maintain-application-section {
   background-color: white;
   border: 1px solid #e5e7eb;
-  border-radius: 0;
+  border-radius: 0.5rem;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .maintain-application-section h2 {
@@ -165,7 +180,7 @@
 .nominee-item {
   background-color: #f9fafb;
   padding: 1.25rem;
-  border-radius: 0;
+  border-radius: 0.5rem;
   border: 1px solid #e5e7eb;
 }
 
@@ -278,8 +293,8 @@
 
 .timeline-content p {
   margin: 0;
-  font-size: 0.8rem;
-  color: #9ca3af;
+  font-size: 0.85rem;
+  color: #6b7280;
   font-weight: 500;
 }
 
@@ -289,11 +304,12 @@
   border: 1px solid #a7f3d0;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
 }
 
 .approved-section h2 {
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #059669;
   letter-spacing: 0.05em;
   margin: 0 0 1.25rem 0;
@@ -345,8 +361,9 @@
 
 .approved-item .date {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: #6b7280;
   font-weight: 500;
+  margin-top: 0.25rem;
 }
 
 /* Actions Section */
@@ -407,19 +424,21 @@
 
 /* Need Help Section */
 .need-help-section {
-  background-color: #fef3c7;
-  border: 1px solid #fcd34d;
+  background-color: white;
+  border: 1px solid #fafafa;
+  border-radius: 0.5rem;
 }
 
 .need-help-section h3 {
   color: #92400e;
   border-bottom: none;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 .need-help-section p {
   color: #92400e;
-  margin: 0.5rem 0;
+  margin: 0.5rem 0 1rem 0;
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -428,9 +447,10 @@
   display: inline-block;
   color: #dc2626;
   text-decoration: none;
-  font-weight: 500;
-  margin-top: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
   transition: color 0.2s;
+  font-size: 0.9rem;
 }
 
 .support-link:hover {
