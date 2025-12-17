@@ -1,5 +1,7 @@
 import './HomePage.css'
 import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import Button from '../common/Button.jsx'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'
@@ -26,6 +28,21 @@ import iconIntegrity from '../../assets/icons/main_page/icon_integrity.png'
 
 const HomePage = () => {
   const navigate = useNavigate()
+  const { user, userRole, applicationStatus } = useAuth()
+
+  // Redirect authenticated users to their appropriate dashboard
+  useEffect(() => {
+    if (user && userRole) {
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (userRole === 'support') {
+        navigate('/support/dashboard')
+      } else if (userRole === 'user' && applicationStatus === 'complete') {
+        navigate('/user/dashboard')
+      }
+      // For users with incomplete applications, let them stay on home page to apply
+    }
+  }, [user, userRole, applicationStatus, navigate])
 
   const handlePropertyEstimation = () => {
     navigate('/property-estimation')
@@ -91,7 +108,7 @@ const HomePage = () => {
       {/* Eligibility Section */}
       <section className="eligibility-section">
         <div className="eligibility-container">
-          <div className="eligibility-content">
+          <div className="eligibility-content" id="eligibility">
             <p className="eligibility-label">ELIGIBILITY CRITERIA</p>
             <h2 className="eligibility-title">What you need to know</h2>
             <p className="eligibility-subtitle">Senior must be:</p>
@@ -205,7 +222,7 @@ const HomePage = () => {
                 <h2>A partnership with innovation and impact at its core</h2>
                 <div className="partnership-buttons">
                   <Button variant="tertiary" to="/about" showArrow={true}>About Us</Button>
-                  <Button variant="primary" to="/get-started" showArrow={true}>Our Impact</Button>
+                  <Button variant="primary" to="/about" showArrow={true}>Our Impact</Button>
                 </div>
               </div>
             </div>

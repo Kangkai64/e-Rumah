@@ -1,5 +1,6 @@
 import './App.css'
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider } from './components/context/AuthContext'
 import Header from './layouts/Header'
 import Footer from './layouts/Footer'
@@ -17,9 +18,39 @@ import EligibilityCheck from './components/eligibility/EligibilityCheck'
 import HealthReportController from './controllers/HealthReportController.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
 
+const ScrollToTop = () => {
+  const { pathname, search, hash } = useLocation()
+
+  useEffect(() => {
+    if (hash) {
+      const targetId = hash.replace('#', '')
+
+      // Wait for the next paint to ensure the target is in the DOM
+      requestAnimationFrame(() => {
+        const target = document.getElementById(targetId)
+
+        if (target) {
+          const headerOffset = 96
+          const targetTop = target.getBoundingClientRect().top + window.scrollY
+          const scrollTop = Math.max(targetTop - headerOffset, 0)
+
+          window.scrollTo({ top: scrollTop, left: 0, behavior: 'smooth' })
+        } else {
+          window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+        }
+      })
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }
+  }, [pathname, search, hash])
+
+  return null
+}
+
 function App() {
   return (
     <AuthProvider>
+      <ScrollToTop />
       <div className="app">
         <Routes>
           <Route path="/" element={
@@ -133,6 +164,14 @@ function App() {
             <>
               <Header />
               <PropertyCalculatorController />
+              <Footer />
+            </>
+          } />
+
+          <Route path="/user/health-reports" element={
+            <>
+              <Header />
+              <HealthReportController />
               <Footer />
             </>
           } />

@@ -7,10 +7,14 @@ import { supabase } from '../config/supabase'
  * @param {File} file - The file to upload
  * @param {string} userId - Current user ID
  * @param {string} documentType - Type of document (e.g., 'applicantNRIC')
+ * @param {Object} options - Optional settings (bucket, signedUrlDuration)
  * @returns {Promise<{url, fileName, uploadedAt, error}>}
  */
-export const uploadDocument = async (file, userId, documentType) => {
+export const uploadDocument = async (file, userId, documentType, options = {}) => {
   try {
+    const bucket = options.bucket || 'application-documents'
+    const signedUrlDuration = options.signedUrlDuration ?? 31536000
+
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
@@ -49,7 +53,7 @@ export const uploadDocument = async (file, userId, documentType) => {
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from('application-documents')
+      .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -62,8 +66,8 @@ export const uploadDocument = async (file, userId, documentType) => {
 
     // Create signed URL (valid for 1 year) for private bucket with RLS
     const { data: signedUrlData, error: signedError } = await supabase.storage
-      .from('application-documents')
-      .createSignedUrl(filePath, 31536000) // 1 year in seconds
+      .from(bucket)
+      .createSignedUrl(filePath, signedUrlDuration) // default 1 year in seconds
 
     if (signedError) {
       console.error('❌ Signed URL error:', signedError)
@@ -88,9 +92,12 @@ export const uploadDocument = async (file, userId, documentType) => {
  * Delete document from Supabase Storage
  * @param {string} fileUrl - URL of file to delete
  * @param {string} userId - Current user ID
+ * @param {Object} options - Optional settings (bucket)
  */
-export const deleteDocument = async (fileUrl, userId) => {
+export const deleteDocument = async (fileUrl, userId, options = {}) => {
   try {
+    const bucket = options.bucket || 'application-documents'
+
     if (!fileUrl) {
       return { success: false, error: { message: 'No file URL provided' } }
     }
@@ -98,13 +105,13 @@ export const deleteDocument = async (fileUrl, userId) => {
     // Extract file path from URL
     // URL format: https://xxx.supabase.co/storage/v1/object/public/application-documents/{userId}/{fileName}
     const urlParts = fileUrl.split('/')
-    const fileName = urlParts[urlParts.length - 1]
+    const fileName = urlParts[urlParts.length - 1].split('?')[0]
     const filePath = `${userId}/${fileName}`
 
     console.log('🗑️ Deleting file:', filePath)
 
     const { error } = await supabase.storage
-      .from('application-documents')
+      .from(bucket)
       .remove([filePath])
 
     if (error) {

@@ -6,14 +6,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import HealthMonitoringView from '../views/HealthMonitoringView'
-import { 
-  getHealthReports, 
-  uploadHealthReport, 
-  deleteHealthReport, 
+import {
+  getHealthReports,
+  uploadHealthReport,
+  deleteHealthReport,
   shareHealthReport,
   checkHealthReportAlerts,
-  getDueReports
-} from '../services/healthReportService'
+  getAllHealthReports,
+  approveHealthReport,
+  flagHealthReport,
+  archiveHealthReport
+} from '../models/HealthReport'
 import { getCurrentUser } from '../services/authService'
 import { useAuth } from '../components/context/AuthContext'
 
@@ -33,13 +36,22 @@ function HealthReportController() {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
-  const [activeTab, setActiveTab] = useState('reports')
+  const [activeTab, setActiveTab] = useState('archived')
+  const [showFilters, setShowFilters] = useState(false)
+  const [errors, setErrors] = useState({})
   const [statistics, setStatistics] = useState({
     pending: 0,
     approved: 0,
     flagged: 0,
     generated: 0
   })
+
+  // Admin specific state
+  const [showApprovalConfirm, setShowApprovalConfirm] = useState(false)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagReason, setFlagReason] = useState('')
+  const [actionReport, setActionReport] = useState(null)
 
   // Filter and sort state
   const [searchKey, setSearchKey] = useState('')
@@ -115,10 +127,14 @@ function HealthReportController() {
         uploadStatus: filters.uploadStatus || undefined,
         dueStatus: filters.dueStatus || undefined,
         sortBy,
-        sortOrder
+        sortOrder,
+        showArchived: activeTab === 'archived' || userRole === 'admin'
       }
 
-      const result = await getHealthReports(userId, options)
+      // Use different function based on user role
+      const result = userRole === 'admin' || userRole === 'staff' 
+        ? await getAllHealthReports(options)
+        : await getHealthReports(userId, options)
       
       if (result.success) {
         setReports(result.data)
@@ -408,33 +424,104 @@ function HealthReportController() {
   }, [reports])
 
   // Handle admin-specific actions
-  const handleReviewClick = useCallback((report) => {
-    setSelectedReport(report)
-    // Navigate to review page or open modal
+  const handleApproveClick = useCallback((report) => {
+    setActionReport(report)
+    setShowApprovalConfirm(true)
   }, [])
 
-  const handleUpdateClick = useCallback((report) => {
-    setSelectedReport(report)
-    // Open update modal
+  const handleApproveConfirm = useCallback(async () => {
+    if (!actionReport || !currentUser) return
+    
+    try {
+      const result = await approveHealthReport(actionReport.id, currentUser.id)
+      if (result.success) {
+        setSuccessMessage(result.message || 'Report approved successfully')
+        fetchReports(currentUser.id)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Error approving report:', err)
+      setError('Failed to approve report')
+    } finally {
+      setShowApprovalConfirm(false)
+      setActionReport(null)
+    }
+  }, [actionReport, currentUser])
+
+  const handleFlagClick = useCallback((report) => {
+    setActionReport(report)
+    setFlagReason('')
+    setShowFlagModal(true)
   }, [])
 
-  const handleGenerateReport = useCallback(() => {
-    // Generate PDF report logic
-    console.log('Generating report...')
+  const handleFlagConfirm = useCallback(async () => {
+    if (!actionReport || !currentUser || !flagReason.trim()) {
+      setError('Flag reason is required')
+      return
+    }
+    
+    try {
+      const result = await flagHealthReport(actionReport.id, currentUser.id, flagReason.trim())
+      if (result.success) {
+        setSuccessMessage(result.message || 'Report flagged successfully')
+        fetchReports(currentUser.id)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Error flagging report:', err)
+      setError('Failed to flag report')
+    } finally {
+      setShowFlagModal(false)
+      setActionReport(null)
+      setFlagReason('')
+    }
+  }, [actionReport, currentUser, flagReason])
+
+  const handleArchiveClick = useCallback((report) => {
+    setActionReport(report)
+    setShowArchiveConfirm(true)
   }, [])
 
-  const handleViewReport = useCallback((reportId) => {
-    // View report logic
-    console.log('Viewing report:', reportId)
-  }, [])
+  const handleArchiveConfirm = useCallback(async () => {
+    if (!actionReport || !currentUser) return
+    
+    try {
+      const result = await archiveHealthReport(actionReport.id, currentUser.id)
+      if (result.success) {
+        setSuccessMessage(result.message || 'Report archived successfully')
+        fetchReports(currentUser.id)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Error archiving report:', err)
+      setError('Failed to archive report')
+    } finally {
+      setShowArchiveConfirm(false)
+      setActionReport(null)
+    }
+  }, [actionReport, currentUser])
 
-  const handleArchiveReport = useCallback((reportId) => {
-    // Archive report logic
-    console.log('Archiving report:', reportId)
+  const handleCancelAdminAction = useCallback(() => {
+    setShowApprovalConfirm(false)
+    setShowArchiveConfirm(false)
+    setShowFlagModal(false)
+    setActionReport(null)
+    setFlagReason('')
   }, [])
 
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab)
+    if (currentUser) {
+      fetchReports(currentUser.id)
+    }
+  }, [currentUser])
+
+  const handleViewReport = useCallback((reportId) => {
+    // View report logic
+    console.log('Viewing report:', reportId)
   }, [])
 
   // Auto-hide success messages
@@ -458,12 +545,20 @@ function HealthReportController() {
       statistics={statistics}
       selectedReport={selectedReport}
       activeTab={activeTab}
-      onReviewClick={handleReviewClick}
-      onUpdateClick={handleUpdateClick}
-      onGenerateReport={handleGenerateReport}
+      showApprovalConfirm={showApprovalConfirm}
+      showArchiveConfirm={showArchiveConfirm}
+      showFlagModal={showFlagModal}
+      flagReason={flagReason}
+      actionReport={actionReport}
+      onApproveClick={handleApproveClick}
+      onApproveConfirm={handleApproveConfirm}
+      onFlagClick={handleFlagClick}
+      onFlagConfirm={handleFlagConfirm}
+      onArchiveClick={handleArchiveClick}
+      onArchiveConfirm={handleArchiveConfirm}
+      onCancelAdminAction={handleCancelAdminAction}
+      onFlagReasonChange={setFlagReason}
       onViewReport={handleViewReport}
-      onShareReport={handleShareClick}
-      onArchiveReport={handleArchiveReport}
       onTabChange={handleTabChange}
 
       // Common props
@@ -476,6 +571,7 @@ function HealthReportController() {
       uploadProgress={uploadProgress}
       showShareModal={showShareModal}
       showUploadModal={showUploadModal}
+      errors={errors}
       
       // Filter and sort
       searchKey={searchKey}
@@ -511,7 +607,8 @@ function HealthReportController() {
       onUploadClick={() => setShowUploadModal(true)}
       onCancelUploadModal={handleCancel}
       onCancelShareModal={handleCancel}
-      onSetShowFilters={() => {}}
+      showFilters={showFilters}
+      onSetShowFilters={(value) => setShowFilters(!showFilters)}
       onSort={handleSort}
       onDownload={(reportId) => handleViewReport(reportId)}
     />

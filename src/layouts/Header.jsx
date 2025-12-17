@@ -45,10 +45,10 @@ const Header = () => {
 
           <nav className="main-nav">
             <Link to="/" className="nav-link">Home</Link>
-            <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
+            <Link to="/#eligibility" className="nav-link">Eligibility Criteria</Link>
             <Link to="/about" className="nav-link">About Us</Link>
-            <a href="#faqs" className="nav-link">FAQs</a>
-            <a href="#news" className="nav-link">How to Apply</a>
+            <Link to="/faqs" className="nav-link">FAQs</Link>
+            <Link to="/step-by-step" className="nav-link">How to Apply</Link>
             <Link to="/property-calculator" className="nav-link">Estimate My Property</Link>
           </nav>
 
@@ -90,10 +90,10 @@ const Header = () => {
 
           <nav className="main-nav">
             <Link to="/" className="nav-link">Home</Link>
-            <a href="#eligibility" className="nav-link">Eligibility Criteria</a>
+            <Link to="/#eligibility" className="nav-link">Eligibility Criteria</Link>
             <Link to="/about" className="nav-link">About Us</Link>
-            <a href="/faqs" className="nav-link">FAQs</a>
-            <a href="#news" className="nav-link">How to Apply</a>
+            <Link to="/faqs" className="nav-link">FAQs</Link>
+            <Link to="/step-by-step" className="nav-link">How to Apply</Link>
             <Link to="/property-calculator" className="nav-link">Estimate My Property</Link>
           </nav>
 
