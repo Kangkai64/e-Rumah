@@ -671,7 +671,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
         <label>Payment of Initial Costs & Expenses</label>
         <div className="radio-group">
           <label className="radio-label"><input type="radio" name="paymentOption" value="toBePaid" checked={formData.paymentOption === 'toBePaid'} onChange={handleChange} /> To be paid by borrower/customer</label>
-          <label className="radio-label"><input type="radio" name="paymentOption" value="toBeAdvanced" checked={formData.paymentOption === 'toBeAdvanced'} onChange={handleChange} /> To be advanced by Cagamas</label>
+          <label className="radio-label"><input type="radio" name="paymentOption" value="toBeAdvanced" checked={formData.paymentOption === 'toBeAdvanced'} onChange={handleChange} /> To be advanced by Organization</label>
         </div>
       </div>
       </section>
@@ -1014,7 +1014,6 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 }
 
 // Step 3: Property Details
-// Step 3: Property Details
 function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
   return (
     <div className="step-container">
@@ -1226,7 +1225,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
               </div>
             </div>
             <div className="form-group" style={{flex: 1, opacity: formData.fireInsurance === 'notAvailable' ? 1 : 0.5}}>
-              <label>Insurance/Takaful Policy to be purchased by Cagamas</label>
+              <label>Insurance/Takaful Policy to be purchased by Organization</label>
               <div className="radio-group">
                 <label className="radio-label"><input type="radio" name="fireInsuranceNotAvailable" value="yes" checked={formData.fireInsuranceNotAvailable === 'yes'} onChange={handleChange} disabled={formData.fireInsurance !== 'notAvailable'} /> Yes</label>
                 <label className="radio-label"><input type="radio" name="fireInsuranceNotAvailable" value="no" checked={formData.fireInsuranceNotAvailable === 'no'} onChange={handleChange} disabled={formData.fireInsurance !== 'notAvailable'} /> No</label>
@@ -1239,7 +1238,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           <label>Renewal of Fire & Home Insurance/Takaful policy</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="selfRenewal" checked={formData.renewalFireInsurance === 'selfRenewal'} onChange={handleChange} /> Self-renewal</label>
-            <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="cagamasRenew" checked={formData.renewalFireInsurance === 'cagamasRenew'} onChange={handleChange} /> To be renewed by Cagamas</label>
+            <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="cagamasRenew" checked={formData.renewalFireInsurance === 'cagamasRenew'} onChange={handleChange} /> To be renewed by Organization</label>
           </div>
         </div>
       </section>
@@ -1769,38 +1768,38 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
         <h3>Privacy Statement & Consent</h3>
         <div className="info-content">
           <p>
-            By submitting this Form, I/we hereby agree that <strong>Cagamas Berhad (Cagamas)</strong> may collect, use, obtain, disclose, store and process Personal Data that are provided in this form and/or otherwise provided by me/us or possessed by Cagamas, for one or more of the purposes as stated in Cagamas' Privacy Statement, which in summary includes but not limited to the following:
+            By submitting this Form, I/we hereby agree that <strong>Organization (Company Name)</strong> may collect, use, obtain, disclose, store and process Personal Data that are provided in this form and/or otherwise provided by me/us or possessed by Organization, for one or more of the purposes as stated in Organizations' Privacy Statement, which in summary includes but not limited to the following:
           </p>
           
           <ul className="info-list">
-            <li>(a) processing my/our application for and providing me/us with the services and products of Cagamas as well as services and products by external providers provided through Cagamas;</li>
-            <li>(b) administering and/or managing my/our relationship with Cagamas and</li>
-            <li>(c) receiving updates, news, promotional and marketing mails or materials from Cagamas, business partners and related companies may be offering and which Cagamas believes may be of interest or benefit to me/us ("Marketing Messages") by way of postal mail and/or electronic transmission to my/our email address(es), (collectively the "Purposes").</li>
+            <li>(a) processing my/our application for and providing me/us with the services and products of Organization as well as services and products by external providers provided through Organization;</li>
+            <li>(b) administering and/or managing my/our relationship with Organization and</li>
+            <li>(c) receiving updates, news, promotional and marketing mails or materials from Organization, business partners and related companies may be offering and which Organization believes may be of interest or benefit to me/us ("Marketing Messages") by way of postal mail and/or electronic transmission to my/our email address(es), (collectively the "Purposes").</li>
           </ul>
 
           <h4>Opt Out for subclause (c)</h4>
           <p>
-            Please be informed that you have the right to opt out of receiving Marketing Messages. Kindly visit <a href="https://www.cagamas.com.my/privacy-statement" target="_blank" rel="noopener noreferrer">https://www.cagamas.com.my/privacy-statement</a> for further details on how you may exercise your right to opt out of receiving Marketing Messages.
+            Please be informed that you have the right to opt out of receiving Marketing Messages. Kindly visit [insert opt-out contact/method] for further details on how you may exercise your right to opt out of receiving Marketing Messages.
           </p>
 
-          <p><strong>I/We hereby give my/our consent(s) to Cagamas Berhad (Cagamas) to:</strong></p>
+          <p><strong>I/We hereby give my/our consent(s) to Organization (Company Name) to:</strong></p>
           <ul className="info-list">
             <li>Collect, use, obtain, store and process Personal Data provided by me/us</li>
-            <li>Disclose the Personal Data to Cagamas' third party service providers or agents (including its lawyers/law firms), which may be sited outside of Malaysia</li>
-            <li>Transfer Personal Data to any company within the Cagamas group of companies which may involve data processing</li>
+            <li>Disclose the Personal Data to Organizations' third party service providers or agents (including its lawyers/law firms), which may be sited outside of Malaysia</li>
+            <li>Transfer Personal Data to any company within the Organization group of companies which may involve data processing</li>
           </ul>
 
           <p className="info-disclaimer">
-            For the avoidance of doubt, Personal Data includes all data defined within the Personal Data Protection Act 2010 including all data Applicant(s) had disclosed to Cagamas in this Form and/or otherwise provided by Applicant(s) or possessed by Cagamas.
+            For the avoidance of doubt, Personal Data includes all data defined within the Personal Data Protection Act 2010 including all data Applicant(s) had disclosed to Organization in this Form and/or otherwise provided by Applicant(s) or possessed by Organization.
           </p>
         </div>
       </div>
 
       {/* Supporting Documents */}
       <div className="info-section">
-        <h3>Supporting Documents Required</h3>
+        <h3>Supporting Documents Submitted</h3>
         <div className="info-content">
-          <p><strong>Please prepare the following documents for submission:</strong></p>
+          <p><strong>I have confirmed the submission of the following documents:</strong></p>
           <ul className="info-list">
             <li>Copy of NRIC (Applicant & Joint Applicant)</li>
             <li>Copy of Birth Certificate / Marriage Certificate (if applicable)</li>
@@ -1824,17 +1823,17 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
           <ul className="info-list">
             <li>All information provided in this application form is true, accurate and complete</li>
             <li>I/We have read and understood all terms and conditions</li>
-            <li>I/We acknowledge that Cagamas has the right to reject this application without providing any reason</li>
-            <li>I/We agree to provide any additional information or documents as may be required by Cagamas</li>
+            <li>I/We acknowledge that Organization has the right to reject this application without providing any reason</li>
+            <li>I/We agree to provide any additional information or documents as may be required by Organization</li>
             <li>I/We understand that providing false information may result in rejection of this application</li>
           </ul>
 
           <p className="info-disclaimer">
-            <strong>I/We hereby acknowledged that the information provided above is true and valid and that I/we have read and understood all of the above provisions, including Cagamas' Privacy Statement.</strong>
+            <strong>I/We hereby acknowledged that the information provided above is true and valid and that I/we have read and understood all of the above provisions, including Organization' Privacy Statement.</strong>
           </p>
 
           <p className="info-disclaimer">
-            In the event that I/we do not proceed with my/our application herein, I/we agree to reimburse Cagamas for any costs, expenses and charges incurred on my/our behalf pursuant to my/our application herein.
+            In the event that I/we do not proceed with my/our application herein, I/we agree to reimburse Organization for any costs, expenses and charges incurred on my/our behalf pursuant to my/our application herein.
           </p>
         </div>
       </div>
@@ -1959,7 +1958,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             <li>I have been nominated by the applicant(s) as a beneficiary under the Skim Saraan Bercagar (SSB)</li>
             <li>I understand my rights and obligations as a nominee</li>
             <li>I agree to accept the nomination</li>
-            <li>I consent to the collection, use, and processing of my personal data by Cagamas Berhad</li>
+            <li>I consent to the collection, use, and processing of my personal data by Organization</li>
             <li>I understand that the property will be transferred to me/us upon fulfillment of loan obligations</li>
           </ol>
         </div>
@@ -2204,124 +2203,256 @@ function Step7Review({ formData }) {
     return `RM ${parseFloat(value).toLocaleString('en-MY', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
   }
 
+  // Get dependent ages as array
+  const getDependentAges = () => {
+    const ages = []
+    if (formData.dependentAge1) ages.push(formData.dependentAge1)
+    if (formData.dependentAge2) ages.push(formData.dependentAge2)
+    if (formData.dependentAge3) ages.push(formData.dependentAge3)
+    if (formData.dependentAge4) ages.push(formData.dependentAge4)
+    if (formData.dependentAge5) ages.push(formData.dependentAge5)
+    return ages.length > 0 ? ages.join(', ') : 'Not provided'
+  }
+
   return (
     <div className="step-container review-container">
       <h2>Review Your Application</h2>
-      <p className="step-description">Please review all information carefully before generating the PDF. You can go back to any step to make corrections.</p>
+      <p className="step-description">Please review all information carefully before submitting. Use the "Back" button to make any corrections.</p>
 
+      {/* STEP 1: PERSONAL INFORMATION */}
       <div className="review-section">
-        <h3>1. Personal Information</h3>
+        <h3>Step 1: Personal Information</h3>
+        
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Basic Information</h4>
         <div className="review-grid">
           <div className="review-field"><strong>Salutation:</strong> {getValue(formData.salutation)}</div>
-          <div className="review-field"><strong>Name:</strong> {getValue(formData.nameAsPerNRIC)}</div>
+          <div className="review-field"><strong>Full Name (as per NRIC):</strong> {getValue(formData.nameAsPerNRIC)}</div>
           <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nricNo)}</div>
           <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.dobDay, formData.dobMonth, formData.dobYear)}</div>
           <div className="review-field"><strong>Sex:</strong> {getValue(formData.sex)}</div>
           <div className="review-field"><strong>Race:</strong> {getValue(formData.race)}</div>
-          <div className="review-field"><strong>Malaysian:</strong> {getValue(formData.malaysian)}</div>
+          <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.malaysian)}</div>
           <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.maritalStatus)}</div>
-          <div className="review-field"><strong>No. of Dependents:</strong> {getValue(formData.numOfDependents)}</div>
-          <div className="review-field"><strong>Occupation:</strong> {getValue(formData.occupation)}</div>
-          <div className="review-field"><strong>Present House:</strong> {getValue(formData.presentHouse)}</div>
         </div>
-        <div className="review-field" style={{marginTop: '0.5rem'}}><strong>Address:</strong> {getValue(formData.address)}</div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Contact Information</h4>
+        <div className="review-field"><strong>Address:</strong> {getValue(formData.address)}</div>  
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.postcode)}</div>
         <div className="review-field"><strong>Email:</strong> {getValue(formData.email)}</div>
-        <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.residencePhone)}</div>
-        <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.telephone)}</div>
-        <div className="review-field"><strong>Employer:</strong> {getValue(formData.employerName)}</div>
-        <div className="review-field"><strong>Purpose of Application:</strong> {getValue(formData.purposeOfApplication)}</div>
-        <div className="review-field"><strong>How did you hear about us:</strong> {getValue(formData.hearAboutUs)}</div>
-        <div className="review-field"><strong>Payout Option:</strong> {getValue(formData.payoutOption)}</div>
-        {formData.payoutOption === 'monthlyPayout_lumpSum' && (
-          <div className="review-field"><strong>Lump Sum Usage:</strong> {getValue(formData.lumpSumUsage)}</div>
+        <div className="review-grid">
+          <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.residencePhone)}</div>
+          <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.telephone)}</div>
+        </div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Family & Housing</h4>
+        <div className="review-grid">
+          <div className="review-field"><strong>Number of Dependents:</strong> {getValue(formData.numOfDependents)}</div>
+          <div className="review-field"><strong>Present House Ownership:</strong> {getValue(formData.presentHouse)}</div>
+        </div>
+        {formData.numOfDependents && parseInt(formData.numOfDependents) > 0 && (
+          <div className="review-field"><strong>Ages of Dependents:</strong> {getDependentAges()}</div>
         )}
-        <div className="review-field"><strong>Payment Option:</strong> {getValue(formData.paymentOption)}</div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Employment Details</h4>
+        <div className="review-grid">
+          <div className="review-field"><strong>Occupation:</strong> {getValue(formData.occupation)}</div>
+          <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.employerName)}</div>
+        </div>
+        <div className="review-field"><strong>Employer Address:</strong> {getValue(formData.employerAddress)}</div>
+        <div className="review-field"><strong>Employer Postcode:</strong> {getValue(formData.employerPostcode)}</div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Application Preferences</h4>
+        <div className="review-field"><strong>Purpose of Application:</strong> {getValue(formData.purposeOfApplication)}</div>
+        <div className="review-field"><strong>How did you hear about SSB:</strong> {getValue(formData.howDidYouKnow)}</div>
+        <div className="review-field"><strong>Preferred Scheme:</strong> {getValue(formData.preferredScheme)}</div>
+        <div className="review-grid">
+          <div className="review-field"><strong>Payout Option:</strong> {getValue(formData.payoutOption)}</div>
+          {formData.payoutOption === 'monthlyPayout_lumpSum' && (
+            <div className="review-field"><strong>Lump Sum Usage:</strong> {getValue(formData.lumpSumUsage)}</div>
+          )}
+          <div className="review-field"><strong>Payment Option:</strong> {getValue(formData.paymentOption)}</div>
+        </div>
       </div>
 
+      {/* STEP 2: JOINT APPLICANT */}
       {formData.isJointApplicant && (
         <div className="review-section">
-          <h3>2. Joint Applicant Information</h3>
+          <h3>Step 2: Joint Applicant Information</h3>
+          
+          <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Basic Information</h4>
           <div className="review-grid">
             <div className="review-field"><strong>Salutation:</strong> {getValue(formData.jSalutation)}</div>
-            <div className="review-field"><strong>Name:</strong> {getValue(formData.jName)}</div>
+            <div className="review-field"><strong>Full Name (as per NRIC):</strong> {getValue(formData.jName)}</div>
             <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.jIc)}</div>
             <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.jDobDay, formData.jDobMonth, formData.jDobYear)}</div>
             <div className="review-field"><strong>Sex:</strong> {getValue(formData.jSex)}</div>
             <div className="review-field"><strong>Race:</strong> {getValue(formData.jRace)}</div>
-            <div className="review-field"><strong>Malaysian:</strong> {getValue(formData.jMalaysian)}</div>
+            <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.jMalaysian)}</div>
             <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.jMarital)}</div>
-            <div className="review-field"><strong>No. of Dependents:</strong> {getValue(formData.jNumOfDependents)}</div>
-            <div className="review-field"><strong>Occupation:</strong> {getValue(formData.jOccupation)}</div>
+            <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.jRelationship)}</div>
           </div>
-          <div className="review-field" style={{marginTop: '0.5rem'}}><strong>Address:</strong> {getValue(formData.jAddress)}</div>
+
+          <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Contact Information</h4>
+          <div className="review-field"><strong>Address:</strong> {getValue(formData.jAddress)}</div>
           <div className="review-field"><strong>Postcode:</strong> {getValue(formData.jPostcode)}</div>
-          <div className="review-field"><strong>Email:</strong> {getValue(formData.jEmail)}</div>
-          <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.jResidencePhone)}</div>
-          <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.jTelephone)}</div>
-          <div className="review-field"><strong>Employer:</strong> {getValue(formData.jEmployerName)}</div>
+          <div className="review-grid">
+            <div className="review-field"><strong>Email:</strong> {getValue(formData.jEmail)}</div>
+            <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.jResidencePhone)}</div>
+            <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.jTelephone)}</div>
+          </div>
+
+          <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Employment Details</h4>
+          <div className="review-grid">
+            <div className="review-field"><strong>Occupation:</strong> {getValue(formData.jOccupation)}</div>
+            <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.jEmployerName)}</div>
+          </div>
+          <div className="review-field"><strong>Employer Address:</strong> {getValue(formData.jEmployerAddress)}</div>
+          <div className="review-field"><strong>Employer Postcode:</strong> {getValue(formData.jEmployerPostcode)}</div>
+
+          <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Banking Information</h4>
+          <div className="review-grid">
+            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
+            <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
+            <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
+            <div className="review-field"><strong>Account Preference:</strong> {getValue(formData.accountPreference)}</div>
+          </div>
         </div>
       )}
 
-      <div className="review-section">
-        <h3>{formData.isJointApplicant ? '3' : '2'}. Banking Information</h3>
-        <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
-        <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
-        <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
-      </div>
+      {/* Banking for non-joint applicants */}
+      {!formData.isJointApplicant && (
+        <div className="review-section">
+          <h3>Step 2: Banking Information</h3>
+          <div className="review-grid">
+            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
+            <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
+            <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
+            <div className="review-field"><strong>Account Preference:</strong> {getValue(formData.accountPreference)}</div>
+          </div>
+        </div>
+      )}
 
+      {/* STEP 3: PROPERTY INFORMATION */}
       <div className="review-section">
-        <h3>{formData.isJointApplicant ? '4' : '3'}. Property Information</h3>
-        <div className="review-field"><strong>Address:</strong> {getValue(formData.propertyAddress)}</div>
-        <div className="review-field"><strong>Postcode:</strong> {getValue(formData.propertyPostcode)}</div>
+        <h3>Step 3: Property Information</h3>
+        
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Details</h4>
         <div className="review-grid">
           <div className="review-field"><strong>Property Type:</strong> {getValue(formData.propertyType)}</div>
-          <div className="review-field"><strong>Tenure:</strong> {getValue(formData.tenureTitle)}</div>
-          <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} sq ft</div>
-          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.buildUpArea)} sq ft</div>
-          <div className="review-field"><strong>Market Value:</strong> {formatCurrency(formData.indicativeMarketValue)}</div>
-          <div className="review-field"><strong>Encumbered:</strong> {getValue(formData.propertyEncumbered)}</div>
+          <div className="review-field"><strong>Tenure/Title:</strong> {getValue(formData.tenureTitle)}</div>
         </div>
+        {formData.tenureTitle === 'Leasehold' && (
+          <div className="review-field"><strong>Lease Expiry Date:</strong> {formatDate(formData.expiryDay, formData.expiryMonth, formData.expiryYear)}</div>
+        )}
+        <div className="review-field"><strong>Property Address:</strong> {getValue(formData.propertyAddress)}</div>
+        <div className="review-field"><strong>Postcode:</strong> {getValue(formData.propertyPostcode)}</div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Measurements</h4>
+        <div className="review-grid">
+          <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} {formData.landArea ? 'sq ft' : ''}</div>
+          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.buildUpArea)} {formData.buildUpArea ? 'sq ft' : ''}</div>
+        </div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Valuation & Purchase</h4>
+        <div className="review-grid">
+          <div className="review-field"><strong>Indicative Market Value:</strong> {formatCurrency(formData.indicativeMarketValue)}</div>
+          <div className="review-field"><strong>Valuation Date:</strong> {formatDate(formData.valuationDay, formData.valuationMonth, formData.valuationYear)}</div>
+          <div className="review-field"><strong>Expected Market Value:</strong> {formatCurrency(formData.expectedMarketValue)}</div>
+          <div className="review-field"><strong>Purchase Price:</strong> {formatCurrency(formData.purchasePrice)}</div>
+          <div className="review-field"><strong>Purchase Date:</strong> {formatDate(formData.purchaseDay, formData.purchaseMonth, formData.purchaseYear)}</div>
+        </div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Financing</h4>
+        <div className="review-grid">
+          <div className="review-field"><strong>Property Encumbered:</strong> {getValue(formData.propertyEncumbered)}</div>
+          {formData.propertyEncumbered === 'Yes' && (
+            <>
+              <div className="review-field"><strong>Bank/Financial Institution:</strong> {getValue(formData.propertyBankName)}</div>
+              <div className="review-field"><strong>Est. Outstanding Balance:</strong> {formatCurrency(formData.estOutstandingBalance)}</div>
+            </>
+          )}
+        </div>
+
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Fire Insurance</h4>
+        <div className="review-field"><strong>Fire Insurance Status:</strong> {getValue(formData.fireInsurance)}</div>
+        {formData.fireInsurance === 'inForce' && (
+          <div className="review-grid">
+            <div className="review-field"><strong>Insurance Company:</strong> {getValue(formData.insuranceCompany)}</div>
+            <div className="review-field"><strong>Period of Validity:</strong> {getValue(formData.periodValidity)}</div>
+          </div>
+        )}
+        {formData.fireInsurance === 'notAvailable' && (
+          <div className="review-field"><strong>Reason Not Available:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
+        )}
+        <div className="review-field"><strong>Renewal Status:</strong> {getValue(formData.renewalFireInsurance)}</div>
       </div>
 
+      {/* STEP 4: NOMINEE INFORMATION */}
       <div className="review-section">
-        <h3>{formData.isJointApplicant ? '5' : '4'}. Nominee Information</h3>
-        <h4>Nominee 1 (Primary)</h4>
+        <h3>Step 4: Nominee Information</h3>
+        
+        <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Nominee 1 (Primary)</h4>
         <div className="review-grid">
-          <div className="review-field"><strong>Name:</strong> {getValue(formData.nominee1Name)}</div>
+          <div className="review-field"><strong>Salutation:</strong> {getValue(formData.nominee1Salutation)}</div>
+          <div className="review-field"><strong>Full Name:</strong> {getValue(formData.nominee1Name)}</div>
           <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nominee1Ic)}</div>
-          <div className="review-field"><strong>Relationship:</strong> {getValue(formData.nominee1Relationship)}</div>
+          <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.nominee1DobDay, formData.nominee1DobMonth, formData.nominee1DobYear)}</div>
+          <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee1Sex)}</div>
+          <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee1Race)}</div>
+          <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee1Malaysian)}</div>
+          <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee1Marital)}</div>
+          <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee1Relationship)}</div>
         </div>
         <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee1Address)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee1Postcode)}</div>
-        <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
-        <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee1Telephone)}</div>
+        <div className="review-grid">
+          <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
+          <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee1ResidencePhone)}</div>
+          <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee1Telephone)}</div>
+        </div>
+        <div className="review-grid">
+          <div className="review-field"><strong>Occupation:</strong> {getValue(formData.nominee1Occupation)}</div>
+          <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.nominee1EmployerName)}</div>
+        </div>
 
         {formData.hasSecondNominee && (
           <>
-            <h4 style={{marginTop: '1rem'}}>Nominee 2 (Secondary)</h4>
+            <h4 style={{color: '#2196f3', marginTop: '1.5rem', marginBottom: '0.5rem'}}>Nominee 2 (Secondary)</h4>
             <div className="review-grid">
-              <div className="review-field"><strong>Name:</strong> {getValue(formData.nominee2Name)}</div>
+              <div className="review-field"><strong>Salutation:</strong> {getValue(formData.nominee2Salutation)}</div>
+              <div className="review-field"><strong>Full Name:</strong> {getValue(formData.nominee2Name)}</div>
               <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nominee2Ic)}</div>
-              <div className="review-field"><strong>Relationship:</strong> {getValue(formData.nominee2Relationship)}</div>
+              <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.nominee2DobDay, formData.nominee2DobMonth, formData.nominee2DobYear)}</div>
+              <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee2Sex)}</div>
+              <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee2Race)}</div>
+              <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee2Malaysian)}</div>
+              <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee2Marital)}</div>
+              <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee2Relationship)}</div>
             </div>
             <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee2Address)}</div>
             <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee2Postcode)}</div>
-            <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee2Email)}</div>
-            <div className="review-field"><strong>Phone:</strong> {getValue(formData.nominee2Telephone)}</div>
+            <div className="review-grid">
+              <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee2Email)}</div>
+              <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee2ResidencePhone)}</div>
+              <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee2Telephone)}</div>
+            </div>
+            <div className="review-grid">
+              <div className="review-field"><strong>Occupation:</strong> {getValue(formData.nominee2Occupation)}</div>
+              <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.nominee2EmployerName)}</div>
+            </div>
           </>
         )}
       </div>
 
       <div className="info-box" style={{marginTop: '2rem', padding: '1.5rem', backgroundColor: '#e3f2fd', border: '2px solid #2196f3', borderRadius: '4px'}}>
-        <h4 style={{marginTop: 0, color: '#1976d2'}}>Ready to Submit?</h4>
+        <h4 style={{marginTop: 0, color: '#1976d2'}}>✓ Ready to Submit?</h4>
         <p>Click the <strong>"Generate PDF & Submit"</strong> button below to:</p>
         <ol style={{marginLeft: '1.5rem', marginTop: '0.5rem'}}>
           <li>Generate a filled PDF of your SSB Application Form</li>
-          <li>Download the PDF automatically</li>
-          <li>Save your application for record-keeping</li>
+          <li>Download the PDF automatically to your device</li>
+          <li>Submit your application to Selangor State Government</li>
         </ol>
-        <p style={{marginTop: '1rem', marginBottom: 0}}><strong>Note:</strong> If you notice any errors, use the "Back" button to return to the relevant step and make corrections.</p>
+        <p style={{marginTop: '1rem', marginBottom: 0, color: '#f57c00'}}><strong>⚠ Important:</strong> Review all information carefully. If you find any errors, use the "Back" button to return to the relevant step and make corrections before submitting.</p>
       </div>
     </div>
   )
