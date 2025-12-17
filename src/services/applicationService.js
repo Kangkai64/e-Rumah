@@ -375,54 +375,56 @@ export const saveNominees = async (applicationId, formData) => {
     const nominees = []
     
     // Nominee 1 (required)
-    if (formData.nom1Name && formData.nom1IC) {
+    if (formData.nominee1Name && formData.nominee1Ic) {
+      // Format DOB as YYYY-MM-DD for database
+      let dob1 = null
+      if (formData.nominee1DobYear && formData.nominee1DobMonth && formData.nominee1DobDay) {
+        dob1 = `${formData.nominee1DobYear}-${formData.nominee1DobMonth.padStart(2, '0')}-${formData.nominee1DobDay.padStart(2, '0')}`
+      }
+
       nominees.push({
         application_id: applicationId,
         type: 'nominee1',
-        salutation: formData.nom1Salutation || null,
-        name: formData.nom1Name,
-        ic_number: formData.nom1IC,
-        address: formData.nom1Address || null,
-        postcode: formData.nom1Postcode || null,
-        email: formData.nom1Email || null,
-        residence_phone: formData.nom1ResidencePhone || null,
-        telephone: formData.nom1Telephone || null,
-        dob_day: formData.nom1DobDay || null,
-        dob_month: formData.nom1DobMonth || null,
-        dob_year: formData.nom1DobYear || null,
-        sex: formData.nom1Sex || null,
-        race: formData.nom1Race || null,
-        is_malaysian: formData.nom1Malaysian || false,
-        marital_status: formData.nom1MaritalStatus || null,
-        relationship: formData.nom1Relationship || null,
-        occupation: formData.nom1Occupation || null,
-        employer_name: formData.nom1EmployerName || null
+        name: formData.nominee1Name,
+        ic_number: formData.nominee1Ic,
+        address: formData.nominee1Address || null,
+        postcode: formData.nominee1Postcode || null,
+        email: formData.nominee1Email || null,
+        residence_phone: formData.nominee1ResidencePhone || null,
+        telephone: formData.nominee1Telephone || null,
+        dob: dob1,
+        sex: formData.nominee1Sex || null,
+        race: formData.nominee1Race || null,
+        is_malaysian: formData.nominee1Malaysian || false,
+        marital_status: formData.nominee1Marital || null,
+        relationship: formData.nominee1Relationship || null
       })
     }
     
     // Nominee 2 (optional)
-    if (formData.nom2Name && formData.nom2IC) {
+    if (formData.nominee2Name && formData.nominee2Ic) {
+      // Format DOB as YYYY-MM-DD for database
+      let dob2 = null
+      if (formData.nominee2DobYear && formData.nominee2DobMonth && formData.nominee2DobDay) {
+        dob2 = `${formData.nominee2DobYear}-${formData.nominee2DobMonth.padStart(2, '0')}-${formData.nominee2DobDay.padStart(2, '0')}`
+      }
+
       nominees.push({
         application_id: applicationId,
         type: 'nominee2',
-        salutation: formData.nom2Salutation || null,
-        name: formData.nom2Name,
-        ic_number: formData.nom2IC,
-        address: formData.nom2Address || null,
-        postcode: formData.nom2Postcode || null,
-        email: formData.nom2Email || null,
-        residence_phone: formData.nom2ResidencePhone || null,
-        telephone: formData.nom2Telephone || null,
-        dob_day: formData.nom2DobDay || null,
-        dob_month: formData.nom2DobMonth || null,
-        dob_year: formData.nom2DobYear || null,
-        sex: formData.nom2Sex || null,
-        race: formData.nom2Race || null,
-        is_malaysian: formData.nom2Malaysian || false,
-        marital_status: formData.nom2MaritalStatus || null,
-        relationship: formData.nom2Relationship || null,
-        occupation: formData.nom2Occupation || null,
-        employer_name: formData.nom2EmployerName || null
+        name: formData.nominee2Name,
+        ic_number: formData.nominee2Ic,
+        address: formData.nominee2Address || null,
+        postcode: formData.nominee2Postcode || null,
+        email: formData.nominee2Email || null,
+        residence_phone: formData.nominee2ResidencePhone || null,
+        telephone: formData.nominee2Telephone || null,
+        dob: dob2,
+        sex: formData.nominee2Sex || null,
+        race: formData.nominee2Race || null,
+        is_malaysian: formData.nominee2Malaysian || false,
+        marital_status: formData.nominee2Marital || null,
+        relationship: formData.nominee2Relationship || null
       })
     }
     
