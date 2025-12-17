@@ -65,6 +65,7 @@ h1 {
   transition: border-color 0.3s;
   color: #161519;
   background-color: #ffffff;
+  opacity: 1;
 }
 
 .form-group input.error,

@@ -1308,6 +1308,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
   )
 }
 
+// Step 4: Nominee(s) Details
 function Step4Nominees({ formData, handleChange, errors = {} }) {
   return (
     <div className="step-container">
@@ -2410,10 +2411,6 @@ function Step7Review({ formData }) {
         <div className="review-grid">
           <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee1ResidencePhone)}</div>
           <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee1Telephone)}</div>
-        </div>
-        <div className="review-grid">
-          <div className="review-field"><strong>Occupation:</strong> {getValue(formData.nominee1Occupation)}</div>
-          <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.nominee1EmployerName)}</div>
         </div>
 
         {formData.hasSecondNominee && (

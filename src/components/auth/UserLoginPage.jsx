@@ -120,21 +120,10 @@ export default function UserLoginPage() {
                 />
               </div>
 
-              <div className="form-row">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                  />
-                  <span>Remember me</span>
-                </label>
-                <Link to="/forgot-password" className="forgot-link">Forgot Password</Link>
-              </div>
+
 
               <p className="eligibility-note">
-                **Note: For first time user, kindly click "Home" to proceed with Eligibility Criteria Check
+                Click <Link to="/eligibility-check" className="register-account">Here</Link> to Register Account
               </p>
 
               <div className="form-buttons">
@@ -144,15 +133,6 @@ export default function UserLoginPage() {
                 <Link to="/" className="auth-btn secondary">Home</Link>
               </div>
             </form>
-
-            <div className="mydigital-section">
-              <button className="mydigital-btn">
-                <span className="mydigital-icon">🔐</span>
-                Sign in with MyDigital ID
-              </button>
-              <p className="mydigital-text">No MyDigital ID?</p>
-              <a href="#" className="mydigital-link">Download and register now to get started.</a>
-            </div>
           </div>
         </div>
 
