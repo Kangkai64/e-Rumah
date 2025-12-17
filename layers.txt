@@ -15,7 +15,7 @@ AdminReportView
 LoanController
 ApplicationController ✅
 AdminController
-UserProfileController
+UserDashboardController
 HealthReportController
 CustomerSupportController
 ManageApplicationController

@@ -1,0 +1,681 @@
+/* User Dashboard Styles - Plain CSS (NO Tailwind) */
+
+/* Import Poppins font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* Dashboard Container */
+.user-dashboard {
+  min-height: 100vh;
+  background-color: #F5F5F5;
+  font-family: 'Poppins', sans-serif;
+}
+
+.dashboard-container {
+  max-width: 1334px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+  padding: 40px 0 20px 0;
+}
+
+.dashboard-header h1 {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 36px;
+  margin: 0;
+}
+
+/* Dashboard Content Grid */
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 80px;
+}
+
+/* Loan Overview Section */
+.loan-overview-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.loan-overview-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  width: 572px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.loan-overview-card .card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 28px;
+  margin: 0 0 24px 0;
+  align-self: flex-start;
+}
+
+/* Pie Chart */
+.loan-chart-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.pie-chart {
+  position: relative;
+  width: 256px;
+  height: 256px;
+}
+
+.pie-chart svg {
+  display: block;
+}
+
+.chart-center-details {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 176px;
+}
+
+.chart-label {
+  font-size: 12px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 16px;
+  margin: 0 0 4px 0;
+}
+
+.chart-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1F2937;
+  line-height: 32px;
+  margin: 4px 0;
+}
+
+.chart-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9CA3AF;
+  line-height: 16px;
+  margin: 4px 0 0 0;
+}
+
+/* Loan Status Badge */
+.loan-status-container {
+  margin-bottom: 24px;
+}
+
+.loan-status-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.status-active {
+  background-color: #22C55E;
+  color: white;
+}
+
+/* Loan Summary */
+.loan-summary {
+  display: flex;
+  gap: 80px;
+  margin-bottom: 24px;
+  width: 100%;
+  justify-content: center;
+}
+
+.loan-summary-item {
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0 0 4px 0;
+}
+
+.summary-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1F2937;
+  line-height: 24px;
+  margin: 0;
+}
+
+/* Loan Footer */
+.loan-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-top: 24px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #B91C1C;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.property-details {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0;
+}
+
+/* Financial Monitoring Section */
+.financial-monitoring-section {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.disbursement-card,
+.property-value-card {
+  flex: 1;
+  min-width: 300px;
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.card-title-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 28px;
+  margin: 0 0 4px 0;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0;
+}
+
+/* Filter Controls */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+}
+
+.filter-button {
+  background-color: #F3F4F6;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 28px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F2937;
+  line-height: 20px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s;
+}
+
+.filter-button:hover {
+  background-color: #E5E7EB;
+}
+
+.filter-button.active {
+  background-color: #1F2937;
+  color: white;
+}
+
+/* Disbursement Table */
+.disbursement-table {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280;
+  line-height: 20px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.row-date {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F2937;
+  line-height: 20px;
+}
+
+.row-amount,
+.row-remaining {
+  font-size: 14px;
+  font-weight: 400;
+  color: #4B5563;
+  line-height: 20px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.status-completed {
+  background-color: #DCFCE7;
+  color: #15803D;
+}
+
+.status-scheduled {
+  background-color: #FFEDD5;
+  color: #EA580C;
+}
+
+.status-default {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
+.no-data {
+  font-size: 14px;
+  font-weight: 400;
+  color: #9CA3AF;
+  padding: 20px 0;
+}
+
+/* Property Value Card */
+.property-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+}
+
+.property-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 28px;
+  margin: 0;
+}
+
+.last-checked {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9CA3AF;
+  line-height: 16px;
+  margin: 0;
+}
+
+.property-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.property-value-section {
+  flex: 1;
+}
+
+.value-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0 0 4px 0;
+}
+
+.value-amount {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 36px;
+  margin: 0;
+}
+
+.property-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.secondary-button {
+  background-color: #F3F4F6;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 20px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s;
+}
+
+.secondary-button:hover {
+  background-color: #E5E7EB;
+}
+
+.primary-button {
+  background-color: #B91C1C;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  line-height: 20px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s;
+}
+
+.primary-button:hover {
+  background-color: #991B1B;
+}
+
+/* Payout Details Section */
+.payout-details-section {
+  width: 100%;
+}
+
+.payout-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+.payout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.payout-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  line-height: 28px;
+  margin: 0;
+}
+
+.payout-toggle {
+  display: flex;
+  background-color: #F3F4F6;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 0;
+}
+
+.toggle-button {
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  line-height: 20px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s;
+}
+
+.toggle-button.active {
+  background-color: white;
+  color: #1F2937;
+  box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+}
+
+.toggle-button:hover:not(.active) {
+  color: #1F2937;
+}
+
+.payout-content {
+  padding-top: 25px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.payout-info-section {
+  display: flex;
+  gap: 40px;
+}
+
+.payout-info-left {
+  flex: 1;
+}
+
+.payout-info-right {
+  flex: 1;
+  padding-left: 16px;
+  border-left: 1px solid #E5E7EB;
+}
+
+.info-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0 0 4px 0;
+}
+
+.info-amount {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 36px;
+  margin: 4px 0;
+}
+
+.info-period {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 0 0 12px 0;
+}
+
+.info-notes {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 12px 0 0 0;
+}
+
+.info-notes li {
+  font-size: 12px;
+  font-weight: 400;
+  color: #9CA3AF;
+  line-height: 16px;
+  margin-bottom: 3.5px;
+}
+
+.info-next-date {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 28px;
+  margin: 4px 0;
+}
+
+.info-bank {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 4px 0 0 0;
+}
+
+.info-description {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 20px;
+  margin: 8px 0 0 0;
+}
+
+/* Loading and Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.loading-container p {
+  font-size: 18px;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.error-message {
+  font-size: 16px;
+  font-weight: 500;
+  color: #B91C1C;
+  margin-bottom: 16px;
+}
+
+.error-container button {
+  background-color: #B91C1C;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+}
+
+.error-container button:hover {
+  background-color: #991B1B;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .financial-monitoring-section {
+    flex-direction: column;
+  }
+  
+  .payout-info-section {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .payout-info-right {
+    border-left: none;
+    border-top: 1px solid #E5E7EB;
+    padding-left: 0;
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .loan-overview-card {
+    width: 100%;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .table-header span:nth-child(3),
+  .table-header span:nth-child(4),
+  .table-row span:nth-child(3),
+  .table-row span:nth-child(4) {
+    display: none;
+  }
+  
+  .property-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .property-actions {
+    align-items: flex-start;
+    width: 100%;
+  }
+  
+  .property-actions button {
+    width: 100%;
+  }
+}

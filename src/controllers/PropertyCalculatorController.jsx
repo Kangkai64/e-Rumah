@@ -15,6 +15,8 @@ const PropertyCalculatorController = () => {
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [calculationResults, setCalculationResults] = useState(null);
+  const [selectedLumpSum, setSelectedLumpSum] = useState(0);
 
   /**
    * Handle form input changes
@@ -22,16 +24,33 @@ const PropertyCalculatorController = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Clear area when state changes
+      if (name === 'state') {
+        newData.area = '';
+      }
+      
+      return newData;
+    });
 
     // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+    
+    // Clear area error when state changes
+    if (name === 'state' && errors.area) {
+      setErrors(prev => ({
+        ...prev,
+        area: ''
       }));
     }
   };
@@ -69,19 +88,33 @@ const PropertyCalculatorController = () => {
     setIsLoading(true);
 
     try {
-      // TODO: Send data to backend for calculation
-      // const response = await applicationService.calculateProperty(formData);
-      // Handle response...
-      
-      console.log('Property data validated and ready for calculation:', property);
-      
       // Simulate delay
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Calculate results
+      const results = property.getCalculationResults(0);
+      setCalculationResults(results);
+      setSelectedLumpSum(0);
+      
+      console.log('Calculation results:', results);
     } catch (error) {
       console.error('Error calculating property:', error);
       setErrors({ submit: 'Failed to calculate. Please try again.' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handle lump sum slider change
+   */
+  const handleLumpSumChange = (value) => {
+    setSelectedLumpSum(value);
+    
+    if (calculationResults) {
+      const property = new Property(formData);
+      const updatedResults = property.getCalculationResults(value);
+      setCalculationResults(updatedResults);
     }
   };
 
@@ -99,6 +132,8 @@ const PropertyCalculatorController = () => {
       marketValue: ''
     });
     setErrors({});
+    setCalculationResults(null);
+    setSelectedLumpSum(0);
   };
 
   return (
@@ -109,6 +144,9 @@ const PropertyCalculatorController = () => {
       onCalculate={handleCalculate}
       onReset={handleReset}
       isLoading={isLoading}
+      calculationResults={calculationResults}
+      selectedLumpSum={selectedLumpSum}
+      onLumpSumChange={handleLumpSumChange}
     />
   );
 };
