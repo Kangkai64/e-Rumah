@@ -1,314 +1,345 @@
+import calculatorImage from '../assets/images/property_estimation/property_estimation.jpg';
+import '../components/propertyCalculator/propertyCalculator.css';
+
 const PropertyCalculatorView = ({
   formData = {},
   errors = {},
   onInputChange = () => {},
   onCalculate = () => {},
   onReset = () => {},
-  isLoading = false
+  isLoading = false,
+  calculationResults = null,
+  selectedLumpSum = 0,
+  onLumpSumChange = () => {}
 }) => {
-  const borrowerTypes = ['Individual', 'Joint', 'Company', 'Trust'];
-  const ageRanges = ['Below 25', '25-35', '35-45', '45-55', '55+'];
-  const landTenures = ['Freehold', 'Leasehold 99 years', 'Leasehold 60 years'];
-  const states = ['Johor', 'Kedah', 'Kelantan', 'Kuala Lumpur', 'Labuan', 'Malacca', 'Negeri Sembilan', 'Pahang', 'Penang', 'Perak', 'Perlis', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu'];
-  const areas = ['Urban', 'Semi-Urban', 'Rural'];
-  const propertyTypes = ['Terraced House', 'Semi-Detached House', 'Detached House', 'Condominium', 'Shop', 'Office', 'Warehouse', 'Land', 'Other'];
+  const borrowerTypes = ['Single', 'Joint'];
+  const ageRanges = Array.from({ length: 45 }, (_, i) => (55 + i).toString());
+  const landTenures = ['Freehold', 'Leasehold'];
+  const states = ['WP Kuala Lumpur', 'Selangor', 'Putrajaya', 'Johor', 'Pulau Pinang', 'Perak', 'Negeri Sembilan', 'Melaka'];
+  const propertyTypes = ['Terrance', 'High-Rise', 'Semi-Detach', 'Detach', 'Others'];
 
-  const styles = {
-    container: {
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: '100%',
-      padding: '40px 0'
-    },
-    wrapper: {
-      backgroundColor: '#ffffff',
-      borderRadius: '4px',
-      boxShadow: '0px 3px 26px 0px rgba(4, 55, 123, 0.09)',
-      width: '100%',
-      maxWidth: '960px',
-      padding: '50px'
-    },
-    form: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '30px'
-    },
-    formGroup: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px'
-    },
-    formRow: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: '30px'
-    },
-    label: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '700',
-      color: '#3a3a3a',
-      textAlign: 'right',
-      display: 'block'
-    },
-    select: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '400',
-      color: '#495057',
-      backgroundColor: '#ffffff',
-      border: '1px solid #e0e0e0',
-      borderRadius: '0',
-      padding: '12px 30px 12px 12px',
-      height: '43px',
-      cursor: 'pointer',
-      appearance: 'none',
-      backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpolygon points='7,7 0,0 14,0' fill='%230f82fa'/%3E%3C/svg%3E\")",
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'right 8px center',
-      transition: 'border-color 0.3s ease'
-    },
-    currencyWrapper: {
-      display: 'flex',
-      alignItems: 'center',
-      backgroundColor: '#ffffff',
-      border: '1px solid #e0e0e0',
-      borderRadius: '0',
-      height: '47px'
-    },
-    currencyPrefix: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '400',
-      color: '#3a3a3a',
-      paddingLeft: '15px',
-      paddingRight: '10px',
-      borderRight: '1px solid #e0e0e0'
-    },
-    currencyInput: {
-      flex: 1,
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '400',
-      color: '#3a3a3a',
-      border: 'none',
-      backgroundColor: '#ffffff',
-      padding: '12px 15px',
-      outline: 'none'
-    },
-    errorMessage: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '14px',
-      color: '#d32f2f',
-      marginTop: '4px',
-      display: 'block'
-    },
-    btnCalculate: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '700',
-      color: '#ffffff',
-      backgroundColor: isLoading ? '#cccccc' : '#a8202d',
-      border: 'none',
-      borderRadius: '0',
-      padding: '12px 24px',
-      height: '43px',
-      cursor: isLoading ? 'not-allowed' : 'pointer',
-      transition: 'background-color 0.3s ease',
-      marginTop: '10px',
-      alignSelf: 'center',
-      width: '200px'
-    },
-    btnReset: {
-      fontFamily: "'Roboto', sans-serif",
-      fontSize: '18px',
-      fontWeight: '400',
-      color: '#818181',
-      backgroundColor: 'transparent',
-      border: 'none',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '12px',
-      marginTop: '12px',
-      padding: '8px 15px',
-      transition: 'color 0.3s ease',
-      alignSelf: 'center',
-      height: '43px'
-    },
-    resetIcon: {
-      width: '13px',
-      height: '16px',
-      display: 'flex',
-      objectFit: 'contain'
-    }
+  // State-specific areas mapping
+  const stateAreasMap = {
+    'WP Kuala Lumpur': ['All Areas'],
+    'Selangor': ['Petaling, Klang, Hulu Langat', 'Others'],
+    'Putrajaya': ['Putrajaya'],
+    'Johor': ['Johor Bahru'],
+    'Pulau Pinang': ['Penang Island'],
+    'Perak': ['Ipoh'],
+    'Negeri Sembilan': ['Seremban'],
+    'Melaka': ['Bandaraya Melaka']
+  };
+
+  // Get areas based on selected state
+  const getAvailableAreas = () => {
+    if (!formData.state) return [];
+    return stateAreasMap[formData.state] || [];
+  };
+
+  const availableAreas = getAvailableAreas();
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('en-MY', {
+      style: 'currency',
+      currency: 'MYR',
+      minimumFractionDigits: 2
+    }).format(value);
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.wrapper}>
-        <form onSubmit={(e) => { e.preventDefault(); onCalculate(); }} style={styles.form}>
-          {/* Borrower Type */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Borrower/Customer Type</label>
-            <select
-              name="borrowerType"
-              value={formData.borrowerType || ''}
-              onChange={onInputChange}
-              style={styles.select}
-            >
-              <option value="">Select</option>
-              {borrowerTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            {errors.borrowerType && <span style={styles.errorMessage}>{errors.borrowerType}</span>}
+    <div className="property-calculator-wrapper">
+      {/* Hero Section */}
+      <section className="property-calculator-hero">
+        <div className="property-calculator-hero-container">
+          <div className="property-calculator-hero-left">
+            <h1 className="property-calculator-hero-title">Property Estimation Calculator</h1>
+            <p className="property-calculator-hero-subtitle">
+              Use the reverse mortgage calculator below to know your indicative monthly payout amount.
+            </p>
+            
+            <div className="property-calculator-disclaimer-box">
+              <h3 className="property-calculator-disclaimer-title">Disclaimer</h3>
+              <p className="property-calculator-disclaimer-text">
+                Please note that this is only a general estimate and Borrower/Customer should not rely on this when making a loan/financing decision.
+              </p>
+            </div>
           </div>
-
-          {/* Age */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Age</label>
-            <select
-              name="age"
-              value={formData.age || ''}
-              onChange={onInputChange}
-              style={styles.select}
-            >
-              <option value="">Select</option>
-              {ageRanges.map(range => (
-                <option key={range} value={range}>{range}</option>
-              ))}
-            </select>
-            {errors.age && <span style={styles.errorMessage}>{errors.age}</span>}
+          
+          <div className="property-calculator-hero-right">
+            <img 
+              src={calculatorImage} 
+              alt="Property Calculator Illustration" 
+              className="property-calculator-hero-image"
+            />
           </div>
+        </div>
+      </section>
 
-          {/* Land Tenure */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Land Tenure</label>
-            <select
-              name="landTenure"
-              value={formData.landTenure || ''}
-              onChange={onInputChange}
-              style={styles.select}
-            >
-              <option value="">Select</option>
-              {landTenures.map(tenure => (
-                <option key={tenure} value={tenure}>{tenure}</option>
-              ))}
-            </select>
-            {errors.landTenure && <span style={styles.errorMessage}>{errors.landTenure}</span>}
-          </div>
+      {/* Form Section */}
+      <section className="property-calculator-form-section">
+        <div className="property-calculator-form-container">
+          <form onSubmit={(e) => { e.preventDefault(); onCalculate(); }} className="property-calculator-form">
+            {/* Borrower Type & Age - Same Line */}
+            <div className="property-calculator-form-row">
+              <div className="property-calculator-form-group">
+                <label className="property-calculator-label">Borrower/Customer Type</label>
+                <div className="property-calculator-input-wrapper">
+                  <select
+                    name="borrowerType"
+                    value={formData.borrowerType || ''}
+                    onChange={onInputChange}
+                    className="property-calculator-select"
+                  >
+                    <option value="">Select</option>
+                    {borrowerTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                  {errors.borrowerType && (
+                    <div className="property-calculator-error-message">
+                      {errors.borrowerType}
+                      <div className="property-calculator-error-arrow"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          {/* Property Location */}
-          <div style={styles.formRow}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Property Location</label>
-              <select
-                name="state"
-                value={formData.state || ''}
-                onChange={onInputChange}
-                style={styles.select}
+              <div className="property-calculator-form-group">
+                <label className="property-calculator-label">Age</label>
+                <div className="property-calculator-input-wrapper">
+                  <select
+                    name="age"
+                    value={formData.age || ''}
+                    onChange={onInputChange}
+                    className="property-calculator-select"
+                  >
+                    <option value="">Select</option>
+                    {ageRanges.map(range => (
+                      <option key={range} value={range}>{range}</option>
+                    ))}
+                  </select>
+                  {errors.age && (
+                    <div className="property-calculator-error-message">
+                      {errors.age}
+                      <div className="property-calculator-error-arrow"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Land Tenure - Single Line */}
+            <div className="property-calculator-form-group">
+              <label className="property-calculator-label">Land Tenure</label>
+              <div className="property-calculator-input-wrapper">
+                <select
+                  name="landTenure"
+                  value={formData.landTenure || ''}
+                  onChange={onInputChange}
+                  className="property-calculator-select"
+                >
+                  <option value="">Select</option>
+                  {landTenures.map(tenure => (
+                    <option key={tenure} value={tenure}>{tenure}</option>
+                  ))}
+                </select>
+                {errors.landTenure && (
+                  <div className="property-calculator-error-message">
+                    {errors.landTenure}
+                    <div className="property-calculator-error-arrow"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Property Location & Area - Same Line */}
+            <div className="property-calculator-form-row">
+              <div className="property-calculator-form-group">
+                <label className="property-calculator-label">Property Location</label>
+                <div className="property-calculator-input-wrapper">
+                  <select
+                    name="state"
+                    value={formData.state || ''}
+                    onChange={onInputChange}
+                    className="property-calculator-select"
+                  >
+                    <option value="">Select State</option>
+                    {states.map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                  {errors.state && (
+                    <div className="property-calculator-error-message">
+                      {errors.state}
+                      <div className="property-calculator-error-arrow"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="property-calculator-form-group">
+                <label className="property-calculator-label">Area</label>
+                <div className="property-calculator-input-wrapper">
+                  <select
+                    name="area"
+                    value={formData.area || ''}
+                    onChange={onInputChange}
+                    className="property-calculator-select"
+                    disabled={!formData.state}
+                  >
+                    <option value="">{!formData.state ? 'Select State First' : 'Select Area'}</option>
+                    {availableAreas.map(area => (
+                      <option key={area} value={area}>{area}</option>
+                    ))}
+                  </select>
+                  {errors.area && (
+                    <div className="property-calculator-error-message">
+                      {errors.area}
+                      <div className="property-calculator-error-arrow"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Property Type - Single Line */}
+            <div className="property-calculator-form-group">
+              <label className="property-calculator-label">Property Type</label>
+              <div className="property-calculator-input-wrapper">
+                <select
+                  name="propertyType"
+                  value={formData.propertyType || ''}
+                  onChange={onInputChange}
+                  className="property-calculator-select"
+                >
+                  <option value="">Select</option>
+                  {propertyTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                {errors.propertyType && (
+                  <div className="property-calculator-error-message">
+                    {errors.propertyType}
+                    <div className="property-calculator-error-arrow"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Current Market Value - Single Line */}
+            <div className="property-calculator-form-group">
+              <label className="property-calculator-label">Current Market Value</label>
+              <div className="property-calculator-input-wrapper">
+                <div className="property-calculator-currency-wrapper">
+                  <span className="property-calculator-currency-prefix">RM</span>
+                  <input
+                    type="text"
+                    name="marketValue"
+                    value={formData.marketValue || ''}
+                    onChange={onInputChange}
+                    placeholder="0.00"
+                    className="property-calculator-currency-input"
+                  />
+                </div>
+                {errors.marketValue && (
+                  <div className="property-calculator-error-message">
+                    {errors.marketValue}
+                    <div className="property-calculator-error-arrow"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="property-calculator-button-group">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="property-calculator-btn-calculate"
               >
-                <option value="">Select State</option>
-                {states.map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-              {errors.state && <span style={styles.errorMessage}>{errors.state}</span>}
-            </div>
+                {isLoading ? 'Calculating...' : 'Calculate'}
+              </button>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}></label>
-              <select
-                name="area"
-                value={formData.area || ''}
-                onChange={onInputChange}
-                style={styles.select}
+              <button
+                type="button"
+                onClick={onReset}
+                className="property-calculator-btn-reset"
               >
-                <option value="">Select Area</option>
-                {areas.map(area => (
-                  <option key={area} value={area}>{area}</option>
-                ))}
-              </select>
-              {errors.area && <span style={styles.errorMessage}>{errors.area}</span>}
+                <svg className="property-calculator-reset-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+                  <path d="M21 3v5h-5"></path>
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+                  <path d="M3 21v-5h5"></path>
+                </svg>
+                <span>Reset</span>
+              </button>
             </div>
-          </div>
+          </form>
 
-          {/* Property Type */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Property Type</label>
-            <select
-              name="propertyType"
-              value={formData.propertyType || ''}
-              onChange={onInputChange}
-              style={styles.select}
-            >
-              <option value="">Select</option>
-              {propertyTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-            {errors.propertyType && <span style={styles.errorMessage}>{errors.propertyType}</span>}
-          </div>
+          {/* Results Section */}
+          {calculationResults && (
+            <div className="property-calculator-results">
+              {/* Two Column Layout */}
+              <div className="property-calculator-results-layout">
+                {/* Left Column - Lump Sum Details & Slider */}
+                <div className="property-calculator-results-left">
+                  <h2 className="property-calculator-results-title">Results</h2>
+                  {/* Maximum Lumpsum */}
+                  <div className="property-calculator-lumpsum-display">
+                    <div className="property-calculator-lumpsum-label">Maximum Lumpsum</div>
+                    <div className="property-calculator-lumpsum-amount">{formatCurrency(calculationResults.maxLumpSum)}</div>
+                  </div>
 
-          {/* Current Market Value */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Current Market Value</label>
-            <div style={styles.currencyWrapper}>
-              <span style={styles.currencyPrefix}>RM</span>
-              <input
-                type="text"
-                name="marketValue"
-                value={formData.marketValue || ''}
-                onChange={onInputChange}
-                placeholder="0.00"
-                style={styles.currencyInput}
-              />
+                  {/* Drawback Input */}
+                  <div className="property-calculator-drawback-display">
+                    <div className="property-calculator-drawback-label">Drawback</div>
+                    <div className="property-calculator-currency-wrapper">
+                      <span className="property-calculator-currency-prefix">RM</span>
+                      <input
+                        type="text"
+                        value={selectedLumpSum.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/,/g, '');
+                          const numValue = parseFloat(value) || 0;
+                          // Cap at max lump sum
+                          const cappedValue = Math.min(numValue, calculationResults.maxLumpSum);
+                          onLumpSumChange(cappedValue);
+                        }}
+                        placeholder="0.00"
+                        className="property-calculator-currency-input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Slider */}
+                  <div className="property-calculator-slider-section">
+                    <input
+                      type="range"
+                      min="0"
+                      max={calculationResults.maxLumpSum}
+                      step="1"
+                      value={selectedLumpSum}
+                      onChange={(e) => onLumpSumChange(parseFloat(e.target.value))}
+                      className="property-calculator-lumpsum-slider"
+                      style={{
+                        background: `linear-gradient(to right, #A8202D 0%, #A8202D ${(selectedLumpSum / calculationResults.maxLumpSum) * 100}%, #e5e7eb ${(selectedLumpSum / calculationResults.maxLumpSum) * 100}%, #e5e7eb 100%)`
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Column - Monthly Payout */}
+                <div className="property-calculator-results-right">
+                  <div className="property-calculator-payout-card">
+                    <div className="property-calculator-payout-header">Monthly Payout</div>
+                    <div className="property-calculator-payout-amount">{formatCurrency(calculationResults.monthlyPayout)}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            {errors.marketValue && <span style={styles.errorMessage}>{errors.marketValue}</span>}
-          </div>
-
-          {/* Calculate Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={styles.btnCalculate}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = '#861a24';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.currentTarget.style.backgroundColor = '#a8202d';
-              }
-            }}
-          >
-            {isLoading ? 'Calculating...' : 'Calculate'}
-          </button>
-
-          {/* Reset Link */}
-          <button
-            type="button"
-            onClick={onReset}
-            style={styles.btnReset}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#515151';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#818181';
-            }}
-          >
-            <svg style={styles.resetIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M12 6v6l4 2"></path>
-            </svg>
-            <span>Reset</span>
-          </button>
-        </form>
-      </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
