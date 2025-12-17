@@ -103,10 +103,36 @@ export const deleteDocument = async (fileUrl, userId, options = {}) => {
     }
 
     // Extract file path from URL
-    // URL format: https://xxx.supabase.co/storage/v1/object/public/application-documents/{userId}/{fileName}
-    const urlParts = fileUrl.split('/')
-    const fileName = urlParts[urlParts.length - 1].split('?')[0]
-    const filePath = `${userId}/${fileName}`
+    // Signed URL format: https://xxx.supabase.co/storage/v1/object/sign/application-documents/{userId}/{fileName}?token=...
+    // Public URL format: https://xxx.supabase.co/storage/v1/object/public/application-documents/{userId}/{fileName}
+    
+    let filePath = ''
+    
+    // Check if it's a signed URL (contains 'object/sign')
+    if (fileUrl.includes('/object/sign/')) {
+      const pathMatch = fileUrl.match(/\/object\/sign\/application-documents\/(.+?)(?:\?|$)/)
+      if (pathMatch) {
+        filePath = pathMatch[1]
+      }
+    } 
+    // Check if it's a public URL (contains 'object/public')
+    else if (fileUrl.includes('/object/public/')) {
+      const pathMatch = fileUrl.match(/\/object\/public\/application-documents\/(.+?)(?:\?|$)/)
+      if (pathMatch) {
+        filePath = pathMatch[1]
+      }
+    }
+    // Fallback: extract from URL parts
+    else {
+      const urlParts = fileUrl.split('/')
+      const fileName = urlParts[urlParts.length - 1].split('?')[0] // Remove query params
+      filePath = `${userId}/${fileName}`
+    }
+
+    if (!filePath) {
+      console.error('❌ Could not extract file path from URL:', fileUrl)
+      return { success: false, error: { message: 'Invalid file URL format' } }
+    }
 
     console.log('🗑️ Deleting file:', filePath)
 
@@ -119,7 +145,7 @@ export const deleteDocument = async (fileUrl, userId, options = {}) => {
       return { success: false, error }
     }
 
-    console.log('✅ File deleted successfully')
+    console.log('✅ File deleted successfully from storage')
     return { success: true, error: null }
   } catch (error) {
     console.error('❌ Delete exception:', error)

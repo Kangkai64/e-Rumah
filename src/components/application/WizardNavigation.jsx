@@ -35,7 +35,7 @@ export default function WizardNavigation({ currentStep, totalSteps, onNext, onBa
           </button>
         ) : (
           <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit}>
-            Generate PDF
+            Submit
           </button>
         )}
       </div>

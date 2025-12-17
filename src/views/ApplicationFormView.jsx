@@ -160,7 +160,7 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
           </button>
         ) : (
           <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit}>
-            Generate PDF
+            Submit
           </button>
         )}
       </div>
@@ -2226,7 +2226,7 @@ function Step7Review({ formData }) {
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Basic Information</h4>
         <div className="review-grid">
           <div className="review-field"><strong>Salutation:</strong> {getValue(formData.salutation)}</div>
-          <div className="review-field"><strong>Full Name (as per NRIC):</strong> {getValue(formData.nameAsPerNRIC)}</div>
+          <div className="review-field"><strong>Full Name:</strong> {getValue(formData.nameAsPerNRIC)}</div>
           <div className="review-field"><strong>NRIC No:</strong> {getValue(formData.nricNo)}</div>
           <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.dobDay, formData.dobMonth, formData.dobYear)}</div>
           <div className="review-field"><strong>Sex:</strong> {getValue(formData.sex)}</div>
@@ -2405,8 +2405,9 @@ function Step7Review({ formData }) {
         </div>
         <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee1Address)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee1Postcode)}</div>
+        <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
+
         <div className="review-grid">
-          <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
           <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee1ResidencePhone)}</div>
           <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee1Telephone)}</div>
         </div>
