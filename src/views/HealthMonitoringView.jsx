@@ -3,10 +3,11 @@
 // NO business logic - only UI rendering
 // Now includes both User and Admin views with conditional rendering based on userRole
 
-import { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import searchIcon from '../assets/icons/health_report_page/icon_search.svg'
 import filterIcon from '../assets/icons/health_report_page/icon_filter.svg'
 import uploadIcon from '../assets/icons/health_report_page/icon_upload_document.svg'
+import sortIcon from '../assets/icons/health_report_page/icon_sort.svg'
 import calendarIcon from '../assets/icons/health_report_page/icon_calendar_body.svg'
 
 // Embedded CSS Styles
@@ -23,6 +24,7 @@ const styles = `
   padding: 2rem;
   position: relative;
   min-height: 100vh;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
 .health-report-container.drag-active {
@@ -45,6 +47,7 @@ const styles = `
 .health-report-header h1 {
   font-size: 2rem;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   color: #333;
   margin: 0;
 }
@@ -57,12 +60,14 @@ const styles = `
 .btn-help,
 .btn-exit {
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: 30px;
   border: 1px solid #ddd;
   background: white;
   cursor: pointer;
   font-size: 0.95rem;
-  transition: all 0.2s;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .btn-help:hover {
@@ -92,6 +97,7 @@ const styles = `
   border-radius: 8px;
   margin-bottom: 0.75rem;
   font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .alert-error {
@@ -120,6 +126,7 @@ const styles = `
   color: #155724;
   border-radius: 8px;
   margin-bottom: 1.5rem;
+  font-family: 'Poppins', sans-serif;
   animation: slideIn 0.3s ease;
 }
 
@@ -138,6 +145,7 @@ const styles = `
   color: #c00;
   border-radius: 8px;
   margin-bottom: 1.5rem;
+  font-family: 'Poppins', sans-serif;
   animation: slideIn 0.3s ease;
 }
 
@@ -196,6 +204,7 @@ const styles = `
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   padding: 2rem;
+  font-family: 'Poppins', sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -220,11 +229,13 @@ const styles = `
   border: 1px solid #e0e0e0;
   border-radius: 12px;
   padding: 1.5rem;
+  font-family: 'Poppins', sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .stat-label {
   font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
   color: #666;
   margin-bottom: 0.5rem;
 }
@@ -232,6 +243,7 @@ const styles = `
 .stat-value {
   font-size: 2rem;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   color: #333;
 }
 
@@ -270,11 +282,20 @@ const styles = `
   padding: 3rem 1rem;
   margin-bottom: 1.5rem;
   transition: all 0.2s;
+  cursor: pointer;
+  text-align: center;
+  background: #fafafa;
 }
 
-.upload-drop-area:hover {
+.upload-drop-area:hover,
+.upload-drop-area.dragging {
   border-color: #A8202D;
-  background: #fafafa;
+  background: #fef2f2;
+}
+
+.upload-drop-area.has-files {
+  border-color: #28a745;
+  background: #f0fff4;
 }
 
 .upload-icon {
@@ -288,12 +309,13 @@ const styles = `
   background: #A8202D;
   color: white;
   border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 8px;
+  padding: 0.875rem 2rem;
+  border-radius: 30px;
   font-size: 1rem;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-submit:hover {
@@ -410,10 +432,12 @@ input:checked + .slider:before {
   background: #f0f0f0;
   border: 1px solid #ddd;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 30px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
 }
 
 .btn-edit:hover {
@@ -462,10 +486,12 @@ input:checked + .slider:before {
   background: #f0f0f0;
   border: 1px solid #ddd;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 30px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
 }
 
 .btn-view-all:hover {
@@ -507,38 +533,41 @@ input:checked + .slider:before {
 .btn-action {
   background: #f0f0f0;
   border: 1px solid #ddd;
-  padding: 0.375rem 0.75rem;
-  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  border-radius: 30px;
   cursor: pointer;
   font-size: 0.875rem;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
 }
 
 .btn-action:hover {
   background: #e0e0e0;
-  border-color: #A8202D;
-  color: #A8202D;
+  border-color: #ccc;
 }
 
 /* Search Section */
 .search-section {
-  margin: 3rem 0;
+  margin: 2rem 0;
   padding: 2rem;
   background: #f8f9fa;
   border-radius: 12px;
+  font-family: 'Poppins', sans-serif;
 }
 
 .search-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .search-header h2 {
   margin: 0;
   font-size: 1.75rem;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
 }
 
 .btn-clear-filters {
@@ -547,19 +576,27 @@ input:checked + .slider:before {
   color: #A8202D;
   cursor: pointer;
   font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
   text-decoration: underline;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-filters:hover {
+  color: #8c1a24;
 }
 
 /* Search Bar */
 .search-bar-container {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .search-input-group {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1rem;
-  align-items: center;
+  align-items: stretch;
+  flex-wrap: wrap;
 }
 
 .search-input {
@@ -570,10 +607,18 @@ input:checked + .slider:before {
 
 .search-input input {
   width: 100%;
-  padding: 0.75rem 3rem 0.75rem 2.5rem;
+  padding: 0.875rem 3rem 0.875rem 2.5rem;
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.search-input input:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
 }
 
 .search-icon {
@@ -603,13 +648,16 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 30px;
   cursor: pointer;
   font-size: 1rem;
-  transition: all 0.2s;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-height: 50px;
 }
 
 .btn-filter:hover,
@@ -625,17 +673,22 @@ input:checked + .slider:before {
 
 .filter-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
 }
 
 .filter-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.625rem 1.25rem;
   background: white;
   border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .filter-btn:hover,
@@ -649,12 +702,16 @@ input:checked + .slider:before {
 .advanced-filters {
   background: white;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .filter-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
   margin-bottom: 2rem;
 }
 
@@ -662,31 +719,43 @@ input:checked + .slider:before {
   margin-bottom: 0;
 }
 
+.filter-row.two-columns {
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
 .filter-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
 .filter-group label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   color: #333;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
 }
 
 .filter-options {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
+  margin-bottom: 0;
+  justify-content: flex-start;
 }
 
 .filter-option {
-  padding: 0.5rem 1rem;
+  padding: 0.625rem 1rem;
   background: white;
   border: 1px solid #ddd;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.875rem;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .filter-option:hover,
@@ -700,24 +769,35 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-bottom: 0;
 }
 
 .date-input {
   position: relative;
   flex: 1;
+  min-width: 0;
+  width: 280px;
 }
 
 .date-input input {
   width: 100%;
-  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  padding: 1rem 2.5rem 1rem 1.5rem;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.875rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.date-input input:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
 }
 
 .calendar-icon {
   position: absolute;
-  right: 0.75rem;
+  right: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
   width: 20px;
@@ -728,31 +808,47 @@ input:checked + .slider:before {
 .date-separator {
   font-weight: 500;
   color: #666;
+  font-family: 'Poppins', sans-serif;
+  white-space: nowrap;
 }
 
 .filter-group input[type="text"] {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem;
   border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 0.875rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.filter-group input[type="text"]:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
 }
 
 .filter-actions {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 1rem;
+  margin-top: 2rem;
+  justify-content: flex-start;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
 }
 
 .btn-reset,
 .btn-apply {
-  padding: 0.5rem 1.5rem;
+  padding: 0.875rem 2rem;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 30px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  transition: all 0.2s;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
+  min-width: 100px;
 }
 
 .btn-reset {
@@ -781,6 +877,7 @@ input:checked + .slider:before {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   overflow: hidden;
+  font-family: 'Poppins', sans-serif;
 }
 
 .table-header-row {
@@ -791,6 +888,7 @@ input:checked + .slider:before {
   background: #f8f9fa;
   border-bottom: 2px solid #e0e0e0;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   color: #666;
 }
 
@@ -805,6 +903,7 @@ input:checked + .slider:before {
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid #f0f0f0;
+  font-family: 'Poppins', sans-serif;
   transition: background-color 0.2s;
 }
 
@@ -814,11 +913,13 @@ input:checked + .slider:before {
 
 .report-title {
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   margin-bottom: 0.25rem;
 }
 
 .report-ref {
   font-size: 0.875rem;
+  font-family: 'Poppins', sans-serif;
   color: #666;
 }
 
@@ -830,10 +931,40 @@ input:checked + .slider:before {
   .search-input-group {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.75rem;
+  }
+  
+  .search-input {
+    max-width: none;
+  }
+  
+  .filter-row.two-columns {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
   
   .date-inputs {
     flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .filter-buttons {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .filter-btn {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .advanced-filters {
+    padding: 1.5rem;
+  }
+  
+  .filter-actions {
+    justify-content: center;
   }
   
   .table-header-row,
@@ -849,9 +980,57 @@ input:checked + .slider:before {
   }
 }
 
+@media (max-width: 768px) {
+  .health-report-container {
+    padding: 1rem;
+  }
+  
+  .search-section {
+    padding: 1.5rem;
+    margin: 1rem 0;
+  }
+  
+  .search-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .advanced-filters {
+    padding: 1rem;
+  }
+  
+  .filter-row {
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .filter-options {
+    justify-content: flex-start;
+  }
+  
+  .filter-option {
+    flex: 1;
+    text-align: center;
+    min-width: 100px;
+  }
+  
+  .filter-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .btn-reset,
+  .btn-apply {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .section-card h3 {
   font-size: 1.5rem;
   font-weight: 600;
+  font-family: 'Poppins', sans-serif;
   color: #333;
   margin: 0 0 0.5rem 0;
 }
@@ -860,6 +1039,7 @@ input:checked + .slider:before {
   color: #666;
   margin: 0 0 1.5rem 0;
   font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .btn-upload {
@@ -869,38 +1049,225 @@ input:checked + .slider:before {
 }
 
 /* ============================================================================
-   DRAG AND DROP
+   DATE PICKER STYLES
    ============================================================================ */
 
-.drag-overlay {
+.date-input-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.date-picker-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  margin-top: 4px;
+}
+
+.date-picker-dropdown input[type="date"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+}
+
+.date-picker-dropdown input[type="date"]:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
+}
+
+.calendar-icon {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.calendar-icon:hover {
+  opacity: 0.7;
+}
+
+.date-input {
+  position: relative;
+}
+
+/* ============================================================================
+   SUCCESS OVERLAY MODAL
+   ============================================================================ */
+
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(168, 32, 45, 0.95);
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 60px 40px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease-in-out;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #000;
+}
+
+.modal-checkmark {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-checkmark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.modal-title {
+  color: #22c55e;
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  margin: 20px 0 10px 0;
+  line-height: 1.4;
+}
+
+.modal-message {
+  color: #161519;
+  font-size: 18px;
+  font-weight: 400;
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-file-list {
+  color: #666;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 40px 30px;
+  }
+
+  .modal-title {
+    font-size: 28px;
+  }
+
+  .modal-message {
+    font-size: 16px;
+  }
+
+  .modal-checkmark {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+/* ============================================================================
+   FULL PAGE DROP ZONE
+   ============================================================================ */
+
+.full-page-drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(168, 32, 45, 0.9);
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  pointer-events: auto;
   animation: fadeIn 0.2s ease;
+  font-family: 'Poppins', sans-serif;
 }
 
-.drag-overlay-content {
+.full-page-drop-content {
   text-align: center;
   color: white;
+  pointer-events: none;
 }
 
-.drag-overlay-icon {
-  font-size: 5rem;
+.full-page-drop-icon {
+  font-size: 4rem;
   margin-bottom: 1rem;
-  animation: bounce 0.5s infinite;
+  animation: bounce 0.6s infinite;
 }
 
-.drag-overlay-content p {
-  font-size: 1.5rem;
-  font-weight: 500;
+.full-page-drop-content h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.full-page-drop-content p {
+  font-size: 1.2rem;
+  margin: 0;
+  opacity: 0.9;
+  font-family: 'Poppins', sans-serif;
 }
 
 @keyframes fadeIn {
@@ -909,35 +1276,89 @@ input:checked + .slider:before {
 }
 
 @keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
 }
 
-.drag-drop-area {
-  border: 3px dashed #ccc;
-  border-radius: 12px;
-  padding: 3rem 2rem;
-  text-align: center;
+/* File Preview Styles */
+.file-preview-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.file-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.file-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.file-preview-item:hover {
+  border-color: #A8202D;
+  box-shadow: 0 2px 4px rgba(168, 32, 45, 0.1);
+}
+
+.file-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Poppins', sans-serif;
+}
+
+.file-size {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-family: 'Poppins', sans-serif;
+}
+
+.remove-file-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: #fafafa;
-  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.drag-drop-area:hover {
-  border-color: #A8202D;
-  background: #fef2f2;
-}
-
-.drag-drop-area.dragging {
-  border-color: #A8202D;
-  background: #fee2e2;
-  transform: scale(1.02);
-}
-
-.drag-drop-area.has-file {
-  border-color: #28a745;
-  background: #f0fff4;
+.remove-file-btn:hover {
+  background: #c82333;
+  transform: scale(1.1);
 }
 
 .drag-drop-content {
@@ -1038,12 +1459,12 @@ input:checked + .slider:before {
 .filter-panel {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid #FEF2F2;
 }
 
 .filter-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -1159,12 +1580,48 @@ input:checked + .slider:before {
 }
 
 .btn-share {
-  background: #28a745;
+  background: #A8202D;
   color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 8px 16px;
+  transition: all 0.2s ease;
 }
 
 .btn-share:hover {
-  background: #218838;
+  background: #8B1A24;
+  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
+}
+
+/* Specific styling for action-btn share buttons */
+.action-btn.share-btn {
+  background: #A8202D;
+  border: 1px solid #A8202D;
+  color: white;
+}
+
+.action-btn.share-btn:hover {
+  background: #8B1A24;
+  border-color: #8B1A24;
+  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
+}
+
+/* Target Share buttons specifically by their position and context */
+.actions-col .action-btn-sm:nth-child(2),
+.table-actions .btn-action:nth-child(2) {
+  background: #A8202D;
+  border: 1px solid #A8202D;
+  color: white;
+  border-radius: 30px;
+  font-weight: 600;
+}
+
+.actions-col .action-btn-sm:nth-child(2):hover,
+.table-actions .btn-action:nth-child(2):hover {
+  background: #8B1A24;
+  border-color: #8B1A24;
+  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-delete {
@@ -1375,12 +1832,13 @@ input:checked + .slider:before {
 
 .btn {
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  border-radius: 30px;
   border: none;
   cursor: pointer;
   font-size: 0.95rem;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1957,9 +2415,9 @@ input:checked + .slider:before {
 .btn {
   padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 30px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: 'Poppins', sans-serif;
@@ -2021,15 +2479,15 @@ input:checked + .slider:before {
 .action-btn {
   background: #e5e7eb;
   border: none;
-  border-radius: 6px;
-  padding: 4px 12px;
+  border-radius: 30px;
+  padding: 6px 16px;
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 16px;
   color: #1f2937;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .action-btn:hover {
@@ -2179,7 +2637,7 @@ input:checked + .slider:before {
 .btn-primary-action {
   background: #A8202D;
   border: none;
-  border-radius: 8px;
+  border-radius: 30px;
   padding: 10px 0;
   width: 100%;
   font-family: 'Poppins', sans-serif;
@@ -2188,7 +2646,7 @@ input:checked + .slider:before {
   line-height: 24px;
   color: white;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-primary-action:hover {
@@ -2309,15 +2767,15 @@ input:checked + .slider:before {
 .action-btn-sm {
   background: #f3f4f6;
   border: none;
-  border-radius: 6px;
-  padding: 4px 12px;
+  border-radius: 30px;
+  padding: 6px 16px;
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 16px;
   color: #1f2937;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .action-btn-sm:hover {
@@ -2342,10 +2800,59 @@ input:checked + .slider:before {
   margin: 0;
 }
 
+/* Sort Button Styles */
+.sort-button {
+  background: none;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #9ca3af;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.sort-button:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.sort-button.active {
+  color: #A8202D;
+}
+
+.sort-icon {
+  font-size: 12px;
+  min-width: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-icon.neutral {
+  opacity: 0.6;
+}
+
+.sort-icon.asc {
+  color: #A8202D;
+}
+
+.sort-icon.desc {
+  color: #A8202D;
+}
+
 .btn-generate-report {
   background: #A8202D;
   border: none;
-  border-radius: 8px;
+  border-radius: 30px;
   padding: 8px 20px;
   font-family: 'Poppins', sans-serif;
   font-weight: 600;
@@ -2353,7 +2860,7 @@ input:checked + .slider:before {
   line-height: 24px;
   color: white;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .btn-generate-report:hover {
@@ -2761,7 +3268,7 @@ function SearchFilterBar({
         />
         
         <button className="btn-search" onClick={onSearch}>
-          <img src={searchIcon} alt="Search" style={{width: '16px', height: '16px', marginRight: '8px'}} />
+          <img src={searchIcon} alt="Search" style={{width: '16px', height: '16px', marginLeft: '12px', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
           Search
         </button>
       </div>
@@ -2770,7 +3277,7 @@ function SearchFilterBar({
         className="btn-filter" 
         onClick={() => onSetShowFilters(!showFilters)}
       >
-        <img src={filterIcon} alt="Filter" style={{width: '16px', height: '16px', marginRight: '8px'}} />
+        <img src={filterIcon} alt="Filter" style={{width: '16px', height: '16px', marginRight: '8px', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
         {showFilters ? 'Hide' : 'Show'} Filters
       </button>
 
@@ -2794,20 +3301,28 @@ function SearchFilterBar({
 
             <div className="filter-group">
               <label>Start Date</label>
-              <input
-                type="date"
-                value={filters.startDate || ''}
-                onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
-              />
+              <div className="date-input-wrapper" style={{position: 'relative'}}>
+                <input
+                  type="date"
+                  value={filters.startDate || ''}
+                  min={getUserJoinDate()}
+                  max={getTodayDate()}
+                  onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="filter-group">
               <label>End Date</label>
-              <input
-                type="date"
-                value={filters.endDate || ''}
-                onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
-              />
+              <div className="date-input-wrapper" style={{position: 'relative'}}>
+                <input
+                  type="date"
+                  value={filters.endDate || ''}
+                  min={filters.startDate || getUserJoinDate()}
+                  max={getTodayDate()}
+                  onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="filter-group">
@@ -2914,8 +3429,18 @@ function ReportsTable({
   }
 
   const getSortIcon = (field) => {
-    if (sortBy !== field) return '↕️'
-    return sortOrder === 'asc' ? '↑' : '↓'
+    if (sortBy !== field) {
+      return <span className="sort-icon neutral">⇅</span>
+    }
+    return (
+      <span className={`sort-icon ${sortOrder}`}>
+        {sortOrder === 'asc' ? '▲' : '▼'}
+      </span>
+    )
+  }
+
+  const getSortButtonClass = (field) => {
+    return `sort-button ${sortBy === field ? 'active' : ''}`
   }
 
   return (
@@ -2923,20 +3448,35 @@ function ReportsTable({
       <table className="reports-table">
         <thead>
           <tr>
-            <th onClick={() => onSort('report_type')}>
-              Type {getSortIcon('report_type')}
+            <th>
+              <button className={getSortButtonClass('report_type')} onClick={() => onSort('report_type')}>
+                Type
+                {getSortIcon('report_type')}
+              </button>
             </th>
-            <th onClick={() => onSort('report_date')}>
-              Report Date {getSortIcon('report_date')}
+            <th>
+              <button className={getSortButtonClass('report_date')} onClick={() => onSort('report_date')}>
+                Report Date
+                {getSortIcon('report_date')}
+              </button>
             </th>
-            <th onClick={() => onSort('created_at')}>
-              Upload Date {getSortIcon('created_at')}
+            <th>
+              <button className={getSortButtonClass('created_at')} onClick={() => onSort('created_at')}>
+                Upload Date
+                {getSortIcon('created_at')}
+              </button>
             </th>
-            <th onClick={() => onSort('healthcare_provider')}>
-              Provider {getSortIcon('healthcare_provider')}
+            <th>
+              <button className={getSortButtonClass('healthcare_provider')} onClick={() => onSort('healthcare_provider')}>
+                Provider
+                {getSortIcon('healthcare_provider')}
+              </button>
             </th>
-            <th onClick={() => onSort('due_date')}>
-              Due Date {getSortIcon('due_date')}
+            <th>
+              <button className={getSortButtonClass('due_date')} onClick={() => onSort('due_date')}>
+                Due Date
+                {getSortIcon('due_date')}
+              </button>
             </th>
             <th>Notes</th>
             <th>Actions</th>
@@ -3511,6 +4051,7 @@ function UserHealthReportView({
   reports,
   uploadForm,
   shareForm,
+  multiUploadForm,
   searchKey,
   filters,
   sortBy,
@@ -3521,11 +4062,15 @@ function UserHealthReportView({
   isDragging,
   errors,
   activeTab = 'archived',
+  statistics,
+  user, // Add user prop for accessing current user info
 
   // Handlers
   onUploadClick,
   onCancelUploadModal,
   onUploadFormChange,
+  onMultiUploadFormChange,
+  onMultipleFileUpload,
   onDragEnter,
   onDragLeave,
   onDragOver,
@@ -3548,11 +4093,289 @@ function UserHealthReportView({
   onViewReport
 }) {
   // Mock statistics data - in real implementation, this would come from props
-  const statistics = {
-    reminderThisWeek: 2,
-    overdueHealthReport: 1,
-    healthReportDueSoon: 1,
+  // Add default values to prevent undefined errors
+  const defaultStatistics = {
+    reminderThisWeek: 0,
+    overdueHealthReport: 0,
+    healthReportDueSoon: 0,
     flaggedHealthReport: 0
+  };
+  
+  const safeStatistics = {
+    ...defaultStatistics,
+    ...(statistics && typeof statistics === 'object' ? statistics : {
+      reminderThisWeek: 2,
+      overdueHealthReport: 1,
+      healthReportDueSoon: 1,
+      flaggedHealthReport: 0
+    })
+  };
+
+  // Safe event handlers with default functions
+  const safeOnDragEnter = onDragEnter || ((e) => e.preventDefault());
+  const safeOnDragLeave = onDragLeave || ((e) => e.preventDefault());
+  const safeOnDragOver = onDragOver || ((e) => e.preventDefault());
+  const safeOnDrop = onDrop || ((e) => e.preventDefault());
+  const safeOnFileSelect = onFileSelect || (() => {});
+  const safeOnUploadSubmit = onUploadSubmit || (() => {});
+  const safeOnSearchChange = onSearchChange || (() => {});
+
+  // Local state for managing selected files
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalData, setSuccessModalData] = useState({ fileNames: '', fileCount: 0 });
+  const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
+  const [selectedDates, setSelectedDates] = useState({ startDate: '', endDate: '' });
+
+  // File input ref for programmatic file selection
+  const fileInputRef = useRef(null);
+
+  // Enhanced drag handlers for full-page detection
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only activate on first enter with files
+    if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+      setIsDragActive(true);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only deactivate when leaving the entire window
+    // Check if the relatedTarget is null (leaving window) or not a child element
+    if (!e.relatedTarget || (!document.body.contains(e.relatedTarget))) {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Ensure dataTransfer effect is set to allow drop
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleFilesSelected(files);
+    }
+  };
+
+  // Helper functions for date picker
+  const getUserJoinDate = () => {
+    // Default to 1 year ago if no user join date is available
+    if (user && user.created_at) {
+      return new Date(user.created_at).toISOString().split('T')[0];
+    }
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    return oneYearAgo.toISOString().split('T')[0];
+  };
+
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const formatDateForDisplay = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+  };
+
+  const handleCalendarClick = (type) => {
+    setShowDatePicker(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const handleDateSelect = (type, value) => {
+    const dateField = type === 'start' ? 'startDate' : 'endDate';
+    const newDates = { ...selectedDates, [dateField]: value };
+    setSelectedDates(newDates);
+    
+    // Update filters if the filter change handler is available
+    if (onFilterChange && filters) {
+      onFilterChange({ 
+        ...filters, 
+        startDate: newDates.startDate, 
+        endDate: newDates.endDate 
+      });
+    }
+    
+    // Only close the date picker if a complete date is selected
+    // Check if the value is a complete date (YYYY-MM-DD format)
+    if (value && value.length === 10 && value.includes('-')) {
+      setShowDatePicker(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  // Close date picker when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Don't close if clicking on the input field, calendar icon, or dropdown
+      if (!event.target.closest('.date-input-wrapper') && 
+          !event.target.closest('.date-picker-dropdown') &&
+          !event.target.matches('input[type="date"]')) {
+        setShowDatePicker({ start: false, end: false });
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Add window-level event listeners for better drag detection
+  React.useEffect(() => {
+    const handleWindowDragEnter = (e) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+        setIsDragActive(true);
+      }
+    };
+
+    const handleWindowDragLeave = (e) => {
+      e.preventDefault();
+      // Only hide overlay if mouse leaves the entire window
+      if (e.clientX === 0 || e.clientY === 0 || e.clientX === window.innerWidth || e.clientY === window.innerHeight) {
+        setIsDragActive(false);
+      }
+    };
+
+    const handleWindowDrop = (e) => {
+      e.preventDefault();
+      setIsDragActive(false);
+    };
+
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('drop', handleWindowDrop);
+    window.addEventListener('dragover', (e) => e.preventDefault());
+
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('drop', handleWindowDrop);
+      window.removeEventListener('dragover', (e) => e.preventDefault());
+    };
+  }, []);
+
+  // File selection handler
+  const handleFilesSelected = (files) => {
+    const validFiles = files.filter(file => {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      return validTypes.includes(file.type) && file.size <= maxSize;
+    });
+    
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+      // Call the original handler with the first file for backwards compatibility
+      if (safeOnFileSelect) {
+        safeOnFileSelect(validFiles[0]);
+      }
+    }
+  };
+
+  const onFileInputChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      handleFilesSelected(files);
+    }
+  };
+
+  // Enhanced file select handler that triggers file input
+  const handleFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  // Remove file from selection
+  const removeFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Submit function that calls controller method
+  const handleSubmit = async () => {
+    if (selectedFiles.length === 0) {
+      alert('Please select at least one file to upload.');
+      return;
+    }
+
+    if (!user || !user.id) {
+      alert('User not authenticated. Please log in and try again.');
+      return;
+    }
+
+    try {
+      // Call controller method to handle business logic
+      const result = await onMultipleFileUpload?.(selectedFiles);
+      
+      if (result?.success) {
+        // Show success message and clear files
+        const fileNames = selectedFiles.map(f => f.name).join(', ');
+        setSuccessModalData({
+          fileNames,
+          fileCount: selectedFiles.length
+        });
+        setShowSuccessModal(true);
+        
+        // Auto-hide modal after 4 seconds
+        setTimeout(() => {
+          setShowSuccessModal(false);
+        }, 4000);
+        
+        // Clear selected files and reset form
+        setSelectedFiles([]);
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } else {
+        // Show error in UI
+        setSuccessModalData({
+          error: true,
+          message: result?.error || 'Upload failed. Please try again.'
+        });
+        setShowSuccessModal(true);
+        
+        setTimeout(() => {
+          setShowSuccessModal(false);
+        }, 4000);
+      }
+    } catch (error) {
+      console.error('Upload process failed:', error);
+      setSuccessModalData({
+        error: true,
+        message: `Upload failed: ${error.message || 'An unexpected error occurred. Please try again.'}`
+      });
+      setShowSuccessModal(true);
+      
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 4000);
+    }
   };
 
   // Mock reminder data
@@ -3590,10 +4413,68 @@ function UserHealthReportView({
   ];
 
   return (
-    <div className="health-report-container">
+    <div className={`health-report-container ${isDragActive ? 'drag-active' : ''}`}>
+      {/* Full Page Drop Overlay */}
+      {isDragActive && (
+        <div 
+          className="full-page-drop-overlay"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <div className="full-page-drop-content">
+            <div className="full-page-drop-icon">📁</div>
+            <h2>Drop your files here</h2>
+            <p>Release to upload your health reports</p>
+          </div>
+        </div>
+      )}
+      
       <div className="health-report-content">
+        {/* Success Modal */}
+        {showSuccessModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <button 
+                className="modal-close"
+                onClick={() => setShowSuccessModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+              <div className="modal-checkmark">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="11" fill={successModalData.error ? "#ef4444" : "#22c55e"} stroke="none"/>
+                  {successModalData.error ? (
+                    <path d="M8 8L16 16M8 16L16 8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  ) : (
+                    <path d="M7 12.5L10.5 16L17 8" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  )}
+                </svg>
+              </div>
+              <h2 className="modal-title" style={{ color: successModalData.error ? '#ef4444' : '#22c55e' }}>
+                {successModalData.error ? 'Upload Failed' : 'Upload Successful!'}
+              </h2>
+              <p className="modal-message">
+                {successModalData.error ? successModalData.message : `Successfully uploaded ${successModalData.fileCount} health report${successModalData.fileCount > 1 ? 's' : ''}!`}
+              </p>
+              {!successModalData.error && successModalData.fileNames && (
+                <div className="modal-file-list">
+                  <strong>Files uploaded:</strong><br/>
+                  {successModalData.fileNames}
+                </div>
+              )}
+              {!successModalData.error && (
+                <p className="modal-message" style={{fontSize: '14px', color: '#666', marginTop: '10px'}}>
+                  Your reports are now under review and will appear in your health records.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
         {/* Alerts and Messages */}
-        <AlertMessage alerts={alerts} />
+        {alerts && alerts.length > 0 && <AlertMessage alerts={alerts} />}
         {successMessage && <SuccessMessage message={successMessage} />}
         {errorMessage && <ErrorMessage error={errorMessage} />}
 
@@ -3602,19 +4483,19 @@ function UserHealthReportView({
           <div className="statistics-cards">
             <div className="stat-card">
               <div className="stat-label">Reminder this week</div>
-              <div className="stat-value">{statistics.reminderThisWeek}</div>
+              <div className="stat-value">{safeStatistics.reminderThisWeek || 0}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Overdue Health Report</div>
-              <div className="stat-value">{statistics.overdueHealthReport}</div>
+              <div className="stat-value">{safeStatistics.overdueHealthReport || 0}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Health Report Due Soon</div>
-              <div className="stat-value">{statistics.healthReportDueSoon}</div>
+              <div className="stat-value">{safeStatistics.healthReportDueSoon || 0}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Flagged Health Report</div>
-              <div className="stat-value">{statistics.flaggedHealthReport}</div>
+              <div className="stat-value">{safeStatistics.flaggedHealthReport || 0}</div>
             </div>
           </div>
         </div>
@@ -3625,16 +4506,139 @@ function UserHealthReportView({
             <h3>Upload Health Report</h3>
             <p className="upload-subtitle">PDF, JPG up to 10MB</p>
             
-            <div className="upload-drop-area">
+            {/* Form fields for report type and date */}
+            <div className="upload-form-fields" style={{ marginBottom: '1.5rem' }}>
+              <div className="form-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label htmlFor="reportType" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Type *</label>
+                  <select
+                    id="reportType"
+                    value={multiUploadForm?.reportType || 'Medical Report'}
+                    onChange={(e) => onMultiUploadFormChange?.('reportType', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'Poppins, sans-serif'
+                    }}
+                    required
+                  >
+                    <option value="Medical Report">Medical Report</option>
+                    <option value="Lab Test">Lab Test</option>
+                    <option value="Prescription">Prescription</option>
+                    <option value="Vaccination Record">Vaccination Record</option>
+                    <option value="Doctor's Visit Summary">Doctor's Visit Summary</option>
+                    <option value="Medical Image">Medical Image</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label htmlFor="reportDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Date *</label>
+                  <input
+                    type="date"
+                    id="reportDate"
+                    value={multiUploadForm?.reportDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => onMultiUploadFormChange?.('reportDate', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'Poppins, sans-serif'
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+              
+              {/* Custom report type field for "Others" */}
+              {multiUploadForm?.reportType === 'Others' && (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="customReportType" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Custom Report Type *</label>
+                  <input
+                    type="text"
+                    id="customReportType"
+                    placeholder="Please specify the report type"
+                    value={multiUploadForm?.customReportType || ''}
+                    onChange={(e) => onMultiUploadFormChange?.('customReportType', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'Poppins, sans-serif'
+                    }}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+            
+            <div 
+              className={`upload-drop-area ${isDragActive ? 'dragging' : ''} ${selectedFiles.length > 0 ? 'has-files' : ''}`}
+              onClick={handleFileSelect}
+            >
               <img src={uploadIcon} alt="Upload" className="upload-icon" />
               <p>Drag and drop files here or click to browse</p>
+              <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.5rem 0 0 0' }}>
+                PDF, JPG, PNG up to 10MB each (Multiple files supported)
+              </p>
             </div>
+
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              multiple
+              style={{ display: 'none' }}
+              ref={fileInputRef}
+              onChange={onFileInputChange}
+            />
+
+            {/* File Preview Section */}
+            {selectedFiles.length > 0 && (
+              <div className="file-preview-section">
+                <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
+                  Selected Files ({selectedFiles.length})
+                </h4>
+                <div className="file-preview-list">
+                  {selectedFiles.map((file, index) => (
+                    <div key={`${file.name}-${index}`} className="file-preview-item">
+                      <div className="file-icon">
+                        {file.type.startsWith('image/') ? '🖼️' : '📄'}
+                      </div>
+                      <div className="file-info">
+                        <div className="file-name" title={file.name}>{file.name}</div>
+                        <div className="file-size">{formatFileSize(file.size)}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="remove-file-btn"
+                        onClick={() => removeFile(index)}
+                        title="Remove file"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button 
               className="btn btn-primary btn-submit" 
-              onClick={onUploadSubmit}
+              onClick={handleSubmit}
+              disabled={selectedFiles.length === 0}
+              style={{
+                opacity: selectedFiles.length === 0 ? 0.6 : 1,
+                cursor: selectedFiles.length === 0 ? 'not-allowed' : 'pointer'
+              }}
             >
-              Submit
+              Submit ({selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''})
             </button>
           </div>
         </div>
@@ -3713,23 +4717,24 @@ function UserHealthReportView({
           <div className="search-bar-container">
             <div className="search-input-group">
               <div className="search-input">
-                <img src={searchIcon} alt="Search" className="search-icon" />
+                <img src={searchIcon} alt="Search" className="search-icon" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)', marginLeft: '12px'}} />
                 <input 
                   type="text" 
                   placeholder="Search health reports, providers, titles"
-                  value={searchKey}
-                  onChange={onSearchChange}
+                  value={searchKey || ''}
+                  onChange={safeOnSearchChange}
                 />
                 <button className="clear-search">×</button>
               </div>
               
               <button className="btn-filter">
-                <img src={filterIcon} alt="Filter" />
+                <img src={filterIcon} alt="Filter" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
                 Filter
               </button>
               
               <button className="btn-sort">
-                <span>Sort</span>
+                <img src={sortIcon} alt="Sort" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
+                Sort
               </button>
             </div>
 
@@ -3760,18 +4765,84 @@ function UserHealthReportView({
               <div className="filter-group">
                 <label>Date Range</label>
                 <div className="date-inputs">
-                  <div className="date-input">
-                    <input type="text" placeholder="Start date (DD/MM/YYYY)" />
-                    <img src={calendarIcon} alt="Calendar" className="calendar-icon" />
+                  <div className="date-input-wrapper" style={{position: 'relative'}}>
+                    <div className="date-input">
+                      <input 
+                        type="text" 
+                        placeholder="Start date (DD/MM/YYYY)" 
+                        value={formatDateForDisplay(selectedDates.startDate)}
+                        readOnly
+                      />
+                      <img 
+                        src={calendarIcon} 
+                        alt="Calendar" 
+                        className="calendar-icon" 
+                        style={{cursor: 'pointer', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}}
+                        onClick={() => handleCalendarClick('start')}
+                      />
+                    </div>
+                    {showDatePicker.start && (
+                      <div className="date-picker-dropdown">
+                        <input
+                          type="date"
+                          min={getUserJoinDate()}
+                          max={getTodayDate()}
+                          value={selectedDates.startDate || ''}
+                          onChange={(e) => handleDateSelect('start', e.target.value)}
+                          onBlur={(e) => {
+                            // Keep picker open if user is still interacting with it
+                            setTimeout(() => {
+                              if (!e.target.matches(':focus')) {
+                                setShowDatePicker(prev => ({ ...prev, start: false }));
+                              }
+                            }, 100);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                   <span className="date-separator">to</span>
-                  <div className="date-input">
-                    <input type="text" placeholder="End date (DD/MM/YYYY)" />
-                    <img src={calendarIcon} alt="Calendar" className="calendar-icon" />
+                  <div className="date-input-wrapper" style={{position: 'relative'}}>
+                    <div className="date-input">
+                      <input 
+                        type="text" 
+                        placeholder="End date (DD/MM/YYYY)" 
+                        value={formatDateForDisplay(selectedDates.endDate)}
+                        readOnly
+                      />
+                      <img 
+                        src={calendarIcon} 
+                        alt="Calendar" 
+                        className="calendar-icon" 
+                        style={{cursor: 'pointer', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}}
+                        onClick={() => handleCalendarClick('end')}
+                      />
+                    </div>
+                    {showDatePicker.end && (
+                      <div className="date-picker-dropdown">
+                        <input
+                          type="date"
+                          min={selectedDates.startDate || getUserJoinDate()}
+                          max={getTodayDate()}
+                          value={selectedDates.endDate || ''}
+                          onChange={(e) => handleDateSelect('end', e.target.value)}
+                          onBlur={(e) => {
+                            // Keep picker open if user is still interacting with it
+                            setTimeout(() => {
+                              if (!e.target.matches(':focus')) {
+                                setShowDatePicker(prev => ({ ...prev, end: false }));
+                              }
+                            }, 100);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
 
+            <div className="filter-row two-columns">
               <div className="filter-group">
                 <label>Hospital / Clinic name</label>
                 <input type="text" placeholder="Type to search hospitals or clinics" />
@@ -3784,11 +4855,12 @@ function UserHealthReportView({
                   <button className="filter-option">Due Soon</button>
                   <button className="filter-option active">Up to Date</button>
                 </div>
-                <div className="filter-actions">
-                  <button className="btn-reset">Reset</button>
-                  <button className="btn-apply">Apply</button>
-                </div>
               </div>
+            </div>
+
+            <div className="filter-actions">
+              <button className="btn-reset">Reset</button>
+              <button className="btn-apply">Apply</button>
             </div>
           </div>
 
@@ -3883,6 +4955,7 @@ function UserHealthReportView({
 export default function HealthMonitoringView({
   // User role
   userRole,
+  user, // Add user prop
 
   // Admin props
   isLoading,
@@ -3910,6 +4983,7 @@ export default function HealthMonitoringView({
   reports,
   uploadForm,
   shareForm,
+  multiUploadForm,
   searchKey,
   filters,
   sortBy,
@@ -3925,6 +4999,8 @@ export default function HealthMonitoringView({
   onUploadClick,
   onCancelUploadModal,
   onUploadFormChange,
+  onMultiUploadFormChange,
+  onMultipleFileUpload,
   onDragEnter,
   onDragLeave,
   onDragOver,
@@ -4009,6 +5085,8 @@ export default function HealthMonitoringView({
       isDragging={isDragging}
       errors={errors}
       activeTab={activeTab || 'archived'}
+      statistics={statistics}
+      user={user}
       onUploadClick={onUploadClick}
       onCancelUploadModal={onCancelUploadModal}
       onUploadFormChange={onUploadFormChange}

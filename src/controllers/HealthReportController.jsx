@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import HealthMonitoringView from '../views/HealthMonitoringView'
+import { supabase } from '../config/supabase'
+import { uploadDocument } from '../services/fileUploadService'
 import {
   getHealthReports,
   uploadHealthReport,
@@ -17,7 +19,6 @@ import {
   flagHealthReport,
   archiveHealthReport
 } from '../models/HealthReport'
-import { getCurrentUser } from '../services/authService'
 import { useAuth } from '../components/context/AuthContext'
 
 function HealthReportController() {
@@ -75,6 +76,13 @@ function HealthReportController() {
     file: null
   })
 
+  // Multi-file upload form state
+  const [multiUploadForm, setMultiUploadForm] = useState({
+    reportType: 'Medical Report',
+    reportDate: new Date().toISOString().split('T')[0], // Default to today
+    customReportType: ''
+  })
+
   // Share form state
   const [shareForm, setShareForm] = useState({
     shareOption: '',
@@ -91,9 +99,9 @@ function HealthReportController() {
       try {
         setIsLoading(true)
         
-        // Get current user
-        const user = await getCurrentUser()
+        // Use user from AuthContext instead of making additional API call
         if (!user) {
+          console.warn('User not found in AuthContext')
           navigate('/login')
           return
         }
@@ -113,7 +121,7 @@ function HealthReportController() {
     }
 
     initialize()
-  }, [navigate])
+  }, [navigate, user])
 
   // Fetch reports
   const fetchReports = async (userId) => {
@@ -139,12 +147,7 @@ function HealthReportController() {
       if (result.success) {
         setReports(result.data)
         setFilteredReports(result.data)
-        
-        if (result.data.length === 0) {
-          setError('No data found')
-        } else {
-          setError(null)
-        }
+        setError(null)
       } else {
         setError(result.error)
         setReports([])
@@ -238,6 +241,11 @@ function HealthReportController() {
     setUploadForm(prev => ({ ...prev, [field]: value }))
   }, [])
 
+  // Handle multi-upload form change
+  const handleMultiUploadFormChange = useCallback((field, value) => {
+    setMultiUploadForm(prev => ({ ...prev, [field]: value }))
+  }, [])
+
   // Handle upload submit
   const handleUploadSubmit = async () => {
     try {
@@ -297,6 +305,127 @@ function HealthReportController() {
     } finally {
       setIsUploading(false)
     }
+  }
+
+  // Handle multiple file upload - NEW BUSINESS LOGIC
+  const handleMultipleFileUpload = async (files) => {
+    try {
+      console.log('🚀 Starting upload process for', files.length, 'files');
+      
+      const uploadResults = [];
+      const healthReportRecords = [];
+      
+      // Determine report type
+      const reportType = multiUploadForm.reportType === 'Others' 
+        ? multiUploadForm.customReportType 
+        : multiUploadForm.reportType;
+      
+      if (!reportType) {
+        return {
+          success: false,
+          error: 'Please select a report type or specify custom type for "Others"'
+        };
+      }
+      
+      // Upload each file to Supabase Storage
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(`📤 Uploading file ${i + 1}/${files.length}:`, file.name);
+        
+        // Upload file using the fileUploadService
+        const uploadResult = await uploadDocument(
+          file,
+          currentUser.id,
+          'health_report',
+          { 
+            bucket: 'health-reports',
+            signedUrlDuration: 31536000 // 1 year
+          }
+        );
+        
+        if (uploadResult.error) {
+          console.error('❌ Upload failed for', file.name, ':', uploadResult.error);
+          return {
+            success: false,
+            error: `Failed to upload ${file.name}: ${uploadResult.error.message}`
+          };
+        }
+        
+        uploadResults.push({
+          file,
+          uploadResult
+        });
+        
+        // Prepare health report record
+        const healthReportRecord = {
+          user_id: currentUser.id,
+          application_id: null, // Will be set if linked to an application
+          report_date: multiUploadForm.reportDate,
+          report_type: reportType,
+          report_file_url: uploadResult.url,
+          notes: '', // Left empty for admin purpose
+          health_report_status: 'Pending',
+          due_status: 'Up to Date'
+        };
+        
+        healthReportRecords.push(healthReportRecord);
+        
+        console.log('✅ File uploaded successfully:', {
+          fileName: file.name,
+          url: uploadResult.url,
+          size: formatFileSize(file.size)
+        });
+      }
+      
+      // Insert health report records into database
+      console.log('💾 Inserting health report records into database...');
+      
+      const { data: insertedRecords, error: insertError } = await supabase
+        .from('health_reports')
+        .insert(healthReportRecords)
+        .select();
+      
+      if (insertError) {
+        console.error('❌ Database insertion failed:', insertError);
+        return {
+          success: false,
+          error: 'Files uploaded but failed to save records to database. Please contact support.'
+        };
+      }
+      
+      console.log('✅ Health report records created successfully:', insertedRecords);
+      
+      // Refresh reports
+      await fetchReports(currentUser.id);
+      await checkAlerts(currentUser.id);
+      
+      console.log('🎊 Upload process completed successfully!');
+      
+      return {
+        success: true,
+        data: {
+          uploadResults,
+          healthReportRecords: insertedRecords,
+          fileCount: files.length
+        }
+      };
+      
+    } catch (error) {
+      console.error('💥 Upload process failed:', error);
+      return {
+        success: false,
+        error: error.message || 'An unexpected error occurred. Please try again.'
+      };
+    }
+  }
+
+  // Helper function for file size formatting
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   // Handle report selection
@@ -540,6 +669,9 @@ function HealthReportController() {
       // User role
       userRole={userRole}
 
+      // User data
+      user={currentUser}
+
       // Admin props
       isLoading={isLoading}
       statistics={statistics}
@@ -582,6 +714,7 @@ function HealthReportController() {
       // Forms
       uploadForm={uploadForm}
       shareForm={shareForm}
+      multiUploadForm={multiUploadForm}
       
       // Handlers
       onSearchChange={setSearchKey}
@@ -597,7 +730,9 @@ function HealthReportController() {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onUploadFormChange={handleUploadFormChange}
+      onMultiUploadFormChange={handleMultiUploadFormChange}
       onUploadSubmit={handleUploadSubmit}
+      onMultipleFileUpload={handleMultipleFileUpload}
       onShareClick={handleShareClick}
       onShareFormChange={handleShareFormChange}
       onShareFormSubmit={handleShareSubmit}

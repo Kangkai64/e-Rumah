@@ -2,7 +2,7 @@
 // Manages authentication state globally
 
 import { createContext, useContext, useState, useEffect } from 'react'
-import { getCurrentUser, onAuthStateChange } from '../../services/authService'
+import { onAuthStateChange } from '../../services/authService'
 import { supabase } from '../../config/supabase'
 
 const AuthContext = createContext({})
@@ -106,7 +106,7 @@ export function AuthProvider({ children }) {
     // Check current session on mount
     const initAuth = async () => {
       try {
-        const { user: authUser } = await getCurrentUser()
+        const { data: { user: authUser } } = await supabase.auth.getUser()
         await fetchUserData(authUser)
       } catch (error) {
         console.error('Error getting user:', error)
