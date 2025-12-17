@@ -62,7 +62,7 @@ function App() {
               <Footer />
             </>
           } />
-                    
+
           <Route path="/about" element={
             <>
               <Header />
@@ -70,12 +70,12 @@ function App() {
               <Footer />
             </>
           } />
-          
+
           <Route path="/eligibility-check" element={<EligibilityCheck />} />
           <Route path="/login" element={<UserLoginPage />} />
           <Route path="/staff-login" element={<StaffLoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
-          
+
           <Route path="/application" element={
             <ProtectedRoute>
               <>
@@ -167,6 +167,16 @@ function App() {
             </>
           } />
 
+          <Route path="/user/health-reports" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <HealthReportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requireRole="admin">
@@ -182,6 +192,16 @@ function App() {
                   <h1>Application Review</h1>
                   <p>Review application details here.</p>
                 </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/health-reports" element={
+            <ProtectedRoute requireRole="admin">
+              <>
+                <Header />
+                <HealthReportController />
                 <Footer />
               </>
             </ProtectedRoute>
