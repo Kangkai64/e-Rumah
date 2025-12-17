@@ -10,6 +10,8 @@ import FAQs from './components/landing/FAQs'
 import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
+import AdminController from './controllers/AdminController.jsx'
+import UserDashboardController from './controllers/UserDashboardController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -57,10 +59,7 @@ function App() {
             <ProtectedRoute requireRole="user">
               <>
                 <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>User Dashboard</h1>
-                  <p>Welcome to your dashboard!</p>
-                </div>
+                <UserDashboardController />
                 <Footer />
               </>
             </ProtectedRoute>
@@ -134,6 +133,26 @@ function App() {
               <PropertyCalculatorController />
               <Footer />
             </>
+          } />
+
+          {/* Admin Routes */}
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute requireRole="admin">
+              <AdminController />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/review/:applicationId" element={
+            <ProtectedRoute requireRole="admin">
+              <>
+                <Header />
+                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
+                  <h1>Application Review</h1>
+                  <p>Review application details here.</p>
+                </div>
+                <Footer />
+              </>
+            </ProtectedRoute>
           } />
         </Routes>
       </div>
