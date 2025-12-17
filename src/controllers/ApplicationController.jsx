@@ -259,9 +259,9 @@ function ApplicationController() {
         setCurrentUser(user)
         console.log('👤 User authenticated:', user.id)
 
-        // Load application data from Supabase
-        const { formData: loadedData, currentStep: loadedStep, application, error } = 
-          await loadApplicationData(user.id)
+        // Get or create application (includes draft applications)
+        const { getOrCreateApplication } = await import('../services/applicationService')
+        const { application, applicationData, error } = await getOrCreateApplication(user.id)
 
         if (error) {
           console.error('❌ Error loading from Supabase:', error)
@@ -271,12 +271,18 @@ function ApplicationController() {
           setCurrentStep(localData.currentStep)
           console.log('📂 Using localStorage fallback')
         } else {
-          // Successfully loaded from Supabase
-          // Note: ProtectedRoute handles redirecting submitted applications to dashboard
-          setFormData(prev => ({ ...prev, ...loadedData }))
-          setCurrentStep(loadedStep)
+          // Successfully loaded or created application
           setApplicationId(application?.id)
-          console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', loadedStep, 'Fields:', Object.keys(loadedData).length)
+          
+          if (applicationData?.form_data && Object.keys(applicationData.form_data).length > 0) {
+            // Has existing data - load it
+            setFormData(prev => ({ ...prev, ...applicationData.form_data }))
+            setCurrentStep(applicationData.current_step || 1)
+            console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(applicationData.form_data).length)
+          } else {
+            // New application - keep default formData
+            console.log('✅ Created new application - App ID:', application?.id)
+          }
         }
 
         window.scrollTo(0, 0)
@@ -602,6 +608,7 @@ function ApplicationController() {
 
     try {
       let fileUrl = ''
+      const uploadKey = arrayIndex !== null ? `${documentType}_${arrayIndex}` : documentType
       
       if (arrayIndex !== null) {
         const fieldName = documentType.includes('payslip') ? 'payslips' : 'bankStatements'
@@ -634,6 +641,13 @@ function ApplicationController() {
         }
         
         return newData
+      })
+
+      // Clear upload progress to prevent "Uploading" stuck state
+      setUploadProgress(prev => {
+        const newProgress = { ...prev }
+        delete newProgress[uploadKey]
+        return newProgress
       })
 
       console.log('✅ File deleted')
