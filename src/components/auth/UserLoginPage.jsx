@@ -88,7 +88,7 @@ export default function UserLoginPage() {
               <span>e-Rumah</span>
             </div>
 
-            <h2 className="auth-title">Login</h2>
+            <h2 className="auth-title">User Login</h2>
             <p className="auth-description">Enter your email and password</p>
 
             {error && <div className="error-box">{error}</div>}

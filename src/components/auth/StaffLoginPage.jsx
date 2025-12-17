@@ -92,7 +92,7 @@ export default function StaffLoginPage() {
               <span>e-Rumah</span>
             </div>
 
-            <h2 className="auth-title">Login</h2>
+            <h2 className="auth-title">Staff Login</h2>
             <p className="auth-description">Enter your email and password</p>
 
             {error && <div className="error-box">{error}</div>}
@@ -124,18 +124,7 @@ export default function StaffLoginPage() {
                 />
               </div>
 
-              <div className="form-row">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="rememberMe"
-                    checked={formData.rememberMe}
-                    onChange={handleChange}
-                  />
-                  <span>Remember me</span>
-                </label>
-                <Link to="/forgot-password" className="forgot-link">Forgot Password</Link>
-              </div>
+              <p className='eligibility-note'>Contact developer to get admin/customer support account</p>
 
               <div className="form-buttons">
                 <button type="submit" className="auth-btn primary" disabled={loading}>
