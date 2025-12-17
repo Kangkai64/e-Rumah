@@ -26,26 +26,15 @@ export function AuthProvider({ children }) {
       setUser(null)
       setUserRole(null)
       setApplicationStatus(null)
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('applicationStatus')
       return
     }
-
-    // ✅ Fix 2: Set user IMMEDIATELY (before DB queries)
-    setUser(authUser)
-    
-    // ✅ Fix 4: Load cached values first for instant UI
-    const cachedRole = localStorage.getItem('userRole')
-    const cachedAppStatus = localStorage.getItem('applicationStatus')
-    if (cachedRole) setUserRole(cachedRole)
-    if (cachedAppStatus) setApplicationStatus(cachedAppStatus)
 
     try {
       console.log('🔍 Fetching user data for:', authUser.id)
       
-      // Fetch user role with 5s timeout
+      // Fetch user role from users table with timeout (reduced to 3s)
       const userTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('UserTimeout')), 5000)
+        setTimeout(() => reject(new Error('UserTimeout')), 3000)
       )
       
       const fetchPromise = supabase
@@ -54,70 +43,62 @@ export function AuthProvider({ children }) {
         .eq('id', authUser.id)
         .maybeSingle()
 
-      // ✅ Fix 1: Return undefined on timeout (not null)
-      const result = await Promise.race([
+      const { data: userData } = await Promise.race([
         fetchPromise,
         userTimeout
       ]).catch(() => {
-        return { data: undefined, timedOut: true }
+        // Silently handle timeout - not an error, just slow query
+        return { data: null, error: null }
       })
 
-      // ✅ Don't override on timeout - keep cached state
-      if (result.timedOut || result.data === undefined) {
-        console.log('⏳ User query timed out, keeping cached state')
-        return
-      }
+      // Default to 'user' role (will check application status regardless)
+      const role = userData?.role || 'user'
+      setUserRole(role)
 
-      const { data: userData } = result
-
-      if (userData) {
-        const role = userData.role || 'user'
-        setUserRole(role)
-        localStorage.setItem('userRole', role)
-        console.log('✅ User role loaded:', role)
-
-        // Check application status only for 'user' role
-        if (role === 'user') {
-          const appTimeout = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('AppTimeout')), 5000)
-          )
-          
-          const appFetchPromise = supabase
-            .from('applications')
-            .select('status')
-            .eq('user_id', authUser.id)
-            .in('status', ['submitted', 'underReviewed', 'approved'])
-            .maybeSingle()
-
-          const appResult = await Promise.race([
-            appFetchPromise,
-            appTimeout
-          ]).catch(() => {
-            return { data: undefined, timedOut: true }
-          })
-
-          // ✅ Don't override on timeout
-          if (appResult.timedOut || appResult.data === undefined) {
-            console.log('⏳ Application query timed out, keeping cached state')
-            return
-          }
-
-          const isComplete = appResult.data ? 'complete' : 'incomplete'
-          setApplicationStatus(isComplete)
-          localStorage.setItem('applicationStatus', isComplete)
-          console.log('📊 Application status:', isComplete)
-        }
+      if (!userData) {
+        console.warn('⚠️ User not found in users table, defaulting to user role')
       } else {
-        // User record doesn't exist - set defaults and cache them
-        console.warn('⚠️ User record not found, using defaults')
-        setUserRole('user')
-        setApplicationStatus('incomplete')
-        localStorage.setItem('userRole', 'user')
-        localStorage.setItem('applicationStatus', 'incomplete')
+        console.log('✅ User data:', userData)
       }
+
+      // Check if user has completed application (for 'user' role) - with timeout
+      if (role === 'user') {
+        const appTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AppTimeout')), 3000)
+        )
+        
+        const appFetchPromise = supabase
+          .from('applications')
+          .select('status')
+          .eq('user_id', authUser.id)
+          .in('status', ['submitted', 'underReviewed', 'approved'])
+          .maybeSingle()
+
+        const result = await Promise.race([
+          appFetchPromise,
+          appTimeout
+        ]).catch((err) => {
+          console.log('ℹ️ Timeout checking application status')
+          return { data: null, error: err, timedOut: true }
+        })
+
+        // Only update status if query succeeded (not timed out)
+        if (!result.timedOut) {
+          const isComplete = result.data ? 'complete' : 'incomplete'
+          console.log('📊 Application status:', isComplete, '- App data:', result.data)
+          setApplicationStatus(isComplete)
+        } else {
+          console.log('⚠️ Keeping existing application status due to timeout')
+        }
+      }
+
+      setUser(authUser)
     } catch (error) {
       console.error('❌ Error fetching user data:', error)
-      // Don't override - keep whatever state exists
+      // Fallback: set user with default role
+      setUserRole('user')
+      setApplicationStatus('incomplete')
+      setUser(authUser)
     }
   }
 
@@ -138,23 +119,12 @@ export function AuthProvider({ children }) {
 
     // Listen to auth state changes
     const { data: { subscription } } = onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth event:', event)
-      
-      if (event === 'SIGNED_IN') {
-        // ✅ Only refetch if it's a different user
-        if (!user || user.id !== session?.user?.id) {
-          console.log('👤 New user signed in, fetching data...')
-          await fetchUserData(session?.user ?? null)
-        } else {
-          console.log('🔁 Same user, skipping refetch')
-          setUser(session?.user)
-        }
-      } else if (event === 'SIGNED_OUT') {
-        await fetchUserData(null)
+      // Only fetch full user data on SIGNED_IN or SIGNED_OUT events
+      // Don't refetch on TOKEN_REFRESHED to avoid unnecessary queries
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        await fetchUserData(session?.user ?? null)
       } else if (event === 'TOKEN_REFRESHED') {
-        console.log('🔄 Token refreshed, keeping existing data')
-        // Just update user object with fresh token
-        if (session?.user) setUser(session.user)
+        console.log('🔄 Token refreshed, keeping existing user data')
       }
       setLoading(false)
     })
