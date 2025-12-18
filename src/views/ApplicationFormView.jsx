@@ -332,8 +332,8 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label className="checkbox-label">
-          <input type="checkbox" name="malaysian" checked={formData.malaysian} onChange={handleChange} />
-          <span>Malaysian</span>
+          <input type="checkbox" name="malaysian" checked={formData.malaysian} onChange={handleChange} required />
+          <span>Malaysian *</span>
         </label>
       </div>
 
@@ -562,6 +562,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           uploading={uploadProgress?.applicantNRIC}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload a clear copy of your NRIC (Max 10MB)"
+          error={errors.applicantNRIC}
         />
 
         {formData.isJointApplicant && (
@@ -574,28 +575,33 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
             uploading={uploadProgress?.jointApplicantNRIC}
             accept=".pdf,.jpg,.jpeg,.png"
             hint="Upload a clear copy of joint applicant's NRIC (Max 10MB)"
+            error={errors.jointApplicantNRIC}
           />
         )}
 
         <DocumentUpload
           label="Birth Certificate"
+          required
           documentData={formData.documents?.birthCertificate}
           onUpload={(e) => handleFileUpload(e, 'birthCertificate')}
           onDelete={() => handleFileDelete('birthCertificate')}
           uploading={uploadProgress?.birthCertificate}
           accept=".pdf,.jpg,.jpeg,.png"
-          hint="Upload birth certificate if applicable (Max 10MB)"
+          hint="Upload birth certificate (Max 10MB)"
+          error={errors.birthCertificate}
         />
 
         {formData.maritalStatus === 'Married' && (
           <DocumentUpload
             label="Marriage Certificate"
+            required
             documentData={formData.documents?.marriageCertificate}
             onUpload={(e) => handleFileUpload(e, 'marriageCertificate')}
             onDelete={() => handleFileDelete('marriageCertificate')}
             uploading={uploadProgress?.marriageCertificate}
             accept=".pdf,.jpg,.jpeg,.png"
             hint="Upload marriage certificate (Max 10MB)"
+            error={errors.marriageCertificate}
           />
         )}
       </div>
@@ -617,6 +623,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
               uploading={uploadProgress?.[`payslips_${index}`]}
               accept=".pdf,.jpg,.jpeg,.png"
               hint={`Upload payslip for month ${index + 1} (Max 10MB)`}
+              error={errors[`payslip${index + 1}`]}
             />
           ))}
         </div>
@@ -634,6 +641,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
               uploading={uploadProgress?.[`bankStatements_${index}`]}
               accept=".pdf,.jpg,.jpeg,.png"
               hint={`Upload bank statement for month ${index + 1} (Max 10MB)`}
+              error={errors[`bankStatement${index + 1}`]}
             />
           ))}
         </div>
@@ -647,6 +655,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           uploading={uploadProgress?.epfStatement}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload your latest EPF statement (Max 10MB)"
+          error={errors.epfStatement}
         />
       </div>
 
@@ -804,8 +813,8 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label className="checkbox-label">
-              <input type="checkbox" name="jMalaysian" checked={formData.jMalaysian} onChange={handleChange} />
-              <span>Malaysian</span>
+              <input type="checkbox" name="jMalaysian" checked={formData.jMalaysian} onChange={handleChange} required />
+              <span>Malaysian *</span>
             </label>
           </div>
 
@@ -1054,14 +1063,28 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
         <div className="form-group">
           <label>Postcode *</label>
-          <input 
-            type="text" 
+          <select 
             name="propertyPostcode" 
             value={formData.propertyPostcode} 
             onChange={handleChange} 
             className={errors.propertyPostcode ? 'error' : ''}
-            placeholder="5 digits"
-          />
+            required
+          >
+            <option value="">Select postcode</option>
+            <option value="41100">41100</option>
+            <option value="42100">42100</option>
+            <option value="42000">42000</option>
+            <option value="45800">45800</option>
+            <option value="45600">45600</option>
+            <option value="42500">42500</option>
+            <option value="42600">42600</option>
+            <option value="45000">45000</option>
+            <option value="42700">42700</option>
+            <option value="43950">43950</option>
+            <option value="42200">42200</option>
+            <option value="41300">41300</option>
+            <option value="41050">41050</option>
+          </select>
           <ErrorMessage error={errors.propertyPostcode} />
         </div>
 
@@ -1256,6 +1279,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           uploading={uploadProgress?.grantTitle}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload copy of Grant or Title Deed (Max 10MB)"
+          error={errors.grantTitle}
         />
 
         <DocumentUpload
@@ -1267,6 +1291,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           uploading={uploadProgress?.saleAgreement}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload Sale & Purchase Agreement or Deed of Assignment (Max 10MB)"
+          error={errors.saleAgreement}
         />
 
         <DocumentUpload
@@ -1278,6 +1303,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           uploading={uploadProgress?.valuationReport}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload property valuation report (Max 10MB)"
+          error={errors.valuationReport}
         />
 
         <DocumentUpload
@@ -1289,6 +1315,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           uploading={uploadProgress?.fireInsurance}
           accept=".pdf,.jpg,.jpeg,.png"
           hint="Upload copy of fire insurance policy (Max 10MB)"
+          error={errors.fireInsuranceDoc}
         />
 
         {formData.propertyEncumbered === 'yes' && (
@@ -1301,6 +1328,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             uploading={uploadProgress?.propertyLoanStatement}
             accept=".pdf,.jpg,.jpeg,.png"
             hint="Upload property loan statement (Max 10MB)"
+            error={errors.propertyLoanStatement}
           />
         )}
       </section>
@@ -1413,8 +1441,8 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
 
         <div className="form-group">
           <label className="checkbox-label">
-            <input type="checkbox" name="nominee1Malaysian" checked={formData.nominee1Malaysian} onChange={handleChange} />
-            <span>Malaysian</span>
+            <input type="checkbox" name="nominee1Malaysian" checked={formData.nominee1Malaysian} onChange={handleChange} required />
+            <span>Malaysian *</span>
           </label>
         </div>
 
@@ -1636,8 +1664,8 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label className="checkbox-label">
-              <input type="checkbox" name="nominee2Malaysian" checked={formData.nominee2Malaysian} onChange={handleChange} />
-              <span>Malaysian</span>
+              <input type="checkbox" name="nominee2Malaysian" checked={formData.nominee2Malaysian} onChange={handleChange} required />
+              <span>Malaysian *</span>
             </label>
           </div>
 
@@ -2383,7 +2411,7 @@ function Step7Review({ formData }) {
           </div>
         )}
         {formData.fireInsurance === 'notAvailable' && (
-          <div className="review-field"><strong>Reason Not Available:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
+          <div className="review-field"><strong>Insurance to be purchased by Organization:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
         )}
         <div className="review-field"><strong>Renewal Status:</strong> {getValue(formData.renewalFireInsurance)}</div>
       </div>
@@ -2434,21 +2462,17 @@ function Step7Review({ formData }) {
               <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee2ResidencePhone)}</div>
               <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee2Telephone)}</div>
             </div>
-            <div className="review-grid">
-              <div className="review-field"><strong>Occupation:</strong> {getValue(formData.nominee2Occupation)}</div>
-              <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.nominee2EmployerName)}</div>
-            </div>
           </>
         )}
       </div>
 
       <div className="info-box" style={{marginTop: '2rem', padding: '1.5rem', backgroundColor: '#e3f2fd', border: '2px solid #2196f3', borderRadius: '4px'}}>
         <h4 style={{marginTop: 0, color: '#1976d2'}}>✓ Ready to Submit?</h4>
-        <p>Click the <strong>"Generate PDF & Submit"</strong> button below to:</p>
+        <p>Click the <strong>"Submit"</strong> button below to:</p>
         <ol style={{marginLeft: '1.5rem', marginTop: '0.5rem'}}>
           <li>Generate a filled PDF of your SSB Application Form</li>
           <li>Download the PDF automatically to your device</li>
-          <li>Submit your application to Selangor State Government</li>
+          <li>Submit your application to e-Rumah</li>
         </ol>
         <p style={{marginTop: '1rem', marginBottom: 0, color: '#f57c00'}}><strong>⚠ Important:</strong> Review all information carefully. If you find any errors, use the "Back" button to return to the relevant step and make corrections before submitting.</p>
       </div>

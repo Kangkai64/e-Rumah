@@ -8,8 +8,9 @@ const DocumentUpload = ({
   onUpload,
   onDelete,
   uploading = false,
-  accept = ".pdf",
-  hint = "PDF only (Max 10MB)"
+  accept = ".pdf,.jpg,.jpeg,.png",
+  hint = "PDF, JPG, PNG (Max 10MB)",
+  error = null
 }) => {
   return (
     <div className="document-upload-field">
@@ -76,6 +77,7 @@ const DocumentUpload = ({
           </div>
         </div>
       )}
+      {error && <span className="error-message" style={{color: '#A8202D', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block'}}>{error}</span>}
     </div>
   )
 }
