@@ -177,6 +177,26 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/application/:applicationId/health-reports" element={
+            <ProtectedRoute>
+              <>
+                <Header />
+                <HealthReportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/maintainApplication/:applicationId/health-reports" element={
+            <ProtectedRoute>
+              <>
+                <Header />
+                <HealthReportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requireRole="admin">

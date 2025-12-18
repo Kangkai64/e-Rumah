@@ -21,7 +21,9 @@ const HealthReport = {
           report_type: reportData.reportType,
           report_date: reportData.reportDate,
           report_file_url: reportData.reportFileUrl,
-          notes: reportData.notes
+          notes: reportData.notes,
+          health_report_status: reportData.healthReportStatus || 'Pending',
+          due_status: reportData.dueStatus || 'Up to Date'
         }])
         .select()
         .single()
@@ -231,6 +233,58 @@ const HealthReport = {
       return { success: true, data }
     } catch (error) {
       console.error('Error fetching reports by application:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Update health report status
+   * @param {string} reportId - Health report ID
+   * @param {string} status - New status
+   * @returns {Promise<Object>} Updated health report
+   */
+  async updateStatus(reportId, status) {
+    try {
+      const { data, error } = await supabase
+        .from('health_reports')
+        .update({ 
+          health_report_status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error updating health report status:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Update due status
+   * @param {string} reportId - Health report ID
+   * @param {string} dueStatus - New due status
+   * @returns {Promise<Object>} Updated health report
+   */
+  async updateDueStatus(reportId, dueStatus) {
+    try {
+      const { data, error } = await supabase
+        .from('health_reports')
+        .update({ 
+          due_status: dueStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reportId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error updating due status:', error)
       return { success: false, error: error.message }
     }
   }
@@ -805,3 +859,47 @@ export const getAllHealthReports = async (filters = {}) => {
 }
 
 export default HealthReport
+
+/**
+ * Get health reports by application ID
+ * @param {string} applicationId - Application ID
+ * @returns {Promise<Object>} Health reports
+ */
+export const getHealthReportsByApplication = async (applicationId) => {
+  try {
+    return await HealthReport.getByApplication(applicationId)
+  } catch (error) {
+    console.error('Error in getHealthReportsByApplication:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update health report status
+ * @param {string} reportId - Health report ID
+ * @param {string} status - New status ('Pending', 'Reviewed', 'Flagged')
+ * @returns {Promise<Object>} Updated health report
+ */
+export const updateHealthReportStatus = async (reportId, status) => {
+  try {
+    return await HealthReport.updateStatus(reportId, status)
+  } catch (error) {
+    console.error('Error in updateHealthReportStatus:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update health report due status
+ * @param {string} reportId - Health report ID
+ * @param {string} dueStatus - New due status ('Overdue', 'Due Soon', 'Up to Date')
+ * @returns {Promise<Object>} Updated health report
+ */
+export const updateHealthReportDueStatus = async (reportId, dueStatus) => {
+  try {
+    return await HealthReport.updateDueStatus(reportId, dueStatus)
+  } catch (error) {
+    console.error('Error in updateHealthReportDueStatus:', error)
+    return { success: false, error: error.message }
+  }
+}

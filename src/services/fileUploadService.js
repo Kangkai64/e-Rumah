@@ -64,14 +64,49 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
       return { url: null, fileName: null, uploadedAt: null, error }
     }
 
-    // Create signed URL (valid for 1 year) for private bucket with RLS
+    console.log('✅ File uploaded to storage:', { filePath, bucket })
+
+    // Small delay to ensure file is fully committed to storage
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // Verify file exists before creating signed URL
+    const { data: listData, error: listError } = await supabase.storage
+      .from(bucket)
+      .list(userId, { 
+        search: fileName.split('_')[1] // Search by timestamp part
+      })
+    
+    if (listError) {
+      console.warn('⚠️ Could not verify file exists:', listError)
+    } else {
+      console.log('📋 Files in user directory:', listData?.map(f => f.name))
+    }
+
+    // Try to create signed URL first (for private buckets)
     const { data: signedUrlData, error: signedError } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(filePath, signedUrlDuration) // default 1 year in seconds
+      .createSignedUrl(filePath, signedUrlDuration)
 
     if (signedError) {
-      console.error('❌ Signed URL error:', signedError)
-      return { url: null, fileName: null, uploadedAt: null, error: signedError }
+      console.warn('⚠️ Signed URL failed (likely public bucket):', signedError.message)
+      
+      // Fallback to public URL for public buckets
+      const { data: publicUrlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath)
+      
+      if (publicUrlData?.publicUrl) {
+        console.log('✅ Using public URL instead:', publicUrlData.publicUrl)
+        return {
+          url: publicUrlData.publicUrl,
+          fileName: file.name,
+          uploadedAt: new Date().toISOString(),
+          error: null
+        }
+      } else {
+        console.error('❌ Both signed and public URL failed')
+        return { url: null, fileName: null, uploadedAt: null, error: signedError }
+      }
     }
 
     console.log('✅ File uploaded successfully:', signedUrlData.signedUrl)

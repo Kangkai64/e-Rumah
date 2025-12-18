@@ -4,7 +4,7 @@
 // NO imports from other controllers allowed!
 
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import HealthMonitoringView from '../views/HealthMonitoringView'
 import { supabase } from '../config/supabase'
 import { uploadDocument } from '../services/fileUploadService'
@@ -17,14 +17,22 @@ import {
   getAllHealthReports,
   approveHealthReport,
   flagHealthReport,
-  archiveHealthReport
+  archiveHealthReport,
+  getHealthReportsByApplication,
+  updateHealthReportStatus,
+  updateHealthReportDueStatus
 } from '../models/HealthReport'
 import { useAuth } from '../components/context/AuthContext'
 
 function HealthReportController() {
   const navigate = useNavigate()
+  const { applicationId } = useParams() // Extract applicationId from URL if present
   const { user, userRole } = useAuth()
   const [currentUser, setCurrentUser] = useState(null)
+
+  // Debug logging for applicationId
+  console.log('HealthReportController - applicationId from URL params:', applicationId)
+  console.log('HealthReportController - Current URL:', window.location.href)
   const [isLoading, setIsLoading] = useState(true)
   const [reports, setReports] = useState([])
   const [filteredReports, setFilteredReports] = useState([])
@@ -93,12 +101,16 @@ function HealthReportController() {
     expiryDays: 7
   })
 
+  // Application selection state for generic health reports page
+  const [availableApplications, setAvailableApplications] = useState([])
+  const [selectedApplicationId, setSelectedApplicationId] = useState(null)
+
   // Initialize - fetch user and reports
   useEffect(() => {
     const initialize = async () => {
       try {
         setIsLoading(true)
-        
+
         // Use user from AuthContext instead of making additional API call
         if (!user) {
           console.warn('User not found in AuthContext')
@@ -109,6 +121,11 @@ function HealthReportController() {
 
         // Fetch health reports
         await fetchReports(user.id)
+
+        // Fetch user applications if on generic page (no applicationId in URL)
+        if (!applicationId) {
+          await fetchUserApplications(user.id)
+        }
 
         // Check for alerts
         await checkAlerts(user.id)
@@ -140,10 +157,10 @@ function HealthReportController() {
       }
 
       // Use different function based on user role
-      const result = userRole === 'admin' || userRole === 'staff' 
+      const result = userRole === 'admin' || userRole === 'staff'
         ? await getAllHealthReports(options)
         : await getHealthReports(userId, options)
-      
+
       if (result.success) {
         setReports(result.data)
         setFilteredReports(result.data)
@@ -158,6 +175,31 @@ function HealthReportController() {
       setError('Failed to fetch health reports')
       setReports([])
       setFilteredReports([])
+    }
+  }
+
+  // Fetch user applications for application selection
+  const fetchUserApplications = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('id, status, created_at, submitted_at')
+        .eq('user_id', userId)
+        .in('status', ['draft', 'submitted', 'underReviewed', 'approved']) // Include more relevant statuses
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching user applications:', error)
+        return
+      }
+
+      setAvailableApplications(data || [])
+      // Auto-select the most recent application if only one exists
+      if (data && data.length === 1) {
+        setSelectedApplicationId(data[0].id)
+      }
+    } catch (err) {
+      console.error('Error fetching applications:', err)
     }
   }
 
@@ -252,6 +294,12 @@ function HealthReportController() {
       setIsUploading(true)
       setError(null)
 
+      console.log('🔍 Single file upload - applicationId from URL:', applicationId)
+      console.log('🔍 Single file upload - selectedApplicationId:', selectedApplicationId)
+      
+      const finalApplicationId = applicationId || selectedApplicationId
+      console.log('🔍 Single file upload - final applicationId to use:', finalApplicationId)
+
       // Validate form
       if (!uploadForm.file) {
         setError('Please select a file')
@@ -276,11 +324,14 @@ function HealthReportController() {
         uploadForm.file,
         {
           reportType: uploadForm.reportType,
+          applicationId: finalApplicationId || null,
           reportDate: uploadForm.reportDate,
           healthcareProvider: uploadForm.healthcareProvider,
           notes: uploadForm.notes
         }
       )
+
+      console.log('📤 Upload result:', result)
 
       if (result.success) {
         setSuccessMessage('Health report uploaded successfully')
@@ -292,7 +343,7 @@ function HealthReportController() {
           notes: '',
           file: null
         })
-        
+
         // Refresh reports
         await fetchReports(currentUser.id)
         await checkAlerts(currentUser.id)
@@ -311,38 +362,43 @@ function HealthReportController() {
   const handleMultipleFileUpload = async (files) => {
     try {
       console.log('🚀 Starting upload process for', files.length, 'files');
+      console.log('🔍 Multiple file upload - applicationId from URL:', applicationId);
+      console.log('🔍 Multiple file upload - selectedApplicationId:', selectedApplicationId);
       
+      const finalApplicationId = applicationId || selectedApplicationId
+      console.log('🔍 Multiple file upload - final applicationId to use:', finalApplicationId);
+
       const uploadResults = [];
       const healthReportRecords = [];
-      
+
       // Determine report type
-      const reportType = multiUploadForm.reportType === 'Others' 
-        ? multiUploadForm.customReportType 
+      const reportType = multiUploadForm.reportType === 'Others'
+        ? multiUploadForm.customReportType
         : multiUploadForm.reportType;
-      
+
       if (!reportType) {
         return {
           success: false,
           error: 'Please select a report type or specify custom type for "Others"'
         };
       }
-      
+
       // Upload each file to Supabase Storage
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         console.log(`📤 Uploading file ${i + 1}/${files.length}:`, file.name);
-        
+
         // Upload file using the fileUploadService
         const uploadResult = await uploadDocument(
           file,
           currentUser.id,
           'health_report',
-          { 
+          {
             bucket: 'health-reports',
             signedUrlDuration: 31536000 // 1 year
           }
         );
-        
+
         if (uploadResult.error) {
           console.error('❌ Upload failed for', file.name, ':', uploadResult.error);
           return {
@@ -350,16 +406,16 @@ function HealthReportController() {
             error: `Failed to upload ${file.name}: ${uploadResult.error.message}`
           };
         }
-        
+
         uploadResults.push({
           file,
           uploadResult
         });
-        
+
         // Prepare health report record
         const healthReportRecord = {
           user_id: currentUser.id,
-          application_id: null, // Will be set if linked to an application
+          application_id: finalApplicationId || null, // Use finalApplicationId
           report_date: multiUploadForm.reportDate,
           report_type: reportType,
           report_file_url: uploadResult.url,
@@ -367,24 +423,26 @@ function HealthReportController() {
           health_report_status: 'Pending',
           due_status: 'Up to Date'
         };
-        
+
+        console.log('💾 Health report record being prepared:', healthReportRecord);
+
         healthReportRecords.push(healthReportRecord);
-        
+
         console.log('✅ File uploaded successfully:', {
           fileName: file.name,
           url: uploadResult.url,
           size: formatFileSize(file.size)
         });
       }
-      
+
       // Insert health report records into database
       console.log('💾 Inserting health report records into database...');
-      
+
       const { data: insertedRecords, error: insertError } = await supabase
         .from('health_reports')
         .insert(healthReportRecords)
         .select();
-      
+
       if (insertError) {
         console.error('❌ Database insertion failed:', insertError);
         return {
@@ -392,15 +450,15 @@ function HealthReportController() {
           error: 'Files uploaded but failed to save records to database. Please contact support.'
         };
       }
-      
+
       console.log('✅ Health report records created successfully:', insertedRecords);
-      
+
       // Refresh reports
       await fetchReports(currentUser.id);
       await checkAlerts(currentUser.id);
-      
+
       console.log('🎊 Upload process completed successfully!');
-      
+
       return {
         success: true,
         data: {
@@ -409,7 +467,7 @@ function HealthReportController() {
           fileCount: files.length
         }
       };
-      
+
     } catch (error) {
       console.error('💥 Upload process failed:', error);
       return {
@@ -471,7 +529,7 @@ function HealthReportController() {
         } else {
           setSuccessMessage(result.message || 'Report shared successfully')
         }
-        
+
         setShowShareModal(false)
         setShareForm({
           shareOption: '',
@@ -498,7 +556,7 @@ function HealthReportController() {
 
     try {
       const result = await deleteHealthReport(reportId)
-      
+
       if (result.success) {
         setSuccessMessage('Health report deleted successfully')
         await fetchReports(currentUser.id)
@@ -560,7 +618,7 @@ function HealthReportController() {
 
   const handleApproveConfirm = useCallback(async () => {
     if (!actionReport || !currentUser) return
-    
+
     try {
       const result = await approveHealthReport(actionReport.id, currentUser.id)
       if (result.success) {
@@ -589,7 +647,7 @@ function HealthReportController() {
       setError('Flag reason is required')
       return
     }
-    
+
     try {
       const result = await flagHealthReport(actionReport.id, currentUser.id, flagReason.trim())
       if (result.success) {
@@ -615,7 +673,7 @@ function HealthReportController() {
 
   const handleArchiveConfirm = useCallback(async () => {
     if (!actionReport || !currentUser) return
-    
+
     try {
       const result = await archiveHealthReport(actionReport.id, currentUser.id)
       if (result.success) {
@@ -704,18 +762,18 @@ function HealthReportController() {
       showShareModal={showShareModal}
       showUploadModal={showUploadModal}
       errors={errors}
-      
+
       // Filter and sort
       searchKey={searchKey}
       filters={filters}
       sortBy={sortBy}
       sortOrder={sortOrder}
-      
+
       // Forms
       uploadForm={uploadForm}
       shareForm={shareForm}
       multiUploadForm={multiUploadForm}
-      
+
       // Handlers
       onSearchChange={setSearchKey}
       onFilterChange={(field, value) => setFilters(prev => ({ ...prev, [field]: value }))}
@@ -746,6 +804,10 @@ function HealthReportController() {
       onSetShowFilters={(value) => setShowFilters(!showFilters)}
       onSort={handleSort}
       onDownload={(reportId) => handleViewReport(reportId)}
+      applicationId={applicationId}
+      availableApplications={availableApplications}
+      selectedApplicationId={selectedApplicationId}
+      onSelectedApplicationIdChange={setSelectedApplicationId}
     />
   )
 }

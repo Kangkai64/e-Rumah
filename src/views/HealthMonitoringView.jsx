@@ -3064,7 +3064,11 @@ function UploadModal({
   onDragOver,
   onDrop,
   onFileSelect,
-  onSubmit
+  onSubmit,
+  availableApplications = [],
+  selectedApplicationId,
+  onSelectedApplicationIdChange,
+  applicationId // Current applicationId from URL
 }) {
   if (!show) return null
 
@@ -3088,6 +3092,38 @@ function UploadModal({
             onFileSelect={onFileSelect}
             file={uploadForm.file}
           />
+
+          {/* Application Selection - only show if no applicationId in URL and applications are available */}
+          {!applicationId && availableApplications.length > 0 && (
+            <div className="form-group">
+              <label htmlFor="applicationId">Associate with Application (Optional)</label>
+              <select
+                id="applicationId"
+                value={selectedApplicationId || ''}
+                onChange={(e) => onSelectedApplicationIdChange(e.target.value || null)}
+              >
+                <option value="">No application selected</option>
+                {availableApplications.map((app) => (
+                  <option key={app.id} value={app.id}>
+                    Application {app.id.slice(-8)} - {app.status}
+                    {app.submitted_at && ` (submitted ${new Date(app.submitted_at).toLocaleDateString()})`}
+                  </option>
+                ))}
+              </select>
+              <small className="form-help-text">
+                Select an application to associate this health report with it.
+              </small>
+            </div>
+          )}
+
+          {/* Show current application context if accessing from application page */}
+          {applicationId && (
+            <div className="form-group">
+              <div className="info-box">
+                <strong>Application Context:</strong> This health report will be associated with Application ID: {applicationId}
+              </div>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="reportType">Report Type *</label>
@@ -4064,6 +4100,10 @@ function UserHealthReportView({
   activeTab = 'archived',
   statistics,
   user, // Add user prop for accessing current user info
+  applicationId, // Add applicationId prop
+  availableApplications, // Add availableApplications prop
+  selectedApplicationId, // Add selectedApplicationId prop
+  onSelectedApplicationIdChange, // Add handler for application selection
 
   // Handlers
   onUploadClick,
@@ -4513,7 +4553,7 @@ function UserHealthReportView({
                   <label htmlFor="reportType" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Type *</label>
                   <select
                     id="reportType"
-                    value={multiUploadForm?.reportType || 'Medical Report'}
+                    value={multiUploadForm?.reportType || ''}
                     onChange={(e) => onMultiUploadFormChange?.('reportType', e.target.value)}
                     style={{
                       width: '100%',
@@ -4525,6 +4565,7 @@ function UserHealthReportView({
                     }}
                     required
                   >
+                    <option value="">Select report type</option>
                     <option value="Medical Report">Medical Report</option>
                     <option value="Lab Test">Lab Test</option>
                     <option value="Prescription">Prescription</option>
@@ -4540,7 +4581,7 @@ function UserHealthReportView({
                   <input
                     type="date"
                     id="reportDate"
-                    value={multiUploadForm?.reportDate || new Date().toISOString().split('T')[0]}
+                    value={multiUploadForm?.reportDate || ''}
                     onChange={(e) => onMultiUploadFormChange?.('reportDate', e.target.value)}
                     style={{
                       width: '100%',
@@ -4575,6 +4616,58 @@ function UserHealthReportView({
                     }}
                     required
                   />
+                </div>
+              )}
+
+              {/* Application Selection - only show if no applicationId in URL and applications are available */}
+              {!applicationId && availableApplications?.length > 0 && (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="multiApplicationId" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Associate with Application (Optional)</label>
+                  <select
+                    id="multiApplicationId"
+                    value={selectedApplicationId || ''}
+                    onChange={(e) => onSelectedApplicationIdChange?.(e.target.value || null)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontFamily: 'Poppins, sans-serif'
+                    }}
+                  >
+                    <option value="">No application selected</option>
+                    {availableApplications.map((app) => (
+                      <option key={app.id} value={app.id}>
+                        Application {app.id.slice(-8)} - {app.status}
+                        {app.submitted_at && ` (submitted ${new Date(app.submitted_at).toLocaleDateString()})`}
+                      </option>
+                    ))}
+                  </select>
+                  <small style={{ 
+                    display: 'block', 
+                    marginTop: '0.25rem', 
+                    fontSize: '0.75rem', 
+                    color: '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    Select an application to associate these health reports with it.
+                  </small>
+                </div>
+              )}
+
+              {/* Show current application context if accessing from application page */}
+              {applicationId && (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <div style={{
+                    padding: '0.75rem',
+                    backgroundColor: '#e8f4fd',
+                    border: '1px solid #bee5eb',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem'
+                  }}>
+                    <strong>Application Context:</strong> These health reports will be associated with Application ID: {applicationId}
+                  </div>
                 </div>
               )}
             </div>
@@ -4935,6 +5028,10 @@ function UserHealthReportView({
             onCancel={onCancelUploadModal}
             onFormChange={onUploadFormChange}
             onSubmit={onUploadSubmit}
+            availableApplications={availableApplications}
+            selectedApplicationId={selectedApplicationId}
+            onSelectedApplicationIdChange={onSelectedApplicationIdChange}
+            applicationId={applicationId}
           />
         )}
 
@@ -4994,6 +5091,10 @@ export default function HealthMonitoringView({
   isDragging,
   errors,
   successMessage,
+  applicationId, // Add applicationId prop
+  availableApplications, // Add availableApplications prop
+  selectedApplicationId, // Add selectedApplicationId prop
+  onSelectedApplicationIdChange, // Add handler for application selection
 
   // User handlers
   onUploadClick,
@@ -5075,6 +5176,7 @@ export default function HealthMonitoringView({
       reports={reports}
       uploadForm={uploadForm}
       shareForm={shareForm}
+      multiUploadForm={multiUploadForm}
       searchKey={searchKey}
       filters={filters}
       sortBy={sortBy}
@@ -5087,9 +5189,15 @@ export default function HealthMonitoringView({
       activeTab={activeTab || 'archived'}
       statistics={statistics}
       user={user}
+      applicationId={applicationId}
+      availableApplications={availableApplications}
+      selectedApplicationId={selectedApplicationId}
+      onSelectedApplicationIdChange={onSelectedApplicationIdChange}
       onUploadClick={onUploadClick}
       onCancelUploadModal={onCancelUploadModal}
       onUploadFormChange={onUploadFormChange}
+      onMultiUploadFormChange={onMultiUploadFormChange}
+      onMultipleFileUpload={onMultipleFileUpload}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
       onDragOver={onDragOver}
