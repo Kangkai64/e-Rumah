@@ -20,7 +20,10 @@ import {
   archiveHealthReport,
   getHealthReportsByApplication,
   updateHealthReportStatus,
-  updateHealthReportDueStatus
+  updateHealthReportDueStatus,
+  RemindersService,
+  REMINDER_TYPES,
+  REMINDER_CATEGORIES
 } from '../models/HealthReport'
 import { useAuth } from '../components/context/AuthContext'
 import { processPDF } from '../utils/pdfCompression'
@@ -43,11 +46,14 @@ function HealthReportController() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showPDFViewer, setShowPDFViewer] = useState(false)
+  const [viewingReportUrl, setViewingReportUrl] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('archived')
   const [showFilters, setShowFilters] = useState(false)
+  const [showSort, setShowSort] = useState(false)
   const [errors, setErrors] = useState({})
   const [statistics, setStatistics] = useState({
     reminderThisWeek: 0,
@@ -70,7 +76,8 @@ function HealthReportController() {
     startDate: '',
     endDate: '',
     uploadStatus: '',
-    dueStatus: ''
+    dueStatus: '',
+    providerName: ''
   })
   const [sortBy, setSortBy] = useState('report_date')
   const [sortOrder, setSortOrder] = useState('desc')
@@ -79,6 +86,8 @@ function HealthReportController() {
   const [uploadForm, setUploadForm] = useState({
     reportType: '',
     reportDate: '',
+    reportTitle: '',
+    providerName: '',
     notes: '',
     file: null
   })
@@ -87,6 +96,8 @@ function HealthReportController() {
   const [multiUploadForm, setMultiUploadForm] = useState({
     reportType: 'Medical Report',
     reportDate: new Date().toISOString().split('T')[0], // Default to today
+    reportTitle: '',
+    providerName: '',
     customReportType: ''
   })
 
@@ -99,6 +110,47 @@ function HealthReportController() {
     email: '',
     expiryDays: 7
   })
+
+  // ============================================================================
+  // REMINDERS STATE MANAGEMENT
+  // ============================================================================
+  const [reminders, setReminders] = useState([])
+  const [upcomingReminders, setUpcomingReminders] = useState([])
+  const [overdueReminders, setOverdueReminders] = useState([])
+  const [reminderStats, setReminderStats] = useState({
+    total: 0,
+    upcoming: 0,
+    overdue: 0
+  })
+
+  // Reminder UI State
+  const [showReminderModal, setShowReminderModal] = useState(false)
+  const [editingReminder, setEditingReminder] = useState(null)
+
+  // Reminder form state
+  const [reminderForm, setReminderForm] = useState({
+    reminder_title: '',
+    reminder_type: 'Next health check',
+    reminder_date: '',
+    reminder_time: '',
+    category: 'Health & appointments',
+    notes: '',
+    is_enabled: true
+  })
+
+  // Reminder filters and sorting
+  const [reminderFilters, setReminderFilters] = useState({
+    category: '',
+    reminder_type: '',
+    is_enabled: true
+  })
+  
+  const [reminderSortBy, setReminderSortBy] = useState('reminder_date')
+  const [reminderSortOrder, setReminderSortOrder] = useState('asc')
+
+  // ============================================================================
+  // END REMINDERS STATE
+  // ============================================================================
 
   // Initialize - fetch user and reports
   useEffect(() => {
@@ -119,6 +171,12 @@ function HealthReportController() {
 
         // Check for alerts
         await checkAlerts(user.id)
+
+        // Load reminders data
+        await loadReminders(user.id)
+        await loadReminderStats(user.id)
+        await loadUpcomingReminders(user.id)
+        await loadOverdueReminders(user.id)
       } catch (err) {
         console.error('Error initializing:', err)
         setError('Failed to load health reports')
@@ -140,6 +198,7 @@ function HealthReportController() {
         endDate: filters.endDate || undefined,
         uploadStatus: filters.uploadStatus || undefined,
         dueStatus: filters.dueStatus || undefined,
+        providerName: filters.providerName || undefined,
         sortBy,
         sortOrder,
         showArchived: activeTab === 'archived' || userRole === 'admin'
@@ -215,10 +274,17 @@ function HealthReportController() {
   }, [currentUser, filters])
 
   // Handle sort
-  const handleSort = useCallback((field) => {
-    const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc'
-    setSortBy(field)
-    setSortOrder(newOrder)
+  const handleSort = useCallback((field, order = null) => {
+    if (order) {
+      // Direct order setting
+      setSortBy(field)
+      setSortOrder(order)
+    } else {
+      // Toggle order (existing behavior)
+      const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc'
+      setSortBy(field)
+      setSortOrder(newOrder)
+    }
   }, [sortBy, sortOrder])
 
   // Apply sort and filter changes
@@ -363,6 +429,14 @@ function HealthReportController() {
         setError('Please select report date')
         return
       }
+      if (!uploadForm.reportTitle) {
+        setError('Please enter report title')
+        return
+      }
+      if (!uploadForm.providerName) {
+        setError('Please enter healthcare provider name')
+        return
+      }
 
       // Upload report
       const result = await uploadHealthReport(
@@ -372,6 +446,8 @@ function HealthReportController() {
           reportType: uploadForm.reportType,
           applicationId: finalApplicationId || null,
           reportDate: uploadForm.reportDate,
+          reportTitle: uploadForm.reportTitle,
+          providerName: uploadForm.providerName,
           notes: uploadForm.notes
         }
       )
@@ -384,6 +460,8 @@ function HealthReportController() {
         setUploadForm({
           reportType: '',
           reportDate: '',
+          reportTitle: '',
+          providerName: '',
           notes: '',
           file: null
         })
@@ -424,6 +502,21 @@ function HealthReportController() {
         return {
           success: false,
           error: 'Please select a report type or specify custom type for "Others"'
+        };
+      }
+
+      // Validate required fields
+      if (!multiUploadForm.reportTitle) {
+        return {
+          success: false,
+          error: 'Please enter report title'
+        };
+      }
+
+      if (!multiUploadForm.providerName) {
+        return {
+          success: false,
+          error: 'Please enter healthcare provider name'
         };
       }
 
@@ -480,6 +573,8 @@ function HealthReportController() {
           application_id: finalApplicationId || null, // Use finalApplicationId
           report_date: multiUploadForm.reportDate,
           report_type: reportType,
+          report_title: multiUploadForm.reportTitle,
+          provider_name: multiUploadForm.providerName,
           report_file_url: uploadResult.url,
           notes: '', // Left empty for admin purpose
           health_report_status: 'Pending',
@@ -574,6 +669,7 @@ function HealthReportController() {
         return
       }
 
+      // Use the shareHealthReport function for all sharing options
       const result = await shareHealthReport(
         selectedReport.id,
         shareForm.shareOption,
@@ -582,28 +678,34 @@ function HealthReportController() {
 
       if (result.success) {
         if (result.action === 'download') {
-          // Trigger download
-          window.open(result.url, '_blank')
+          // Create download link and trigger download
+          const link = document.createElement('a')
+          link.href = result.url
+          link.download = selectedReport.report_title || 'health-report'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          setSuccessMessage('Report download started')
         } else if (result.data?.shareUrl) {
-          // Copy link to clipboard
-          navigator.clipboard.writeText(result.data.shareUrl)
+          await navigator.clipboard.writeText(result.data.shareUrl)
           setSuccessMessage('Shareable link copied to clipboard')
         } else {
           setSuccessMessage(result.message || 'Report shared successfully')
         }
-
-        setShowShareModal(false)
-        setShareForm({
-          shareOption: '',
-          caregiverId: '',
-          familyMemberId: '',
-          providerEmail: '',
-          email: '',
-          expiryDays: 7
-        })
       } else {
         setError(result.error)
+        return
       }
+
+      setShowShareModal(false)
+      setShareForm({
+        shareOption: '',
+        caregiverId: '',
+        familyMemberId: '',
+        providerEmail: '',
+        email: '',
+        expiryDays: 7
+      })
     } catch (err) {
       console.error('Error sharing report:', err)
       setError('Failed to share health report')
@@ -635,10 +737,14 @@ function HealthReportController() {
   const handleCancel = useCallback(() => {
     setShowUploadModal(false)
     setShowShareModal(false)
+    setShowPDFViewer(false)
+    setViewingReportUrl(null)
     setSelectedReport(null)
     setUploadForm({
       reportType: '',
       reportDate: '',
+      reportTitle: '',
+      providerName: '',
       notes: '',
       file: null
     })
@@ -683,6 +789,260 @@ function HealthReportController() {
       })
     }
   }, [reports])
+
+  // ============================================================================
+  // REMINDERS FUNCTIONALITY
+  // ============================================================================
+
+  // Load all reminders for the user
+  const loadReminders = useCallback(async (userId = currentUser?.id) => {
+    if (!userId) return
+
+    try {
+      const result = await RemindersService.getUserReminders(userId, {
+        ...reminderFilters,
+        orderBy: reminderSortBy,
+        order: reminderSortOrder
+      })
+      if (result.success) {
+        setReminders(result.data)
+      } else {
+        console.error('Error loading reminders:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading reminders:', error)
+    }
+  }, [currentUser?.id, reminderFilters, reminderSortBy, reminderSortOrder])
+
+  // Load reminder statistics
+  const loadReminderStats = useCallback(async (userId = currentUser?.id) => {
+    if (!userId) return
+
+    try {
+      const result = await RemindersService.getReminderStatistics(userId)
+      if (result.success) {
+        setReminderStats(result.data)
+      } else {
+        console.error('Error loading reminder stats:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading reminder stats:', error)
+    }
+  }, [currentUser?.id])
+
+  // Load upcoming reminders
+  const loadUpcomingReminders = useCallback(async (userId = currentUser?.id) => {
+    if (!userId) return
+
+    try {
+      const result = await RemindersService.getUpcomingReminders(userId)
+      if (result.success) {
+        setUpcomingReminders(result.data)
+      } else {
+        console.error('Error loading upcoming reminders:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading upcoming reminders:', error)
+    }
+  }, [currentUser?.id])
+
+  // Load overdue reminders
+  const loadOverdueReminders = useCallback(async (userId = currentUser?.id) => {
+    if (!userId) return
+
+    try {
+      const result = await RemindersService.getOverdueReminders(userId)
+      if (result.success) {
+        setOverdueReminders(result.data)
+      } else {
+        console.error('Error loading overdue reminders:', result.error)
+      }
+    } catch (error) {
+      console.error('Error loading overdue reminders:', error)
+    }
+  }, [currentUser?.id])
+
+  // Handle reminder form changes
+  const handleReminderFormChange = useCallback((field, value) => {
+    setReminderForm(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  // Handle reminder filter changes
+  const handleReminderFilterChange = useCallback((newFilters) => {
+    setReminderFilters(newFilters)
+  }, [])
+
+  // Handle reminder sort changes
+  const handleReminderSort = useCallback((field, order = null) => {
+    if (order) {
+      setReminderSortBy(field)
+      setReminderSortOrder(order)
+    } else {
+      // Toggle sort order if same field
+      const newOrder = reminderSortBy === field && reminderSortOrder === 'asc' ? 'desc' : 'asc'
+      setReminderSortBy(field)
+      setReminderSortOrder(newOrder)
+    }
+  }, [reminderSortBy, reminderSortOrder])
+
+  // Open reminder modal for creation
+  const handleCreateReminder = useCallback(() => {
+    setEditingReminder(null)
+    setReminderForm({
+      reminder_title: '',
+      reminder_type: 'Next health check',
+      reminder_date: '',
+      reminder_time: '',
+      category: 'Health & appointments',
+      notes: '',
+      is_enabled: true
+    })
+    setShowReminderModal(true)
+  }, [])
+
+  // Open reminder modal for editing
+  const handleEditReminder = useCallback((reminder) => {
+    setEditingReminder(reminder)
+    
+    // Parse date and time from reminder_date
+    const reminderDate = new Date(reminder.reminder_date)
+    const dateStr = reminderDate.toISOString().split('T')[0]
+    const timeStr = reminderDate.toTimeString().slice(0, 5)
+    
+    setReminderForm({
+      reminder_title: reminder.reminder_title,
+      reminder_type: reminder.reminder_type,
+      reminder_date: dateStr,
+      reminder_time: timeStr,
+      category: reminder.category,
+      notes: reminder.notes || '',
+      is_enabled: reminder.is_enabled
+    })
+    setShowReminderModal(true)
+  }, [])
+
+  // Submit reminder form (create or update)
+  const handleSubmitReminder = useCallback(async () => {
+    if (!currentUser?.id) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Combine date and time
+      const reminderDateTime = new Date(`${reminderForm.reminder_date}T${reminderForm.reminder_time}`)
+      
+      const reminderData = {
+        user_id: currentUser.id,
+        reminder_title: reminderForm.reminder_title,
+        reminder_type: reminderForm.reminder_type,
+        reminder_date: reminderDateTime,
+        category: reminderForm.category,
+        notes: reminderForm.notes,
+        is_enabled: reminderForm.is_enabled
+      }
+
+      let result
+      if (editingReminder) {
+        // Update existing reminder
+        result = await RemindersService.updateReminder(editingReminder.id, reminderData)
+      } else {
+        // Create new reminder
+        result = await RemindersService.createReminder(reminderData)
+      }
+
+      if (result.success) {
+        setSuccessMessage(editingReminder ? 'Reminder updated successfully' : 'Reminder created successfully')
+        setShowReminderModal(false)
+        loadReminders()
+        loadReminderStats()
+        loadUpcomingReminders()
+        loadOverdueReminders()
+      } else {
+        setError(result.error)
+      }
+    } catch (error) {
+      console.error('Error saving reminder:', error)
+      setError('Failed to save reminder')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentUser?.id, reminderForm, editingReminder, loadReminders, loadReminderStats, loadUpcomingReminders, loadOverdueReminders])
+
+  // Delete reminder
+  const handleDeleteReminder = useCallback(async (reminderId) => {
+    if (!window.confirm('Are you sure you want to delete this reminder?')) return
+
+    try {
+      const result = await RemindersService.deleteReminder(reminderId)
+      if (result.success) {
+        setSuccessMessage('Reminder deleted successfully')
+        loadReminders()
+        loadReminderStats()
+        loadUpcomingReminders()
+        loadOverdueReminders()
+      } else {
+        setError(result.error)
+      }
+    } catch (error) {
+      console.error('Error deleting reminder:', error)
+      setError('Failed to delete reminder')
+    }
+  }, [loadReminders, loadReminderStats, loadUpcomingReminders, loadOverdueReminders])
+
+  // Toggle reminder enabled status
+  const handleToggleReminder = useCallback(async (reminderId, isEnabled) => {
+    try {
+      const result = await RemindersService.toggleReminder(reminderId, isEnabled)
+      if (result.success) {
+        setSuccessMessage(`Reminder ${isEnabled ? 'enabled' : 'disabled'} successfully`)
+        loadReminders()
+        loadReminderStats()
+        loadUpcomingReminders()
+        loadOverdueReminders()
+      } else {
+        setError(result.error)
+      }
+    } catch (error) {
+      console.error('Error toggling reminder:', error)
+      setError('Failed to update reminder')
+    }
+  }, [loadReminders, loadReminderStats, loadUpcomingReminders, loadOverdueReminders])
+
+  // Mark reminder as notified
+  const handleMarkAsNotified = useCallback(async (reminderId) => {
+    try {
+      const result = await RemindersService.markAsNotified(reminderId)
+      if (result.success) {
+        loadReminders()
+        loadUpcomingReminders()
+        loadOverdueReminders()
+      } else {
+        console.error('Error marking reminder as notified:', result.error)
+      }
+    } catch (error) {
+      console.error('Error marking reminder as notified:', error)
+    }
+  }, [loadReminders, loadUpcomingReminders, loadOverdueReminders])
+
+  // Cancel reminder modal
+  const handleCancelReminderModal = useCallback(() => {
+    setShowReminderModal(false)
+    setEditingReminder(null)
+    setReminderForm({
+      reminder_title: '',
+      reminder_type: 'Next health check',
+      reminder_date: '',
+      reminder_time: '',
+      category: 'Health & appointments',
+      notes: '',
+      is_enabled: true
+    })
+  }, [])
+
+  // ============================================================================
+  // END REMINDERS FUNCTIONALITY
+  // ============================================================================
 
   // Handle admin-specific actions
   const handleApproveClick = useCallback((report) => {
@@ -773,6 +1133,11 @@ function HealthReportController() {
     setFlagReason('')
   }, [])
 
+  const handleClosePDFViewer = useCallback(() => {
+    setShowPDFViewer(false)
+    setViewingReportUrl(null)
+  }, [])
+
   const handleTabChange = useCallback((tab) => {
     setActiveTab(tab)
     if (currentUser) {
@@ -781,9 +1146,16 @@ function HealthReportController() {
   }, [currentUser])
 
   const handleViewReport = useCallback((reportId) => {
-    // View report logic
-    console.log('Viewing report:', reportId)
-  }, [])
+    // Find the report to view
+    const report = reports.find(r => r.id === reportId)
+    if (report && report.report_file_url) {
+      // Show the report in overlay modal
+      setViewingReportUrl(report.report_file_url)
+      setShowPDFViewer(true)
+    } else {
+      setError('Report file not found or URL is invalid')
+    }
+  }, [reports])
 
   // Filter handlers
   const handleFilterChange = useCallback((filterType, value) => {
@@ -800,7 +1172,8 @@ function HealthReportController() {
       startDate: '',
       endDate: '',
       uploadStatus: '',
-      dueStatus: ''
+      dueStatus: '',
+      providerName: ''
     })
     setActiveTab('all')
   }, [])
@@ -859,6 +1232,8 @@ function HealthReportController() {
       uploadProgress={uploadProgress}
       showShareModal={showShareModal}
       showUploadModal={showUploadModal}
+      showPDFViewer={showPDFViewer}
+      viewingReportUrl={viewingReportUrl}
       errors={errors}
 
       // Filter and sort
@@ -900,11 +1275,50 @@ function HealthReportController() {
       onUploadClick={() => setShowUploadModal(true)}
       onCancelUploadModal={handleCancel}
       onCancelShareModal={handleCancel}
+      onClosePDFViewer={handleClosePDFViewer}
       showFilters={showFilters}
+      showSort={showSort}
       onSetShowFilters={(value) => setShowFilters(!showFilters)}
+      onSetShowSort={(value) => setShowSort(!showSort)}
       onSort={handleSort}
       onDownload={(reportId) => handleViewReport(reportId)}
       applicationId={applicationId}
+
+      // Reminders data
+      reminders={reminders}
+      upcomingReminders={upcomingReminders}
+      overdueReminders={overdueReminders}
+      reminderStats={reminderStats}
+      reminderTypes={REMINDER_TYPES}
+      reminderCategories={REMINDER_CATEGORIES}
+
+      // Reminder UI state
+      showReminderModal={showReminderModal}
+      editingReminder={editingReminder}
+
+      // Reminder form state
+      reminderForm={reminderForm}
+      reminderFilters={reminderFilters}
+      reminderSortBy={reminderSortBy}
+      reminderSortOrder={reminderSortOrder}
+
+      // Reminder handlers
+      onCreateReminder={handleCreateReminder}
+      onEditReminder={handleEditReminder}
+      onDeleteReminder={handleDeleteReminder}
+      onToggleReminder={handleToggleReminder}
+      onMarkAsNotified={handleMarkAsNotified}
+      onSubmitReminder={handleSubmitReminder}
+      onCancelReminderModal={handleCancelReminderModal}
+      onReminderFormChange={handleReminderFormChange}
+      onReminderFilterChange={handleReminderFilterChange}
+      onReminderSort={handleReminderSort}
+
+      // Reminder methods
+      loadReminders={loadReminders}
+      loadReminderStats={loadReminderStats}
+      loadUpcomingReminders={loadUpcomingReminders}
+      loadOverdueReminders={loadOverdueReminders}
     />
   )
 }

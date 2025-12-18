@@ -16,3 +16,9 @@
   margin: 0 auto;
   padding: 0 2rem;
 }
+
+/* Loading spinner animation for shared reports */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

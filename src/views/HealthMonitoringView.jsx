@@ -8,7 +8,14 @@ import searchIcon from '../assets/icons/health_report_page/icon_search.svg'
 import filterIcon from '../assets/icons/health_report_page/icon_filter.svg'
 import uploadIcon from '../assets/icons/health_report_page/icon_upload_document.svg'
 import sortIcon from '../assets/icons/health_report_page/icon_sort.svg'
+import shareLinkIcon from '../assets/icons/health_report_page/icon_share_link.svg'
 import calendarIcon from '../assets/icons/health_report_page/icon_calendar_body.svg'
+import caregiverIcon from '../assets/icons/health_report_page/icon_caregiver.svg'
+import familyIcon from '../assets/icons/health_report_page/icon_family.svg'
+import healthcareProviderIcon from '../assets/icons/health_report_page/icon_healthcare_provider.svg'
+import downloadIcon from '../assets/icons/health_report_page/icon_download.svg'
+import ascIcon from '../assets/icons/health_report_page/icon_arrow_up.svg'
+import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 
 // Embedded CSS Styles
@@ -347,6 +354,103 @@ const styles = `
   margin: 3rem 0;
 }
 
+/* Reminder Modal */
+.reminder-modal {
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.reminder-modal .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.reminder-modal label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.reminder-modal input,
+.reminder-modal select,
+.reminder-modal textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  font-family: 'Poppins', sans-serif;
+  background: white;
+}
+
+.reminder-modal input:focus,
+.reminder-modal select:focus,
+.reminder-modal textarea:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
+}
+
+.reminder-modal textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: normal !important;
+  margin-bottom: 0 !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto !important;
+  margin: 0;
+  transform: scale(1.2);
+}
+
+.checkmark {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+/* Reminder buttons */
+.btn-add-reminder,
+.btn-add-first {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-add-reminder:hover {
+  background: #8b1a24 !important;
+  transform: translateY(-1px);
+}
+
+.btn-add-first:hover {
+  background: #A8202D !important;
+  color: white !important;
+}
+
+.btn-edit {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+  background: #f0f0f0;
+  border-color: #A8202D;
+  color: #A8202D;
+}
+
 /* Reminders Card */
 .reminders-card {
   background: white;
@@ -375,6 +479,7 @@ const styles = `
   border-radius: 4px;
   font-size: 0.875rem;
   color: #666;
+  margin-left: 0.5rem;
 }
 
 .reminder-item {
@@ -667,7 +772,7 @@ input:checked + .slider:before {
   padding: 0.875rem 1.25rem;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 30px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 1rem;
   font-family: 'Poppins', sans-serif;
@@ -1478,9 +1583,22 @@ input:checked + .slider:before {
   border-top: 1px solid #FEF2F2;
 }
 
+.sort-panel {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #FEF2F2;
+}
+
 .filter-row {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sort-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -1491,7 +1609,46 @@ input:checked + .slider:before {
   gap: 0.5rem;
 }
 
+.sort-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sort-order-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sort-order-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.sort-order-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.sort-order-btn.active {
+  background: #A8202D;
+  color: white;
+  border-color: #A8202D;
+}
+
 .filter-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.sort-group label {
   font-size: 0.9rem;
   font-weight: 500;
   color: #555;
@@ -1505,8 +1662,23 @@ input:checked + .slider:before {
   font-size: 0.95rem;
 }
 
+.sort-group input,
+.sort-group select {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
 .filter-group input:focus,
 .filter-group select:focus {
+  outline: none;
+  border-color: #A8202D;
+  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
+}
+
+.sort-group input:focus,
+.sort-group select:focus {
   outline: none;
   border-color: #A8202D;
   box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
@@ -2375,6 +2547,70 @@ input:checked + .slider:before {
   font-family: 'Poppins', sans-serif;
 }
 
+/* PDF Viewer Modal Styles */
+.pdf-viewer-overlay {
+  z-index: 1100;
+}
+
+.pdf-viewer-modal {
+  max-width: 90vw;
+  max-height: 95vh;
+  width: 1000px;
+  height: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.pdf-viewer-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.pdf-viewer-modal .modal-header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.pdf-viewer-modal .close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.pdf-viewer-modal .close-button:hover {
+  background: #f3f4f6;
+}
+
+.pdf-viewer-body {
+  flex: 1;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.pdf-viewer-modal .modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
 .modal h3 {
   margin: 0 0 1rem 0;
   color: #111827;
@@ -3146,6 +3382,32 @@ function UploadModal({
           </div>
 
           <div className="form-group">
+            <label htmlFor="reportTitle">Report Title *</label>
+            <input
+              type="text"
+              id="reportTitle"
+              placeholder="Enter a descriptive title for your report"
+              value={uploadForm.reportTitle}
+              onChange={(e) => onUploadFormChange('reportTitle', e.target.value)}
+              required
+            />
+            {errors.reportTitle && <span className="error-text">{errors.reportTitle}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="providerName">Healthcare Provider *</label>
+            <input
+              type="text"
+              id="providerName"
+              placeholder="Name of the healthcare provider or facility"
+              value={uploadForm.providerName}
+              onChange={(e) => onUploadFormChange('providerName', e.target.value)}
+              required
+            />
+            {errors.providerName && <span className="error-text">{errors.providerName}</span>}
+          </div>
+
+          <div className="form-group">
             <label htmlFor="notes">Notes (Optional)</label>
             <textarea
               id="notes"
@@ -3194,7 +3456,7 @@ function ShareModal({
                 className={`share-option ${shareForm.shareOption === 'caregiver' ? 'active' : ''}`}
                 onClick={() => onShareFormChange('shareOption', 'caregiver')}
               >
-                <span className="option-icon">�</span>
+                <img src={caregiverIcon} alt="Caregiver" className="option-icon" />
                 <span>Share with Caregiver</span>
               </button>
               
@@ -3202,7 +3464,7 @@ function ShareModal({
                 className={`share-option ${shareForm.shareOption === 'family' ? 'active' : ''}`}
                 onClick={() => onShareFormChange('shareOption', 'family')}
               >
-                <span className="option-icon">👥</span>
+                <img src={familyIcon} alt="Family" className="option-icon" />
                 <span>Share with Family Member</span>
               </button>
               
@@ -3210,7 +3472,7 @@ function ShareModal({
                 className={`share-option ${shareForm.shareOption === 'healthcare' ? 'active' : ''}`}
                 onClick={() => onShareFormChange('shareOption', 'healthcare')}
               >
-                <span className="option-icon">+</span>
+                <img src={healthcareProviderIcon} alt="Healthcare Provider" className="option-icon" />
                 <span>Share with Healthcare Provider</span>
               </button>
               
@@ -3218,46 +3480,72 @@ function ShareModal({
                 className={`share-option ${shareForm.shareOption === 'link' ? 'active' : ''}`}
                 onClick={() => onShareFormChange('shareOption', 'link')}
               >
-                <span className="option-icon">⛓</span>
-                <span>Generate Share Link</span>
+                <img src={shareLinkIcon} alt="Share Link" className="option-icon" />
+                <span>Copy Share Link</span>
+              </button>
+
+              <button
+                className={`share-option ${shareForm.shareOption === 'email' ? 'active' : ''}`}
+                onClick={() => onShareFormChange('shareOption', 'email')}
+              >
+                <span className="option-icon">✉</span>
+                <span>Share via Email</span>
               </button>
               
               <button
                 className={`share-option ${shareForm.shareOption === 'download' ? 'active' : ''}`}
                 onClick={() => onShareFormChange('shareOption', 'download')}
               >
-                <span className="option-icon">↓</span>
+                <img src={downloadIcon} alt="Download" className="option-icon" />
                 <span>Download as PDF</span>
               </button>
             </div>
           </div>
 
-          {(shareForm.shareOption === 'caregiver' || shareForm.shareOption === 'family' || shareForm.shareOption === 'healthcare') && (
+          {(shareForm.shareOption === 'caregiver' || shareForm.shareOption === 'family' || shareForm.shareOption === 'healthcare' || shareForm.shareOption === 'email') && (
             <>
               <div className="form-group">
                 <label htmlFor="shareEmail">Email Address *</label>
                 <input
                   type="email"
                   id="shareEmail"
-                  value={shareForm.shareEmail}
-                  onChange={(e) => onShareFormChange('shareEmail', e.target.value)}
+                  value={shareForm.email}
+                  onChange={(e) => onShareFormChange('email', e.target.value)}
                   placeholder="Enter email address"
                 />
                 {errors.shareEmail && <span className="error-text">{errors.shareEmail}</span>}
               </div>
 
-              {shareForm.shareOption === 'link' && (
-                <div className="form-group">
-                  <label htmlFor="expiryDate">Expiry Date (Optional)</label>
-                  <input
-                    type="date"
-                    id="expiryDate"
-                    value={shareForm.expiryDate}
-                    onChange={(e) => onShareFormChange('expiryDate', e.target.value)}
-                  />
-                </div>
-              )}
+              <div className="form-group">
+                <label htmlFor="expiryDays">Link Expires In (Days)</label>
+                <select
+                  id="expiryDays"
+                  value={shareForm.expiryDays}
+                  onChange={(e) => onShareFormChange('expiryDays', parseInt(e.target.value))}
+                >
+                  <option value={1}>1 Day</option>
+                  <option value={7}>7 Days</option>
+                  <option value={30}>30 Days</option>
+                  <option value={90}>90 Days</option>
+                </select>
+              </div>
             </>
+          )}
+
+          {shareForm.shareOption === 'link' && (
+            <div className="form-group">
+              <label htmlFor="expiryDays">Link Expires In (Days)</label>
+              <select
+                id="expiryDays"
+                value={shareForm.expiryDays}
+                onChange={(e) => onShareFormChange('expiryDays', parseInt(e.target.value))}
+              >
+                <option value={1}>1 Day</option>
+                <option value={7}>7 Days</option>
+                <option value={30}>30 Days</option>
+                <option value={90}>90 Days</option>
+              </select>
+            </div>
           )}
         </div>
 
@@ -3270,289 +3558,123 @@ function ShareModal({
   )
 }
 
-// Search and Filter Bar Component
-function SearchFilterBar({
-  searchKey,
-  filters,
-  showFilters,
-  onSearchChange,
-  onSearch,
-  onFilterChange,
-  onFilter,
-  onSetShowFilters
+// Reminder Modal Component
+function ReminderModal({
+  show,
+  reminderForm,
+  editingReminder,
+  errors,
+  onCancel,
+  onFormChange,
+  onSubmit
 }) {
+  if (!show) return null
+
   return (
-    <div className="search-filter-container">
-      <div className="search-bar">
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search health reports..."
-          value={searchKey}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-        />
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-content reminder-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{editingReminder ? 'Edit Reminder' : 'Create New Reminder'}</h3>
+          <button className="close-button" onClick={onCancel}>×</button>
+        </div>
         
-        <button className="btn-search" onClick={onSearch}>
-          <img src={searchIcon} alt="Search" style={{width: '16px', height: '16px', marginLeft: '12px', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
-          Search
-        </button>
-      </div>
+        <div className="modal-body">
+          <div className="form-group">
+            <label htmlFor="reminderTitle">Reminder Title *</label>
+            <input
+              type="text"
+              id="reminderTitle"
+              value={reminderForm?.reminder_title || ''}
+              onChange={(e) => onFormChange?.('reminder_title', e.target.value)}
+              placeholder="Enter reminder title"
+            />
+            {errors?.reminder_title && <span className="error-text">{errors.reminder_title}</span>}
+          </div>
 
-      <button 
-        className="btn-filter" 
-        onClick={() => onSetShowFilters(!showFilters)}
-      >
-        <img src={filterIcon} alt="Filter" style={{width: '16px', height: '16px', marginRight: '8px', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
-        {showFilters ? 'Hide' : 'Show'} Filters
-      </button>
+          <div className="form-group">
+            <label htmlFor="reminderType">Reminder Type *</label>
+            <select
+              id="reminderType"
+              value={reminderForm?.reminder_type || 'Next health check'}
+              onChange={(e) => onFormChange?.('reminder_type', e.target.value)}
+            >
+              <option value="Next health check">Next health check</option>
+              <option value="Medication refill">Medication refill</option>
+              <option value="Blood pressure check">Blood pressure check</option>
+              <option value="Doctor visit">Doctor visit</option>
+              <option value="Vaccination">Vaccination</option>
+              <option value="Lab test">Lab test</option>
+              <option value="Custom">Custom</option>
+            </select>
+          </div>
 
-      {showFilters && (
-        <div className="filter-panel">
-          <div className="filter-row">
-            <div className="filter-group">
-              <label>Report Type</label>
-              <select
-                value={filters.reportType || ''}
-                onChange={(e) => onFilterChange({ ...filters, reportType: e.target.value })}
-              >
-                <option value="">All Types</option>
-                <option value="Medical Report">Medical Report</option>
-                <option value="Lab Test">Lab Test</option>
-                <option value="Prescription">Prescription</option>
-                <option value="Vaccination Record">Vaccination Record</option>
-                <option value="Doctor's Visit Summary">Doctor's Visit Summary</option>
-              </select>
-            </div>
+          <div className="form-group">
+            <label htmlFor="reminderDate">Date *</label>
+            <input
+              type="date"
+              id="reminderDate"
+              value={reminderForm?.reminder_date || ''}
+              onChange={(e) => onFormChange?.('reminder_date', e.target.value)}
+            />
+            {errors?.reminder_date && <span className="error-text">{errors.reminder_date}</span>}
+          </div>
 
-            <div className="filter-group">
-              <label>Start Date</label>
-              <div className="date-input-wrapper" style={{position: 'relative'}}>
-                <input
-                  type="date"
-                  value={filters.startDate || ''}
-                  min={getUserJoinDate()}
-                  max={getTodayDate()}
-                  onChange={(e) => onFilterChange({ ...filters, startDate: e.target.value })}
-                />
-              </div>
-            </div>
+          <div className="form-group">
+            <label htmlFor="reminderTime">Time *</label>
+            <input
+              type="time"
+              id="reminderTime"
+              value={reminderForm?.reminder_time || ''}
+              onChange={(e) => onFormChange?.('reminder_time', e.target.value)}
+            />
+            {errors?.reminder_time && <span className="error-text">{errors.reminder_time}</span>}
+          </div>
 
-            <div className="filter-group">
-              <label>End Date</label>
-              <div className="date-input-wrapper" style={{position: 'relative'}}>
-                <input
-                  type="date"
-                  value={filters.endDate || ''}
-                  min={filters.startDate || getUserJoinDate()}
-                  max={getTodayDate()}
-                  onChange={(e) => onFilterChange({ ...filters, endDate: e.target.value })}
-                />
-              </div>
-            </div>
+          <div className="form-group">
+            <label htmlFor="category">Category</label>
+            <select
+              id="category"
+              value={reminderForm?.category || 'Health & appointments'}
+              onChange={(e) => onFormChange?.('category', e.target.value)}
+            >
+              <option value="Health & appointments">Health & appointments</option>
+              <option value="Medication">Medication</option>
+              <option value="Personal">Personal</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
-            <div className="filter-group">
-              <label>Provider</label>
+          <div className="form-group">
+            <label htmlFor="notes">Notes (Optional)</label>
+            <textarea
+              id="notes"
+              value={reminderForm?.notes || ''}
+              onChange={(e) => onFormChange?.('notes', e.target.value)}
+              placeholder="Add any additional notes..."
+              rows={3}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="checkbox-label">
               <input
-                type="text"
-                placeholder="Healthcare Provider"
-                value={filters.healthcareProvider || ''}
-                onChange={(e) => onFilterChange({ ...filters, healthcareProvider: e.target.value })}
+                type="checkbox"
+                checked={reminderForm?.is_enabled ?? true}
+                onChange={(e) => onFormChange?.('is_enabled', e.target.checked)}
               />
-            </div>
-          </div>
-
-          <div className="filter-row">
-            <div className="filter-group">
-              <label>Due Status</label>
-              <select
-                value={filters.dueStatus || ''}
-                onChange={(e) => onFilterChange({ ...filters, dueStatus: e.target.value })}
-              >
-                <option value="">All</option>
-                <option value="approaching">Approaching Due (2+ months)</option>
-                <option value="overdue">Overdue (3+ months)</option>
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Report Status</label>
-              <select
-                value={filters.uploadStatus || ''}
-                onChange={(e) => onFilterChange({ ...filters, uploadStatus: e.target.value })}
-              >
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="flagged">Flagged</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="filter-row">
-            <button 
-              className="btn btn-primary" 
-              onClick={onFilter}
-            >
-              Apply Filters
-            </button>
-
-            <button 
-              className="btn btn-secondary" 
-              onClick={() => {
-                onFilterChange({
-                  reportType: '',
-                  startDate: '',
-                  endDate: '',
-                  healthcareProvider: '',
-                  dueStatus: '',
-                  uploadStatus: ''
-                })
-                onFilter()
-              }}
-            >
-              Clear Filters
-            </button>
+              <span className="checkmark"></span>
+              Enable this reminder
+            </label>
           </div>
         </div>
-      )}
-    </div>
-  )
-}
 
-// Reports Table Component
-function ReportsTable({
-  reports,
-  sortBy,
-  sortOrder,
-  onSort,
-  onDownload,
-  onShareClick,
-  onDelete
-}) {
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  }
-
-  const calculateDueDate = (reportDate, reportType) => {
-    const date = new Date(reportDate)
-    let monthsToAdd = 3
-
-    switch (reportType) {
-      case 'Medical Report': monthsToAdd = 6; break
-      case 'Lab Test': monthsToAdd = 3; break
-      case 'Prescription': monthsToAdd = 1; break
-      case 'Vaccination Record': monthsToAdd = 12; break
-      case "Doctor's Visit Summary": monthsToAdd = 3; break
-      default: monthsToAdd = 3
-    }
-
-    date.setMonth(date.getMonth() + monthsToAdd)
-    return date
-  }
-
-  const getSortIcon = (field) => {
-    if (sortBy !== field) {
-      return <span className="sort-icon neutral">⇅</span>
-    }
-    return (
-      <span className={`sort-icon ${sortOrder}`}>
-        {sortOrder === 'asc' ? '▲' : '▼'}
-      </span>
-    )
-  }
-
-  const getSortButtonClass = (field) => {
-    return `sort-button ${sortBy === field ? 'active' : ''}`
-  }
-
-  return (
-    <div className="reports-table-container">
-      <table className="reports-table">
-        <thead>
-          <tr>
-            <th>
-              <button className={getSortButtonClass('report_type')} onClick={() => onSort('report_type')}>
-                Type
-                {getSortIcon('report_type')}
-              </button>
-            </th>
-            <th>
-              <button className={getSortButtonClass('report_date')} onClick={() => onSort('report_date')}>
-                Report Date
-                {getSortIcon('report_date')}
-              </button>
-            </th>
-            <th>
-              <button className={getSortButtonClass('created_at')} onClick={() => onSort('created_at')}>
-                Upload Date
-                {getSortIcon('created_at')}
-              </button>
-            </th>
-            <th>
-              <button className={getSortButtonClass('healthcare_provider')} onClick={() => onSort('healthcare_provider')}>
-                Provider
-                {getSortIcon('healthcare_provider')}
-              </button>
-            </th>
-            <th>
-              <button className={getSortButtonClass('due_date')} onClick={() => onSort('due_date')}>
-                Due Date
-                {getSortIcon('due_date')}
-              </button>
-            </th>
-            <th>Notes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports && reports.length > 0 ? (
-            reports.map((report) => {
-              const dueDate = calculateDueDate(report.report_date, report.report_type)
-              return (
-                <tr key={report.id}>
-                  <td>{report.report_type}</td>
-                  <td>{formatDate(report.report_date)}</td>
-                  <td>{formatDate(report.created_at)}</td>
-                  <td>{report.healthcare_provider || '-'}</td>
-                  <td>{formatDate(dueDate)}</td>
-                  <td>{report.notes || '-'}</td>
-                  <td className="actions-cell">
-                    <button 
-                      className="action-btn download-btn" 
-                      onClick={() => onDownload(report.id)} 
-                      title="Download"
-                    >
-                      ↓
-                    </button>
-                    <button 
-                      className="action-btn share-btn" 
-                      onClick={() => onShareClick(report.id)} 
-                      title="Share"
-                    >
-                      ↗
-                    </button>
-                    <button 
-                      className="action-btn delete-btn" 
-                      onClick={() => onDelete(report.id)} 
-                      title="Delete"
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              )
-            })
-          ) : (
-            <tr>
-              <td colSpan="7" className="no-data">No data found</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-primary" onClick={onSubmit}>
+            {editingReminder ? 'Update Reminder' : 'Create Reminder'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -3755,8 +3877,7 @@ function AdminHealthReportDashboardView({
                     <div className="table-col">
                       <span className="applicant-name">
                         {report.applications?.users?.full_name || 
-                         report.user?.full_name || 
-                         report.applicant_name || 
+                         report.users?.full_name || 
                          'N/A'}
                       </span>
                     </div>
@@ -3769,12 +3890,12 @@ function AdminHealthReportDashboardView({
                       </span>
                     </div>
                     <div className="table-col">
-                      <span className={`status-badge status-${(report.status || 'pending').toLowerCase()}`}>
-                        {(report.status || 'Pending').charAt(0).toUpperCase() + (report.status || 'pending').slice(1)}
+                      <span className={`status-badge status-${(report.health_report_status || 'pending').toLowerCase()}`}>
+                        {(report.health_report_status || 'Pending').charAt(0).toUpperCase() + (report.health_report_status || 'pending').slice(1).toLowerCase()}
                       </span>
                     </div>
                     <div className="table-col actions-col">
-                      {report.status === 'pending' && (
+                      {(report.health_report_status || 'pending').toLowerCase() === 'pending' && (
                         <>
                           <button
                             className="action-btn approve-btn"
@@ -3848,16 +3969,28 @@ function AdminHealthReportDashboardView({
                   <div className="info-group">
                     <div className="info-item">
                       <div className="info-label">Applicant</div>
-                      <div className="info-value primary">{selectedReport.applicantName || 'N/A'}</div>
-                      <div className="info-sublabel">IC: {selectedReport.applicantIC || 'N/A'}</div>
+                      <div className="info-value primary">
+                        {selectedReport.applications?.users?.full_name || 
+                         selectedReport.users?.full_name || 
+                         'N/A'}
+                      </div>
+                      <div className="info-sublabel">
+                        IC: {selectedReport.applications?.users?.ic_number || 
+                             selectedReport.users?.ic_number || 
+                             'N/A'}
+                      </div>
                     </div>
                   </div>
 
                   <div className="info-group">
                     <div className="info-item text-right">
                       <div className="info-label">Report Type</div>
-                      <div className="info-value primary">{selectedReport.reportType || 'General'}</div>
-                      <div className="info-sublabel">Date: {selectedReport.reportDate || 'N/A'}</div>
+                      <div className="info-value primary">{selectedReport.report_type || 'General'}</div>
+                      <div className="info-sublabel">
+                        Date: {selectedReport.report_date ? 
+                               new Date(selectedReport.report_date).toLocaleDateString('en-GB') : 
+                               'N/A'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3865,8 +3998,8 @@ function AdminHealthReportDashboardView({
                 {/* Healthcare Provider */}
                 <div className="info-section">
                   <div className="info-label">Healthcare Provider</div>
-                  <div className="info-value large">{selectedReport.healthcareProvider || 'N/A'}</div>
-                  <div className="info-sublabel">{selectedReport.providerAddress || 'Address not provided'}</div>
+                  <div className="info-value large">{selectedReport.provider_name || 'N/A'}</div>
+                  <div className="info-sublabel">{selectedReport.provider_address || 'Address not provided'}</div>
                 </div>
 
                 {/* Key Findings */}
@@ -4014,6 +4147,7 @@ function AdminHealthReportDashboardView({
             <div className="report-preview">
               <p><strong>Report Type:</strong> {actionReport.report_type}</p>
               <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
             </div>
             <textarea
               className="flag-reason-input"
@@ -4048,6 +4182,7 @@ function AdminHealthReportDashboardView({
             <div className="report-preview">
               <p><strong>Report Type:</strong> {actionReport.report_type}</p>
               <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
               <p><strong>Notes:</strong> {actionReport.notes || 'No notes'}</p>
             </div>
             <div className="modal-actions">
@@ -4084,7 +4219,10 @@ function UserHealthReportView({
   sortOrder,
   showUploadModal,
   showShareModal,
+  showPDFViewer,
+  viewingReportUrl,
   showFilters,
+  showSort,
   isDragging,
   errors,
   activeTab = 'archived',
@@ -4092,9 +4230,19 @@ function UserHealthReportView({
   user, // Add user prop for accessing current user info
   applicationId, // Add applicationId prop
 
+  // Reminder props
+  reminders,
+  upcomingReminders,
+  overdueReminders,
+  reminderStats,
+  showReminderModal,
+  reminderForm,
+  editingReminder,
+
   // Handlers
   onUploadClick,
   onCancelUploadModal,
+  onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
   onMultipleFileUpload,
@@ -4114,12 +4262,20 @@ function UserHealthReportView({
   onTabFilter,
   onFilter,
   onSetShowFilters,
+  onSetShowSort,
   onSort,
   onDownload,
   onShareClick,
   onDelete,
   onTabChange,
-  onViewReport
+  onViewReport,
+  onCreateReminder,
+  onEditReminder,
+  onDeleteReminder,
+  onToggleReminder,
+  onReminderFormChange,
+  onSubmitReminder,
+  onCancelReminderModal
 }) {
   // Add default values to prevent undefined errors
   const defaultStatistics = {
@@ -4455,39 +4611,8 @@ function UserHealthReportView({
     }
   };
 
-  // Mock reminder data
-  const reminders = [
-    {
-      id: 1,
-      title: "Next health check",
-      description: "15 January 2026, 10:00 AM (11 days left)",
-      enabled: true
-    },
-    {
-      id: 2,
-      title: "Reminder frequency",
-      description: "1 week and 1 day before"
-    }
-  ];
-
-  // Mock archived reports data
-  const archivedReports = [
-    {
-      id: 1,
-      type: "ECG Scan",
-      date: "05 Sep 2025"
-    },
-    {
-      id: 2,
-      type: "Blood Test", 
-      date: "18 Jun 2025"
-    },
-    {
-      id: 3,
-      type: "X-Ray",
-      date: "10 Jan 2025"
-    }
-  ];
+  // Archived reports from the actual reports prop
+  const archivedReports = reports || [];
 
   return (
     <div className={`health-report-container ${isDragActive ? 'drag-active' : ''}`}>
@@ -4656,6 +4781,48 @@ function UserHealthReportView({
                 </div>
               )}
 
+              {/* Report Title field */}
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="reportTitle" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Title *</label>
+                <input
+                  type="text"
+                  id="reportTitle"
+                  placeholder="Enter a descriptive title for your reports"
+                  value={multiUploadForm?.reportTitle || ''}
+                  onChange={(e) => onMultiUploadFormChange?.('reportTitle', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontFamily: 'Poppins, sans-serif'
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Provider Name field */}
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label htmlFor="providerName" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Healthcare Provider *</label>
+                <input
+                  type="text"
+                  id="providerName"
+                  placeholder="Name of the healthcare provider or facility"
+                  value={multiUploadForm?.providerName || ''}
+                  onChange={(e) => onMultiUploadFormChange?.('providerName', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    fontFamily: 'Poppins, sans-serif'
+                  }}
+                  required
+                />
+              </div>
+
               {/* Show current application context if accessing from application page */}
               {applicationId && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -4758,28 +4925,94 @@ function UserHealthReportView({
             <div className="reminders-header">
               <h3>Reminders</h3>
               <span className="tab-indicator">Health & appointments</span>
+              <button 
+                className="btn-add-reminder" 
+                onClick={() => onCreateReminder?.()}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '0.5rem 1rem',
+                  background: '#A8202D',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                + Add Reminder
+              </button>
             </div>
 
-            <div className="reminder-item">
-              <div className="reminder-content">
-                <div className="reminder-title">Next health check</div>
-                <div className="reminder-description">15 January 2026, 10:00 AM (11 days left)</div>
+            {upcomingReminders && upcomingReminders.length > 0 ? (
+              upcomingReminders.slice(0, 2).map((reminder) => (
+                <div key={reminder.id} className="reminder-item">
+                  <div className="reminder-content">
+                    <div className="reminder-title">{reminder.reminder_title || reminder.reminder_type}</div>
+                    <div className="reminder-description">
+                      {new Date(reminder.reminder_date).toLocaleDateString('en-GB')} at{' '}
+                      {new Date(reminder.reminder_date).toLocaleTimeString('en-GB', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                      {(() => {
+                        const now = new Date();
+                        const reminderDate = new Date(reminder.reminder_date);
+                        const diffTime = reminderDate - now;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays > 0 ? ` (${diffDays} days left)` : '';
+                      })()}
+                    </div>
+                  </div>
+                  <div className="reminder-toggle">
+                    <label className="switch">
+                      <input 
+                        type="checkbox" 
+                        checked={reminder.is_enabled || false}
+                        onChange={(e) => onToggleReminder?.(reminder.id, e.target.checked)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
+                  <button 
+                    className="btn-edit"
+                    onClick={() => onEditReminder?.(reminder)}
+                    style={{
+                      marginLeft: '0.5rem',
+                      padding: '0.25rem 0.5rem',
+                      background: 'transparent',
+                      border: '1px solid #ddd',
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem'
+                    }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="reminder-item">
+                <div className="reminder-content">
+                  <div className="reminder-title">No upcoming reminders</div>
+                  <div className="reminder-description">Click "Add Reminder" to set up health reminders</div>
+                </div>
+                <button 
+                  className="btn-add-first"
+                  onClick={() => onCreateReminder?.()}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#f8f9fa',
+                    border: '1px solid #A8202D',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    color: '#A8202D'
+                  }}
+                >
+                  Add Reminder
+                </button>
               </div>
-              <div className="reminder-toggle">
-                <label className="switch">
-                  <input type="checkbox" defaultChecked />
-                  <span className="slider"></span>
-                </label>
-              </div>
-            </div>
-
-            <div className="reminder-item">
-              <div className="reminder-content">
-                <div className="reminder-title">Reminder frequency</div>
-                <div className="reminder-description">1 week and 1 day before</div>
-              </div>
-              <button className="btn-edit">Edit</button>
-            </div>
+            )}
 
             <div className="reminder-tags">
               <span className="reminder-tag">Medication refill</span>
@@ -4801,16 +5034,30 @@ function UserHealthReportView({
                 <div className="table-col">Actions</div>
               </div>
 
-              {archivedReports.map((report) => (
+              {archivedReports.length > 0 ? archivedReports.map((report) => (
                 <div key={report.id} className="table-row">
-                  <div className="table-col">{report.type}</div>
-                  <div className="table-col">{report.date}</div>
+                  <div className="table-col">{report.report_type || 'Medical Report'}</div>
+                  <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
                   <div className="table-col table-actions">
-                    <button className="btn-action">View</button>
-                    <button className="btn-action">Share</button>
+                    <button 
+                      className="btn-action"
+                      onClick={() => onDownload?.(report.id)}
+                    >
+                      View
+                    </button>
+                    <button 
+                      className="btn-action"
+                      onClick={() => onShareClick?.(report)}
+                    >
+                      Share
+                    </button>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="table-row">
+                  <div className="table-col" style={{textAlign: 'center', padding: '20px', color: '#666'}}>No reports available</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -4841,14 +5088,30 @@ function UserHealthReportView({
                 <button className="clear-search">×</button>
               </div>
               
-              <button className="btn-filter">
+              <button 
+                className="btn-filter"
+                onClick={() => {
+                  if (showSort) {
+                    onSetShowSort?.(false)
+                  }
+                  onSetShowFilters?.(!showFilters)
+                }}
+              >
                 <img src={filterIcon} alt="Filter" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
-                Filter
+                {showFilters ? 'Hide' : 'Show'} Filter
               </button>
               
-              <button className="btn-sort">
+              <button 
+                className="btn-sort"
+                onClick={() => {
+                  if (showFilters) {
+                    onSetShowFilters?.(false)
+                  }
+                  onSetShowSort?.(!showSort)
+                }}
+              >
                 <img src={sortIcon} alt="Sort" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
-                Sort
+                {showSort ? 'Hide' : 'Show'} Sort
               </button>
             </div>
 
@@ -4881,8 +5144,9 @@ function UserHealthReportView({
           </div>
 
           {/* Advanced Filters */}
-          <div className="advanced-filters">
-            <div className="filter-row">
+          {showFilters && (
+            <div className="advanced-filters">
+              <div className="filter-row">
               <div className="filter-group">
                 <label>Report Type</label>
                 <div className="filter-options">
@@ -5006,30 +5270,6 @@ function UserHealthReportView({
                 <label>Hospital / Clinic name</label>
                 <input type="text" placeholder="Type to search hospitals or clinics" />
               </div>
-
-              <div className="filter-group">
-                <label>Due Status</label>
-                <div className="filter-options">
-                  <button 
-                    className={`filter-option ${filters?.dueStatus === 'Overdue' ? 'active' : ''}`}
-                    onClick={() => onFilterChange?.('dueStatus', 'Overdue')}
-                  >
-                    Overdue
-                  </button>
-                  <button 
-                    className={`filter-option ${filters?.dueStatus === 'Due Soon' ? 'active' : ''}`}
-                    onClick={() => onFilterChange?.('dueStatus', 'Due Soon')}
-                  >
-                    Due Soon
-                  </button>
-                  <button 
-                    className={`filter-option ${!filters?.dueStatus || filters.dueStatus === 'Up to Date' ? 'active' : ''}`}
-                    onClick={() => onFilterChange?.('dueStatus', 'Up to Date')}
-                  >
-                    Up to Date
-                  </button>
-                </div>
-              </div>
             </div>
 
             <div className="filter-actions">
@@ -5039,17 +5279,59 @@ function UserHealthReportView({
               >
                 Reset
               </button>
-              <button 
-                className="btn-apply"
-                onClick={() => {
-                  // Apply button could trigger a refresh or validation
-                  // For now, filters are applied in real-time
-                }}
-              >
-                Apply
-              </button>
             </div>
-          </div>
+            </div>
+          )}
+
+          {/* Sort Panel */}
+          {showSort && (
+            <div className="sort-panel">
+              <div className="sort-row">
+                <div className="sort-group">
+                  <label>Sort By</label>
+                  <select
+                    value={sortBy || 'report_date'}
+                    onChange={(e) => onSort?.(e.target.value)}
+                  >
+                    <option value="report_date">Report Date</option>
+                    <option value="created_at">Upload Date</option>
+                    <option value="report_title">Report Title</option>
+                    <option value="report_type">Report Type</option>
+                    <option value="provider_name">Provider Name</option>
+                    <option value="health_report_status">Status</option>
+                  </select>
+                </div>
+
+                <div className="sort-group">
+                  <label>Sort Order</label>
+                  <div className="sort-order-buttons">
+                    <button
+                      className={`sort-order-btn ${sortOrder === 'asc' ? 'active' : ''}`}
+                      onClick={() => onSort?.(sortBy, 'asc')}
+                    >
+                      <img src={ascIcon} alt="Ascending" style={{
+                      width: '24px', 
+                      height: '18px', 
+                      marginRight: '8px',
+                      filter: sortOrder === 'asc' ? 'brightness(0) invert(1)' : 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'
+                    }} /> Ascending
+                    </button>
+                    <button
+                      className={`sort-order-btn ${sortOrder === 'desc' ? 'active' : ''}`}
+                      onClick={() => onSort?.(sortBy, 'desc')}
+                    >
+                      <img src={descIcon} alt="Descending" style={{
+                      width: '24px', 
+                      height: '18px', 
+                      marginRight: '8px',
+                      filter: sortOrder === 'desc' ? 'brightness(0) invert(1)' : 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'
+                    }}/> Descending
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Results Table */}
           <div className="results-table">
@@ -5068,7 +5350,7 @@ function UserHealthReportView({
                 reports.map((report) => (
                   <div key={report.id} className="table-data-row">
                     <div className="table-data-col">
-                      <div className="report-title">{report.notes || report.report_type || 'Health Report'}</div>
+                      <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
                       <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
                     </div>
                     <div className="table-data-col">{report.report_type || 'Medical Report'}</div>
@@ -5079,9 +5361,9 @@ function UserHealthReportView({
                       {new Date(report.created_at).toLocaleDateString('en-GB')}
                     </div>
                     <div className="table-data-col">
-                      {report.healthcare_provider || 'N/A'}
+                      {report.provider_name || 'N/A'}
                     </div>
-                    <div className="table-data-col">{report.due_status || 'Up to Date'}</div>
+                    <div className="table-data-col">{report.health_report_status || report.due_status || 'Up to Date'}</div>
                     <div className="table-data-col table-actions">
                       <button 
                         className="btn-action"
@@ -5132,11 +5414,66 @@ function UserHealthReportView({
         {/* Share Modal */}
         {showShareModal && (
           <ShareModal
+            show={showShareModal}
             shareForm={shareForm}
+            errors={errors}
             onCancel={onCancelShareModal}
-            onFormChange={onShareFormChange}
-            onSubmit={onShareFormSubmit}
+            onShareFormChange={onShareFormChange}
+            onShareFormSubmit={onShareFormSubmit}
           />
+        )}
+
+        {/* Reminder Modal */}
+        {showReminderModal && (
+          <ReminderModal
+            show={showReminderModal}
+            reminderForm={reminderForm}
+            editingReminder={editingReminder}
+            errors={errors}
+            onCancel={onCancelReminderModal}
+            onFormChange={onReminderFormChange}
+            onSubmit={onSubmitReminder}
+          />
+        )}
+
+        {/* PDF Viewer Modal */}
+        {showPDFViewer && viewingReportUrl && (
+          <div className="modal-overlay pdf-viewer-overlay" onClick={onClosePDFViewer}>
+            <div className="modal-content pdf-viewer-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Health Report</h3>
+                <button className="close-button" onClick={onClosePDFViewer}>×</button>
+              </div>
+              
+              <div className="modal-body pdf-viewer-body">
+                <iframe
+                  src={viewingReportUrl}
+                  style={{
+                    width: '100%',
+                    height: '80vh',
+                    border: 'none',
+                    borderRadius: '8px'
+                  }}
+                  title="Health Report PDF"
+                />
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onClosePDFViewer}
+                >
+                  Close
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => window.open(viewingReportUrl, '_blank')}
+                >
+                  Open in New Tab
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -5181,15 +5518,28 @@ export default function HealthMonitoringView({
   sortOrder,
   showUploadModal,
   showShareModal,
+  showPDFViewer,
+  viewingReportUrl,
   showFilters,
+  showSort,
   isDragging,
   errors,
   successMessage,
   applicationId, // Add applicationId prop
 
+  // Reminder props
+  reminders,
+  upcomingReminders,
+  overdueReminders,
+  reminderStats,
+  showReminderModal,
+  reminderForm,
+  editingReminder,
+
   // User handlers
   onUploadClick,
   onCancelUploadModal,
+  onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
   onMultipleFileUpload,
@@ -5206,10 +5556,20 @@ export default function HealthMonitoringView({
   onSearch,
   onFilter,
   onSetShowFilters,
+  onSetShowSort,
   onSort,
   onDownload,
   onShareClick,
   onDelete,
+
+  // Reminder handlers
+  onCreateReminder,
+  onEditReminder,
+  onDeleteReminder,
+  onToggleReminder,
+  onReminderFormChange,
+  onSubmitReminder,
+  onCancelReminderModal,
 
   // Admin handlers
   onFilterChange,
@@ -5278,15 +5638,26 @@ export default function HealthMonitoringView({
       sortOrder={sortOrder}
       showUploadModal={showUploadModal}
       showShareModal={showShareModal}
+      showPDFViewer={showPDFViewer}
+      viewingReportUrl={viewingReportUrl}
       showFilters={showFilters}
+      showSort={showSort}
       isDragging={isDragging}
       errors={errors}
       activeTab={activeTab || 'archived'}
       statistics={statistics}
       user={user}
       applicationId={applicationId}
+      reminders={reminders}
+      upcomingReminders={upcomingReminders}
+      overdueReminders={overdueReminders}
+      reminderStats={reminderStats}
+      showReminderModal={showReminderModal}
+      reminderForm={reminderForm}
+      editingReminder={editingReminder}
       onUploadClick={onUploadClick}
       onCancelUploadModal={onCancelUploadModal}
+      onClosePDFViewer={onClosePDFViewer}
       onUploadFormChange={onUploadFormChange}
       onMultiUploadFormChange={onMultiUploadFormChange}
       onMultipleFileUpload={onMultipleFileUpload}
@@ -5306,12 +5677,20 @@ export default function HealthMonitoringView({
       onTabFilter={onTabFilter}
       onFilter={onFilter}
       onSetShowFilters={onSetShowFilters}
+      onSetShowSort={onSetShowSort}
       onSort={onSort}
       onDownload={onDownload}
       onShareClick={onShareClick}
       onDelete={onDelete}
       onTabChange={onTabChange}
       onViewReport={onViewReport}
+      onCreateReminder={onCreateReminder}
+      onEditReminder={onEditReminder}
+      onDeleteReminder={onDeleteReminder}
+      onToggleReminder={onToggleReminder}
+      onReminderFormChange={onReminderFormChange}
+      onSubmitReminder={onSubmitReminder}
+      onCancelReminderModal={onCancelReminderModal}
     />
   )
 }

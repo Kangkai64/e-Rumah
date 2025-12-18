@@ -3,19 +3,32 @@ import jsPDF from 'jspdf'
 import { validatePDF, processPDF } from './pdfCompression'
 
 /**
- * Convert multiple images to a single PDF
+ * Convert multiple images to a single PDF with compression
  * @param {File[]} imageFiles - Array of image files
  * @param {string} fileName - Name for the generated PDF
+ * @param {Object} options - Conversion options
  * @returns {Promise<File>} - Generated PDF file
  */
-export const convertImagesToPDF = async (imageFiles, fileName = 'health_report.pdf') => {
+export const convertImagesToPDF = async (imageFiles, fileName = 'health_report.pdf', options = {}) => {
   try {
-    // Create new jsPDF instance
-    const pdf = new jsPDF()
+    const {
+      pdfQuality = 0.8
+    } = options
+
+    // Create new jsPDF instance with compression
+    const pdf = new jsPDF({
+      compress: true,
+      precision: 2
+    })
     let isFirstPage = true
 
+    console.log(`🔄 Converting ${imageFiles.length} image(s) to PDF...`)
+
     // Process each image file
-    for (const imageFile of imageFiles) {
+    for (let i = 0; i < imageFiles.length; i++) {
+      const imageFile = imageFiles[i]
+      console.log(`📸 Processing image ${i + 1}/${imageFiles.length}: ${imageFile.name} (${formatBytes(imageFile.size)})`)
+      
       // Convert file to base64 data URL
       const dataUrl = await fileToDataURL(imageFile)
       
@@ -40,7 +53,7 @@ export const convertImagesToPDF = async (imageFiles, fileName = 'health_report.p
       // Scale image to fit page while maintaining aspect ratio
       const widthRatio = maxWidth / imgWidth
       const heightRatio = maxHeight / imgHeight
-      const ratio = Math.min(widthRatio, heightRatio)
+      const ratio = Math.min(widthRatio, heightRatio, 1) // Don't upscale
       
       imgWidth *= ratio
       imgHeight *= ratio
@@ -49,26 +62,61 @@ export const convertImagesToPDF = async (imageFiles, fileName = 'health_report.p
       const x = (pageWidth - imgWidth) / 2
       const y = (pageHeight - imgHeight) / 2
       
-      // Add image to PDF
-      pdf.addImage(dataUrl, 'JPEG', x, y, imgWidth, imgHeight)
+      // Add image to PDF with compression
+      pdf.addImage(dataUrl, 'JPEG', x, y, imgWidth, imgHeight, undefined, 'MEDIUM')
       
       isFirstPage = false
     }
 
-    // Generate PDF blob
+    // Generate PDF blob with additional compression
     const pdfBlob = pdf.output('blob')
     
-    // Create File object from blob
-    const pdfFile = new File([pdfBlob], fileName, {
+    console.log(`📄 Initial PDF generated: ${formatBytes(pdfBlob.size)}`)
+    
+    // Create temporary File object from blob
+    const tempPdfFile = new File([pdfBlob], fileName, {
       type: 'application/pdf',
       lastModified: Date.now()
     })
 
-    return pdfFile
+    // Apply PDF compression using processPDF
+    console.log(`🗜️ Applying PDF compression...`)
+    const processResult = await processPDF(tempPdfFile, {
+      compress: true,
+      compressionLevel: pdfQuality,
+      maxFileSize: 5 * 1024 * 1024 // 5MB
+    })
+
+    // Use processed PDF if successful, otherwise use original
+    const finalPdfFile = processResult.success ? processResult.file : tempPdfFile
+    
+    console.log(`📄 Final PDF size: ${formatBytes(finalPdfFile.size)}`)
+
+    // Calculate compression ratio
+    const totalOriginalSize = imageFiles.reduce((sum, file) => sum + file.size, 0)
+    const compressionRatio = ((totalOriginalSize - finalPdfFile.size) / totalOriginalSize * 100).toFixed(1)
+    
+    console.log(`✅ Conversion completed:`)
+    console.log(`   Original images: ${formatBytes(totalOriginalSize)}`)
+    console.log(`   Final PDF: ${formatBytes(finalPdfFile.size)}`)
+    console.log(`   Compression: ${compressionRatio}%`)
+
+    return finalPdfFile
   } catch (error) {
     console.error('Error converting images to PDF:', error)
     throw new Error('Failed to convert images to PDF: ' + error.message)
   }
+}
+
+/**
+ * Format bytes to human readable string
+ */
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
 /**

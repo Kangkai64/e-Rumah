@@ -20,6 +20,8 @@ const HealthReport = {
           application_id: reportData.applicationId || null,
           report_type: reportData.reportType,
           report_date: reportData.reportDate,
+          report_title: reportData.reportTitle,
+          provider_name: reportData.providerName,
           report_file_url: reportData.reportFileUrl,
           notes: reportData.notes,
           health_report_status: reportData.healthReportStatus || 'Pending',
@@ -73,6 +75,10 @@ const HealthReport = {
       // Apply filters
       if (filters.reportType) {
         query = query.eq('report_type', filters.reportType)
+      }
+
+      if (filters.providerName) {
+        query = query.ilike('provider_name', `%${filters.providerName}%`)
       }
 
       if (filters.applicationId) {
@@ -314,6 +320,8 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
       applicationId: metadata.applicationId,
       reportType: metadata.reportType,
       reportDate: metadata.reportDate,
+      reportTitle: metadata.reportTitle,
+      providerName: metadata.providerName,
       reportFileUrl: uploadResult.data.url,
       notes: metadata.notes
     }
@@ -555,13 +563,17 @@ function formatDate(date) {
 
 async function shareWithCaregiver(report, shareData) {
   try {
+    const expiryDate = new Date()
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
     const { data, error } = await supabase
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
         shared_with_type: 'caregiver',
         shared_with_id: shareData.caregiverId,
-        shared_at: new Date().toISOString()
+        shared_with_email: shareData.email,
+        expires_at: expiryDate.toISOString()
       }])
       .select()
 
@@ -576,13 +588,17 @@ async function shareWithCaregiver(report, shareData) {
 
 async function shareWithFamily(report, shareData) {
   try {
+    const expiryDate = new Date()
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
     const { data, error } = await supabase
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
         shared_with_type: 'family',
         shared_with_id: shareData.familyMemberId,
-        shared_at: new Date().toISOString()
+        shared_with_email: shareData.email,
+        expires_at: expiryDate.toISOString()
       }])
       .select()
 
@@ -597,13 +613,16 @@ async function shareWithFamily(report, shareData) {
 
 async function shareWithHealthcare(report, shareData) {
   try {
+    const expiryDate = new Date()
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
     const { data, error } = await supabase
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
         shared_with_type: 'healthcare_provider',
-        shared_with_email: shareData.providerEmail,
-        shared_at: new Date().toISOString()
+        shared_with_email: shareData.providerEmail || shareData.email,
+        expires_at: expiryDate.toISOString()
       }])
       .select()
 
@@ -629,8 +648,7 @@ async function generateShareableLink(report, shareData) {
         report_id: report.id,
         shared_with_type: 'public_link',
         share_token: shareToken,
-        expires_at: expiryDate.toISOString(),
-        shared_at: new Date().toISOString()
+        expires_at: expiryDate.toISOString()
       }])
       .select()
 
@@ -650,22 +668,29 @@ async function generateShareableLink(report, shareData) {
 
 async function shareViaEmail(report, shareData) {
   try {
+    const expiryDate = new Date()
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
+    const shareToken = generateToken()
+
     const { data, error } = await supabase
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
         shared_with_type: 'email',
         shared_with_email: shareData.email,
-        shared_at: new Date().toISOString()
+        share_token: shareToken,
+        expires_at: expiryDate.toISOString()
       }])
       .select()
 
     if (error) throw error
 
+    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
     return {
       success: true,
-      data,
-      message: `Report sent to ${shareData.email} successfully`
+      data: { ...data[0], shareUrl },
+      message: `Report shared with ${shareData.email} successfully`
     }
   } catch (error) {
     console.error('Error sharing via email:', error)
@@ -784,6 +809,7 @@ export const getAllHealthReports = async (filters = {}) => {
       query = query.or(
         `report_type.ilike.%${filters.searchKey}%,` +
         `notes.ilike.%${filters.searchKey}%,` +
+        `provider_name.ilike.%${filters.searchKey}%,` +
         `applications.users.full_name.ilike.%${filters.searchKey}%,` +
         `applications.users.email.ilike.%${filters.searchKey}%`
       )
@@ -794,8 +820,12 @@ export const getAllHealthReports = async (filters = {}) => {
       query = query.eq('report_type', filters.reportType)
     }
 
+    if (filters.providerName) {
+      query = query.ilike('provider_name', `%${filters.providerName}%`)
+    }
+
     if (filters.uploadStatus) {
-      query = query.eq('status', filters.uploadStatus)
+      query = query.eq('health_report_status', filters.uploadStatus)
     }
 
     if (filters.startDate && filters.endDate) {
@@ -855,6 +885,466 @@ export const getAllHealthReports = async (filters = {}) => {
 }
 
 export default HealthReport
+
+// ============================================================================
+// REMINDERS MODEL AND FUNCTIONALITY
+// ============================================================================
+
+/**
+ * Reminder Model - Data structure for reminders
+ * Maps to the reminders table in Supabase
+ */
+export class Reminder {
+  constructor({
+    id = null,
+    user_id,
+    reminder_type,
+    reminder_title,
+    reminder_date,
+    is_enabled = true,
+    reminder_frequency = null,
+    category = 'Health & appointments',
+    notes = null,
+    created_at = null,
+    updated_at = null,
+    notified_at = null
+  }) {
+    this.id = id
+    this.user_id = user_id
+    this.reminder_type = reminder_type
+    this.reminder_title = reminder_title
+    this.reminder_date = reminder_date
+    this.is_enabled = is_enabled
+    this.reminder_frequency = reminder_frequency
+    this.category = category
+    this.notes = notes
+    this.created_at = created_at
+    this.updated_at = updated_at
+    this.notified_at = notified_at
+  }
+
+  // Static method to create from database row
+  static fromDatabase(row) {
+    return new Reminder({
+      id: row.id,
+      user_id: row.user_id,
+      reminder_type: row.reminder_type,
+      reminder_title: row.reminder_title,
+      reminder_date: new Date(row.reminder_date),
+      is_enabled: row.is_enabled,
+      reminder_frequency: row.reminder_frequency,
+      category: row.category,
+      notes: row.notes,
+      created_at: row.created_at ? new Date(row.created_at) : null,
+      updated_at: row.updated_at ? new Date(row.updated_at) : null,
+      notified_at: row.notified_at ? new Date(row.notified_at) : null
+    })
+  }
+
+  // Convert to database format for insert/update
+  toDatabaseFormat() {
+    return {
+      user_id: this.user_id,
+      reminder_type: this.reminder_type,
+      reminder_title: this.reminder_title,
+      reminder_date: this.reminder_date.toISOString(),
+      is_enabled: this.is_enabled,
+      reminder_frequency: this.reminder_frequency,
+      category: this.category,
+      notes: this.notes
+    }
+  }
+
+  // Check if reminder is due soon (within 7 days)
+  isDueSoon() {
+    const now = new Date()
+    const reminderDate = new Date(this.reminder_date)
+    const diffTime = reminderDate.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays <= 7 && diffDays >= 0
+  }
+
+  // Check if reminder is overdue
+  isOverdue() {
+    const now = new Date()
+    const reminderDate = new Date(this.reminder_date)
+    return reminderDate < now && this.is_enabled
+  }
+
+  // Get reminder display text based on type
+  getDisplayType() {
+    const typeMap = {
+      'Next health check': 'Health Check',
+      'Medication refill': 'Medication',
+      'Blood pressure check': 'Blood Pressure',
+      'Doctor visit': 'Doctor Visit',
+      'Vaccination': 'Vaccination',
+      'Lab test': 'Lab Test',
+      'Custom': 'Custom'
+    }
+    return typeMap[this.reminder_type] || this.reminder_type
+  }
+
+  // Get category display text
+  getCategoryDisplay() {
+    const categoryMap = {
+      'Health & appointments': 'Health & Appointments',
+      'Medication': 'Medication',
+      'Personal': 'Personal',
+      'Other': 'Other'
+    }
+    return categoryMap[this.category] || this.category
+  }
+
+  // Validate reminder data
+  static validate(reminderData) {
+    const errors = {}
+
+    // Required fields
+    if (!reminderData.reminder_title?.trim()) {
+      errors.reminder_title = 'Reminder title is required'
+    }
+
+    if (!reminderData.reminder_type) {
+      errors.reminder_type = 'Reminder type is required'
+    }
+
+    if (!reminderData.reminder_date) {
+      errors.reminder_date = 'Reminder date is required'
+    } else {
+      const reminderDate = new Date(reminderData.reminder_date)
+      const now = new Date()
+      if (reminderDate < now) {
+        errors.reminder_date = 'Reminder date must be in the future'
+      }
+    }
+
+    // Validate reminder type
+    const validTypes = [
+      'Next health check',
+      'Medication refill',
+      'Blood pressure check',
+      'Doctor visit',
+      'Vaccination',
+      'Lab test',
+      'Custom'
+    ]
+    if (reminderData.reminder_type && !validTypes.includes(reminderData.reminder_type)) {
+      errors.reminder_type = 'Invalid reminder type'
+    }
+
+    // Validate category
+    const validCategories = [
+      'Health & appointments',
+      'Medication',
+      'Personal',
+      'Other'
+    ]
+    if (reminderData.category && !validCategories.includes(reminderData.category)) {
+      errors.category = 'Invalid category'
+    }
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    }
+  }
+}
+
+// Constants for dropdown options
+export const REMINDER_TYPES = [
+  'Next health check',
+  'Medication refill',
+  'Blood pressure check',
+  'Doctor visit',
+  'Vaccination',
+  'Lab test',
+  'Custom'
+]
+
+export const REMINDER_CATEGORIES = [
+  'Health & appointments',
+  'Medication',
+  'Personal',
+  'Other'
+]
+
+// Reminders service functionality integrated into HealthReport
+const RemindersService = {
+  // Create a new reminder
+  async createReminder(reminderData) {
+    try {
+      // Validate reminder data
+      const validation = Reminder.validate(reminderData)
+      if (!validation.isValid) {
+        throw new Error(`Validation failed: ${Object.values(validation.errors).join(', ')}`)
+      }
+
+      // Create reminder instance and convert to database format
+      const reminder = new Reminder(reminderData)
+      const dbData = reminder.toDatabaseFormat()
+
+      const { data, error } = await supabase
+        .from('reminders')
+        .insert(dbData)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data: Reminder.fromDatabase(data) }
+    } catch (error) {
+      console.error('Error creating reminder:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get all reminders for a user
+  async getUserReminders(userId, options = {}) {
+    try {
+      let query = supabase
+        .from('reminders')
+        .select('*')
+        .eq('user_id', userId)
+
+      // Apply filters
+      if (options.category) {
+        query = query.eq('category', options.category)
+      }
+
+      if (options.reminder_type) {
+        query = query.eq('reminder_type', options.reminder_type)
+      }
+
+      if (options.is_enabled !== undefined) {
+        query = query.eq('is_enabled', options.is_enabled)
+      }
+
+      // Apply date filters
+      if (options.date_from) {
+        query = query.gte('reminder_date', options.date_from)
+      }
+
+      if (options.date_to) {
+        query = query.lte('reminder_date', options.date_to)
+      }
+
+      // Apply ordering
+      const orderBy = options.orderBy || 'reminder_date'
+      const order = options.order || 'asc'
+      query = query.order(orderBy, { ascending: order === 'asc' })
+
+      const { data, error } = await query
+
+      if (error) throw error
+      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+    } catch (error) {
+      console.error('Error fetching reminders:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get reminder by ID
+  async getReminderById(reminderId) {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('id', reminderId)
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: false, error: 'Reminder not found' }
+        }
+        throw error
+      }
+
+      return { success: true, data: Reminder.fromDatabase(data) }
+    } catch (error) {
+      console.error('Error fetching reminder:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Update a reminder
+  async updateReminder(reminderId, updateData) {
+    try {
+      // Remove user_id from update data if present (shouldn't be updated)
+      const { user_id, id, created_at, ...cleanUpdateData } = updateData
+
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({
+          ...cleanUpdateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reminderId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data: Reminder.fromDatabase(data) }
+    } catch (error) {
+      console.error('Error updating reminder:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Delete a reminder
+  async deleteReminder(reminderId) {
+    try {
+      const { error } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', reminderId)
+
+      if (error) throw error
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting reminder:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Toggle reminder enabled status
+  async toggleReminder(reminderId, isEnabled) {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({ 
+          is_enabled: isEnabled,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reminderId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data: Reminder.fromDatabase(data) }
+    } catch (error) {
+      console.error('Error toggling reminder:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get upcoming reminders (next 7 days)
+  async getUpcomingReminders(userId) {
+    try {
+      const now = new Date()
+      const nextWeek = new Date()
+      nextWeek.setDate(now.getDate() + 7)
+
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_enabled', true)
+        .gte('reminder_date', now.toISOString())
+        .lte('reminder_date', nextWeek.toISOString())
+        .order('reminder_date', { ascending: true })
+
+      if (error) throw error
+      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+    } catch (error) {
+      console.error('Error fetching upcoming reminders:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get overdue reminders
+  async getOverdueReminders(userId) {
+    try {
+      const now = new Date()
+
+      const { data, error } = await supabase
+        .from('reminders')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_enabled', true)
+        .lt('reminder_date', now.toISOString())
+        .order('reminder_date', { ascending: false })
+
+      if (error) throw error
+      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+    } catch (error) {
+      console.error('Error fetching overdue reminders:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Get reminder statistics for dashboard
+  async getReminderStatistics(userId) {
+    try {
+      const now = new Date()
+      const nextWeek = new Date()
+      nextWeek.setDate(now.getDate() + 7)
+
+      // Get all reminders count
+      const { count: totalCount, error: totalError } = await supabase
+        .from('reminders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_enabled', true)
+
+      // Get upcoming reminders count
+      const { count: upcomingCount, error: upcomingError } = await supabase
+        .from('reminders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_enabled', true)
+        .gte('reminder_date', now.toISOString())
+        .lte('reminder_date', nextWeek.toISOString())
+
+      // Get overdue reminders count
+      const { count: overdueCount, error: overdueError } = await supabase
+        .from('reminders')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_enabled', true)
+        .lt('reminder_date', now.toISOString())
+
+      if (totalError || upcomingError || overdueError) {
+        throw new Error('Failed to fetch reminder statistics')
+      }
+
+      return {
+        success: true, 
+        data: {
+          total: totalCount || 0,
+          upcoming: upcomingCount || 0,
+          overdue: overdueCount || 0
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching reminder statistics:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  // Mark reminder as notified
+  async markAsNotified(reminderId) {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({ 
+          notified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reminderId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data: Reminder.fromDatabase(data) }
+    } catch (error) {
+      console.error('Error marking reminder as notified:', error)
+      return { success: false, error: error.message }
+    }
+  }
+}
+
+// Export reminders functionality  
+export { RemindersService }
 
 /**
  * Get health reports by application ID
