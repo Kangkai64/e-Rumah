@@ -169,9 +169,43 @@ export const validateStep1 = (formData) => {
   errors.payoutOption = validateRequired(formData.payoutOption, 'Payout Option')
   errors.paymentOption = validateRequired(formData.paymentOption, 'Payment Option')
   
+  // Malaysian citizenship required
+  if (!formData.malaysian) {
+    errors.malaysian = 'Malaysian citizenship is required'
+  }
+  
   // If monthly payout with lump sum, validate lump sum usage
   if (formData.payoutOption === 'monthlyPayout_lumpSum') {
     errors.lumpSumUsage = validateRequired(formData.lumpSumUsage, 'Lump Sum Usage')
+  }
+  
+  // Document validations
+  if (!formData.documents?.applicantNRIC?.url) {
+    errors.applicantNRIC = 'Applicant NRIC document is required'
+  }
+  if (!formData.documents?.birthCertificate?.url) {
+    errors.birthCertificate = 'Birth Certificate is required'
+  }
+  if (formData.maritalStatus === 'Married' && !formData.documents?.marriageCertificate?.url) {
+    errors.marriageCertificate = 'Marriage Certificate is required'
+  }
+  
+  // Payslips (3 required)
+  for (let i = 0; i < 3; i++) {
+    if (!formData.documents?.payslips?.[i]?.url) {
+      errors[`payslip${i + 1}`] = `Payslip ${i + 1} is required`
+    }
+  }
+  
+  // Bank statements (6 required)
+  for (let i = 0; i < 6; i++) {
+    if (!formData.documents?.bankStatements?.[i]?.url) {
+      errors[`bankStatement${i + 1}`] = `Bank Statement ${i + 1} is required`
+    }
+  }
+  
+  if (!formData.documents?.epfStatement?.url) {
+    errors.epfStatement = 'EPF Statement is required'
   }
   
   // Filter out null errors
@@ -214,6 +248,16 @@ export const validateStep2 = (formData) => {
     errors.jSex = validateRequired(formData.jSex, 'Joint Applicant Sex')
     errors.jMarital = validateRequired(formData.jMarital, 'Joint Applicant Marital Status')
     errors.jRelationship = validateRequired(formData.jRelationship, 'Relationship to Applicant')
+    
+    // Malaysian citizenship required for joint applicant
+    if (!formData.jMalaysian) {
+      errors.jMalaysian = 'Joint Applicant Malaysian citizenship is required'
+    }
+    
+    // Joint applicant NRIC document required
+    if (!formData.documents?.jointApplicantNRIC?.url) {
+      errors.jointApplicantNRIC = 'Joint Applicant NRIC document is required'
+    }
   }
   
   // Banking details (always required)
@@ -270,6 +314,23 @@ export const validateStep3 = (formData) => {
   // Renewal
   errors.renewalFireInsurance = validateRequired(formData.renewalFireInsurance, 'Fire Insurance Renewal')
   
+  // Property documents
+  if (!formData.documents?.grantTitle?.url) {
+    errors.grantTitle = 'Grant / Title Deed is required'
+  }
+  if (!formData.documents?.saleAgreement?.url) {
+    errors.saleAgreement = 'Sale & Purchase Agreement is required'
+  }
+  if (!formData.documents?.valuationReport?.url) {
+    errors.valuationReport = 'Valuation Report is required'
+  }
+  if (!formData.documents?.fireInsurance?.url) {
+    errors.fireInsuranceDoc = 'Fire Insurance Policy document is required'
+  }
+  if (formData.propertyEncumbered === 'yes' && !formData.documents?.propertyLoanStatement?.url) {
+    errors.propertyLoanStatement = 'Property Loan Statement is required'
+  }
+  
   return Object.fromEntries(Object.entries(errors).filter(([_, v]) => v !== null))
 }
 
@@ -305,6 +366,11 @@ export const validateStep4 = (formData) => {
     errors.nominee1Dob = 'Nominee 1 Date of Birth is required'
   }
   
+  // Malaysian citizenship required for nominee 1
+  if (!formData.nominee1Malaysian) {
+    errors.nominee1Malaysian = 'Nominee 1 Malaysian citizenship is required'
+  }
+  
   // Nominee 2 (if checkbox is checked)
   if (formData.hasSecondNominee) {
     errors.nominee2Name = validateRequired(formData.nominee2Name, 'Nominee 2 Name')
@@ -332,6 +398,11 @@ export const validateStep4 = (formData) => {
     // DOB required
     if (!formData.nominee2DobDay || !formData.nominee2DobMonth || !formData.nominee2DobYear) {
       errors.nominee2Dob = 'Nominee 2 Date of Birth is required'
+    }
+    
+    // Malaysian citizenship required for nominee 2
+    if (!formData.nominee2Malaysian) {
+      errors.nominee2Malaysian = 'Nominee 2 Malaysian citizenship is required'
     }
   }
   

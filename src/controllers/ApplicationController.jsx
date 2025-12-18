@@ -399,6 +399,13 @@ function ApplicationController() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     
+    // Clear error for this field when it changes
+    setErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[name]
+      return newErrors
+    })
+    
     setFormData(prev => {
       let updates = {
         [name]: type === 'checkbox' ? checked : value
@@ -580,6 +587,26 @@ function ApplicationController() {
         ...prev,
         [uploadKey]: { uploading: false }
       }))
+
+      // Clear error for this field if it exists
+      if (arrayIndex !== null) {
+        // For array documents (payslips/bankStatements)
+        const errorKey = documentType.includes('payslip') 
+          ? `payslip${arrayIndex + 1}` 
+          : `bankStatement${arrayIndex + 1}`
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[errorKey]
+          return newErrors
+        })
+      } else {
+        // For single documents
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[documentType]
+          return newErrors
+        })
+      }
 
       console.log('✅ File uploaded:', fileName)
     } catch (error) {

@@ -290,9 +290,16 @@
   border: 2px solid #28a745;
   border-radius: 12px;
   padding: 30px;
+  margin: 20px 0 20px;
+
+  display: flex;
+  flex-direction: column;      /* 👈 vertical layout */
+  align-items: center;         /* horizontal centering */
+  justify-content: space-between; /* top / middle / bottom */
+  gap: 0 !important;
+
+  height: 100%;
   text-align: center;
-  margin: 30px 0 20px;
-  animation: slideDown 0.5s ease;
 }
 
 .success-icon {
