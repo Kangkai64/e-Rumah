@@ -135,13 +135,16 @@ const Header = () => {
 
           <nav className="main-nav">
             <Link to="/user/dashboard" className="nav-link">Dashboard</Link>
-            <Link to="/user/application" className="nav-link">My Application</Link>
             <Link to="/user/health-reports" className="nav-link">Health Reports</Link>
             <Link to="/user/documents" className="nav-link">Documents</Link>
             <Link to="/user/support" className="nav-link">Support</Link>
           </nav>
 
           <div className="header-actions">
+            <Link to="/user/application" className="apply-now-btn">
+              <span>My Application</span>
+              <img src={applyNowIcon} alt="My Application" className="apply-now-icon" />
+            </Link>
             <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         </div>
