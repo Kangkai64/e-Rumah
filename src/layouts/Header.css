@@ -171,6 +171,25 @@
   background: #f9f9f9;
 }
 
+.logout-btn {
+  background: #A8202D;
+  color: white;
+  padding: 0.65rem 1.25rem;
+  border-radius: 20px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.logout-btn:hover {
+  background: #8a1a24;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-nav {

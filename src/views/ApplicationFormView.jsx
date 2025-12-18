@@ -2411,7 +2411,7 @@ function Step7Review({ formData }) {
           </div>
         )}
         {formData.fireInsurance === 'notAvailable' && (
-          <div className="review-field"><strong>Reason Not Available:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
+          <div className="review-field"><strong>Insurance to be purchased by Organization:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
         )}
         <div className="review-field"><strong>Renewal Status:</strong> {getValue(formData.renewalFireInsurance)}</div>
       </div>
@@ -2462,21 +2462,17 @@ function Step7Review({ formData }) {
               <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee2ResidencePhone)}</div>
               <div className="review-field"><strong>Mobile Phone:</strong> {getValue(formData.nominee2Telephone)}</div>
             </div>
-            <div className="review-grid">
-              <div className="review-field"><strong>Occupation:</strong> {getValue(formData.nominee2Occupation)}</div>
-              <div className="review-field"><strong>Employer Name:</strong> {getValue(formData.nominee2EmployerName)}</div>
-            </div>
           </>
         )}
       </div>
 
       <div className="info-box" style={{marginTop: '2rem', padding: '1.5rem', backgroundColor: '#e3f2fd', border: '2px solid #2196f3', borderRadius: '4px'}}>
         <h4 style={{marginTop: 0, color: '#1976d2'}}>✓ Ready to Submit?</h4>
-        <p>Click the <strong>"Generate PDF & Submit"</strong> button below to:</p>
+        <p>Click the <strong>"Submit"</strong> button below to:</p>
         <ol style={{marginLeft: '1.5rem', marginTop: '0.5rem'}}>
           <li>Generate a filled PDF of your SSB Application Form</li>
           <li>Download the PDF automatically to your device</li>
-          <li>Submit your application to Selangor State Government</li>
+          <li>Submit your application to e-Rumah</li>
         </ol>
         <p style={{marginTop: '1rem', marginBottom: 0, color: '#f57c00'}}><strong>⚠ Important:</strong> Review all information carefully. If you find any errors, use the "Back" button to return to the relevant step and make corrections before submitting.</p>
       </div>

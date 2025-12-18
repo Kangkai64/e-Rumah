@@ -380,9 +380,14 @@ const EligibilityCheck = () => {
                   type="date"
                   className="date-input"
                   value={formData.dateOfBirth}
-                  onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                  onBlur={(e) => handleFieldBlur('dateOfBirth', e.target.value)}
+                  onChange={(e) => {
+                    handleInputChange('dateOfBirth', e.target.value)
+                    if (e.target.value) {
+                      handleFieldBlur('dateOfBirth', e.target.value)
+                    }
+                  }}
                   disabled={!isFieldEnabled(3)}
+                  max={new Date().toISOString().split('T')[0]}
                 />
                 {errors.dateOfBirth && <p className="error-message">{errors.dateOfBirth}</p>}
               </div>
