@@ -9,6 +9,7 @@ import filterIcon from '../assets/icons/health_report_page/icon_filter.svg'
 import uploadIcon from '../assets/icons/health_report_page/icon_upload_document.svg'
 import sortIcon from '../assets/icons/health_report_page/icon_sort.svg'
 import calendarIcon from '../assets/icons/health_report_page/icon_calendar_body.svg'
+import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 
 // Embedded CSS Styles
 const styles = `
@@ -296,6 +297,21 @@ const styles = `
 .upload-drop-area.has-files {
   border-color: #28a745;
   background: #f0fff4;
+}
+
+.upload-drop-area.converting {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  cursor: not-allowed;
+}
+
+.upload-drop-area.converting .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fbbf24;
+  border-top-color: #f59e0b;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .upload-icon {
@@ -3065,9 +3081,6 @@ function UploadModal({
   onDrop,
   onFileSelect,
   onSubmit,
-  availableApplications = [],
-  selectedApplicationId,
-  onSelectedApplicationIdChange,
   applicationId // Current applicationId from URL
 }) {
   if (!show) return null
@@ -3092,29 +3105,6 @@ function UploadModal({
             onFileSelect={onFileSelect}
             file={uploadForm.file}
           />
-
-          {/* Application Selection - only show if no applicationId in URL and applications are available */}
-          {!applicationId && availableApplications.length > 0 && (
-            <div className="form-group">
-              <label htmlFor="applicationId">Associate with Application (Optional)</label>
-              <select
-                id="applicationId"
-                value={selectedApplicationId || ''}
-                onChange={(e) => onSelectedApplicationIdChange(e.target.value || null)}
-              >
-                <option value="">No application selected</option>
-                {availableApplications.map((app) => (
-                  <option key={app.id} value={app.id}>
-                    Application {app.id.slice(-8)} - {app.status}
-                    {app.submitted_at && ` (submitted ${new Date(app.submitted_at).toLocaleDateString()})`}
-                  </option>
-                ))}
-              </select>
-              <small className="form-help-text">
-                Select an application to associate this health report with it.
-              </small>
-            </div>
-          )}
 
           {/* Show current application context if accessing from application page */}
           {applicationId && (
@@ -4101,9 +4091,6 @@ function UserHealthReportView({
   statistics,
   user, // Add user prop for accessing current user info
   applicationId, // Add applicationId prop
-  availableApplications, // Add availableApplications prop
-  selectedApplicationId, // Add selectedApplicationId prop
-  onSelectedApplicationIdChange, // Add handler for application selection
 
   // Handlers
   onUploadClick,
@@ -4123,6 +4110,8 @@ function UserHealthReportView({
   onSearchChange,
   onSearch,
   onFilterChange,
+  onClearFilters,
+  onTabFilter,
   onFilter,
   onSetShowFilters,
   onSort,
@@ -4132,7 +4121,6 @@ function UserHealthReportView({
   onTabChange,
   onViewReport
 }) {
-  // Mock statistics data - in real implementation, this would come from props
   // Add default values to prevent undefined errors
   const defaultStatistics = {
     reminderThisWeek: 0,
@@ -4143,12 +4131,7 @@ function UserHealthReportView({
   
   const safeStatistics = {
     ...defaultStatistics,
-    ...(statistics && typeof statistics === 'object' ? statistics : {
-      reminderThisWeek: 2,
-      overdueHealthReport: 1,
-      healthReportDueSoon: 1,
-      flaggedHealthReport: 0
-    })
+    ...(statistics && typeof statistics === 'object' ? statistics : defaultStatistics)
   };
 
   // Safe event handlers with default functions
@@ -4163,6 +4146,7 @@ function UserHealthReportView({
   // Local state for managing selected files
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState({ fileNames: '', fileCount: 0 });
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
@@ -4203,14 +4187,14 @@ function UserHealthReportView({
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
     
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleFilesSelected(files);
+      await handleFilesSelected(files);
     }
   };
 
@@ -4244,13 +4228,9 @@ function UserHealthReportView({
     const newDates = { ...selectedDates, [dateField]: value };
     setSelectedDates(newDates);
     
-    // Update filters if the filter change handler is available
-    if (onFilterChange && filters) {
-      onFilterChange({ 
-        ...filters, 
-        startDate: newDates.startDate, 
-        endDate: newDates.endDate 
-      });
+    // Update filters using the filter change handler
+    if (onFilterChange) {
+      onFilterChange(dateField, value);
     }
     
     // Only close the date picker if a complete date is selected
@@ -4310,33 +4290,90 @@ function UserHealthReportView({
     };
   }, []);
 
-  // File selection handler
-  const handleFilesSelected = (files) => {
-    const validFiles = files.filter(file => {
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      return validTypes.includes(file.type) && file.size <= maxSize;
-    });
+  // File selection handler with PDF conversion logic
+  const handleFilesSelected = async (files) => {
+    const processedFiles = [];
+    const imageFiles = [];
     
-    if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
+    console.log('📁 Processing', files.length, 'selected files...');
+    
+    // Separate files into PDFs and images with enhanced validation
+    for (const file of files) {
+      try {
+        console.log('🔍 Validating file:', file.name);
+        const validation = await validateHealthReportFile(file);
+        
+        if (!validation.valid) {
+          alert(`❌ Invalid file "${file.name}": ${validation.error}`);
+          continue;
+        }
+        
+        if (validation.willCompress) {
+          console.log('📦 File will be compressed:', file.name);
+        }
+        
+        if (isPDFFile(file)) {
+          processedFiles.push(file);
+          console.log('✅ PDF file validated:', file.name);
+        } else if (isImageFile(file)) {
+          imageFiles.push(file);
+          console.log('🖼️ Image file will be converted:', file.name);
+        }
+      } catch (error) {
+        console.error('❌ File validation error:', error);
+        alert(`Error validating file "${file.name}": ${error.message}`);
+      }
+    }
+    
+    // If there are image files, ask user if they want to convert to PDF
+    if (imageFiles.length > 0) {
+      const convertToPDF = window.confirm(
+        `You've selected ${imageFiles.length} image file(s). Health reports must be in PDF format. ` +
+        `Would you like the system to convert these images into a PDF document?`
+      );
+      
+      if (convertToPDF) {
+        try {
+          setIsConverting(true);
+          const fileName = `health_report_${Date.now()}.pdf`;
+          const convertedPDF = await convertImagesToPDF(imageFiles, fileName);
+          processedFiles.push(convertedPDF);
+          
+          alert(
+            `Successfully converted ${imageFiles.length} image(s) to PDF: ${fileName}`
+          );
+        } catch (error) {
+          console.error('PDF conversion failed:', error);
+          alert('Failed to convert images to PDF. Please try again or upload a PDF file directly.');
+          return;
+        } finally {
+          setIsConverting(false);
+        }
+      } else {
+        alert('Please upload PDF files only for health reports.');
+        return;
+      }
+    }
+    
+    if (processedFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...processedFiles]);
       // Call the original handler with the first file for backwards compatibility
       if (safeOnFileSelect) {
-        safeOnFileSelect(validFiles[0]);
+        safeOnFileSelect(processedFiles[0]);
       }
     }
   };
 
-  const onFileInputChange = (e) => {
+  const onFileInputChange = async (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      handleFilesSelected(files);
+      await handleFilesSelected(files);
     }
   };
 
   // Enhanced file select handler that triggers file input
   const handleFileSelect = () => {
-    if (fileInputRef.current) {
+    if (fileInputRef.current && !isConverting) {
       fileInputRef.current.click();
     }
   };
@@ -4619,43 +4656,6 @@ function UserHealthReportView({
                 </div>
               )}
 
-              {/* Application Selection - only show if no applicationId in URL and applications are available */}
-              {!applicationId && availableApplications?.length > 0 && (
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label htmlFor="multiApplicationId" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Associate with Application (Optional)</label>
-                  <select
-                    id="multiApplicationId"
-                    value={selectedApplicationId || ''}
-                    onChange={(e) => onSelectedApplicationIdChange?.(e.target.value || null)}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      fontSize: '0.9rem',
-                      fontFamily: 'Poppins, sans-serif'
-                    }}
-                  >
-                    <option value="">No application selected</option>
-                    {availableApplications.map((app) => (
-                      <option key={app.id} value={app.id}>
-                        Application {app.id.slice(-8)} - {app.status}
-                        {app.submitted_at && ` (submitted ${new Date(app.submitted_at).toLocaleDateString()})`}
-                      </option>
-                    ))}
-                  </select>
-                  <small style={{ 
-                    display: 'block', 
-                    marginTop: '0.25rem', 
-                    fontSize: '0.75rem', 
-                    color: '#666',
-                    fontStyle: 'italic'
-                  }}>
-                    Select an application to associate these health reports with it.
-                  </small>
-                </div>
-              )}
-
               {/* Show current application context if accessing from application page */}
               {applicationId && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
@@ -4673,14 +4673,29 @@ function UserHealthReportView({
             </div>
             
             <div 
-              className={`upload-drop-area ${isDragActive ? 'dragging' : ''} ${selectedFiles.length > 0 ? 'has-files' : ''}`}
-              onClick={handleFileSelect}
+              className={`upload-drop-area ${isDragActive ? 'dragging' : ''} ${selectedFiles.length > 0 ? 'has-files' : ''} ${isConverting ? 'converting' : ''}`}
+              onClick={isConverting ? undefined : handleFileSelect}
             >
-              <img src={uploadIcon} alt="Upload" className="upload-icon" />
-              <p>Drag and drop files here or click to browse</p>
-              <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.5rem 0 0 0' }}>
-                PDF, JPG, PNG up to 10MB each (Multiple files supported)
-              </p>
+              {isConverting ? (
+                <>
+                  <div className="spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                  <p>Converting images to PDF...</p>
+                  <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.5rem 0 0 0' }}>
+                    Please wait while we process your files
+                  </p>
+                </>
+              ) : (
+                <>
+                  <img src={uploadIcon} alt="Upload" className="upload-icon" />
+                  <p>Drag and drop files here or click to browse</p>
+                  <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.5rem 0 0 0' }}>
+                    <strong>PDF files only</strong> - Images will be converted to PDF automatically
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#888', margin: '0.25rem 0 0 0' }}>
+                    Maximum 10MB per file (Multiple files supported)
+                  </p>
+                </>
+              )}
             </div>
 
             <input
@@ -4702,7 +4717,7 @@ function UserHealthReportView({
                   {selectedFiles.map((file, index) => (
                     <div key={`${file.name}-${index}`} className="file-preview-item">
                       <div className="file-icon">
-                        {file.type.startsWith('image/') ? '🖼️' : '📄'}
+                        📄
                       </div>
                       <div className="file-info">
                         <div className="file-name" title={file.name}>{file.name}</div>
@@ -4713,6 +4728,7 @@ function UserHealthReportView({
                         className="remove-file-btn"
                         onClick={() => removeFile(index)}
                         title="Remove file"
+                        disabled={isConverting}
                       >
                         ×
                       </button>
@@ -4725,13 +4741,13 @@ function UserHealthReportView({
             <button 
               className="btn btn-primary btn-submit" 
               onClick={handleSubmit}
-              disabled={selectedFiles.length === 0}
+              disabled={selectedFiles.length === 0 || isConverting}
               style={{
-                opacity: selectedFiles.length === 0 ? 0.6 : 1,
-                cursor: selectedFiles.length === 0 ? 'not-allowed' : 'pointer'
+                opacity: selectedFiles.length === 0 || isConverting ? 0.6 : 1,
+                cursor: selectedFiles.length === 0 || isConverting ? 'not-allowed' : 'pointer'
               }}
             >
-              Submit ({selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''})
+              {isConverting ? 'Converting...' : `Submit (${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''})`}
             </button>
           </div>
         </div>
@@ -4803,7 +4819,12 @@ function UserHealthReportView({
         <div className="search-section">
           <div className="search-header">
             <h2>Health report search</h2>
-            <button className="btn-clear-filters">Clear all filters</button>
+            <button 
+              className="btn-clear-filters"
+              onClick={onClearFilters}
+            >
+              Clear all filters
+            </button>
           </div>
 
           {/* Search Bar */}
@@ -4832,10 +4853,30 @@ function UserHealthReportView({
             </div>
 
             <div className="filter-buttons">
-              <button className={`filter-btn ${activeTab === 'all' ? 'active' : ''}`}>All</button>
-              <button className={`filter-btn ${activeTab === 'overdue' ? 'active' : ''}`}>Overdue</button>
-              <button className={`filter-btn ${activeTab === 'due-soon' ? 'active' : ''}`}>Due Soon</button>
-              <button className={`filter-btn ${activeTab === 'up-to-date' ? 'active' : ''}`}>Up to Date</button>
+              <button 
+                className={`filter-btn ${activeTab === 'all' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('all')}
+              >
+                All
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'overdue' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('overdue')}
+              >
+                Overdue
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'due-soon' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('due-soon')}
+              >
+                Due Soon
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'up-to-date' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('up-to-date')}
+              >
+                Up to Date
+              </button>
             </div>
           </div>
 
@@ -4845,11 +4886,36 @@ function UserHealthReportView({
               <div className="filter-group">
                 <label>Report Type</label>
                 <div className="filter-options">
-                  <button className="filter-option active">Medical Report</button>
-                  <button className="filter-option">Lab Test</button>
-                  <button className="filter-option">Prescription</button>
-                  <button className="filter-option">Vaccination Record</button>
-                  <button className="filter-option">Doctor's Visit Summary</button>
+                  <button 
+                    className={`filter-option ${!filters?.reportType || filters.reportType === 'Medical Report' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Medical Report')}
+                  >
+                    Medical Report
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Lab Test' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Lab Test')}
+                  >
+                    Lab Test
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Prescription' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Prescription')}
+                  >
+                    Prescription
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Vaccination Record' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Vaccination Record')}
+                  >
+                    Vaccination Record
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Doctor\'s Visit Summary' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Doctor\'s Visit Summary')}
+                  >
+                    Doctor's Visit Summary
+                  </button>
                 </div>
               </div>
             </div>
@@ -4863,7 +4929,7 @@ function UserHealthReportView({
                       <input 
                         type="text" 
                         placeholder="Start date (DD/MM/YYYY)" 
-                        value={formatDateForDisplay(selectedDates.startDate)}
+                        value={formatDateForDisplay(filters?.startDate)}
                         readOnly
                       />
                       <img 
@@ -4880,7 +4946,7 @@ function UserHealthReportView({
                           type="date"
                           min={getUserJoinDate()}
                           max={getTodayDate()}
-                          value={selectedDates.startDate || ''}
+                          value={filters?.startDate || ''}
                           onChange={(e) => handleDateSelect('start', e.target.value)}
                           onBlur={(e) => {
                             // Keep picker open if user is still interacting with it
@@ -4900,7 +4966,7 @@ function UserHealthReportView({
                       <input 
                         type="text" 
                         placeholder="End date (DD/MM/YYYY)" 
-                        value={formatDateForDisplay(selectedDates.endDate)}
+                        value={formatDateForDisplay(filters?.endDate)}
                         readOnly
                       />
                       <img 
@@ -4915,9 +4981,9 @@ function UserHealthReportView({
                       <div className="date-picker-dropdown">
                         <input
                           type="date"
-                          min={selectedDates.startDate || getUserJoinDate()}
+                          min={filters?.startDate || getUserJoinDate()}
                           max={getTodayDate()}
-                          value={selectedDates.endDate || ''}
+                          value={filters?.endDate || ''}
                           onChange={(e) => handleDateSelect('end', e.target.value)}
                           onBlur={(e) => {
                             // Keep picker open if user is still interacting with it
@@ -4944,16 +5010,44 @@ function UserHealthReportView({
               <div className="filter-group">
                 <label>Due Status</label>
                 <div className="filter-options">
-                  <button className="filter-option">Overdue</button>
-                  <button className="filter-option">Due Soon</button>
-                  <button className="filter-option active">Up to Date</button>
+                  <button 
+                    className={`filter-option ${filters?.dueStatus === 'Overdue' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('dueStatus', 'Overdue')}
+                  >
+                    Overdue
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.dueStatus === 'Due Soon' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('dueStatus', 'Due Soon')}
+                  >
+                    Due Soon
+                  </button>
+                  <button 
+                    className={`filter-option ${!filters?.dueStatus || filters.dueStatus === 'Up to Date' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('dueStatus', 'Up to Date')}
+                  >
+                    Up to Date
+                  </button>
                 </div>
               </div>
             </div>
 
             <div className="filter-actions">
-              <button className="btn-reset">Reset</button>
-              <button className="btn-apply">Apply</button>
+              <button 
+                className="btn-reset"
+                onClick={onClearFilters}
+              >
+                Reset
+              </button>
+              <button 
+                className="btn-apply"
+                onClick={() => {
+                  // Apply button could trigger a refresh or validation
+                  // For now, filters are applied in real-time
+                }}
+              >
+                Apply
+              </button>
             </div>
           </div>
 
@@ -4970,53 +5064,56 @@ function UserHealthReportView({
             </div>
 
             <div className="table-body">
-              <div className="table-data-row">
-                <div className="table-data-col">
-                  <div className="report-title">Annual medical review</div>
-                  <div className="report-ref">Ref: MR-2025-0029</div>
+              {reports && reports.length > 0 ? (
+                reports.map((report) => (
+                  <div key={report.id} className="table-data-row">
+                    <div className="table-data-col">
+                      <div className="report-title">{report.notes || report.report_type || 'Health Report'}</div>
+                      <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                    </div>
+                    <div className="table-data-col">{report.report_type || 'Medical Report'}</div>
+                    <div className="table-data-col">
+                      {new Date(report.report_date).toLocaleDateString('en-GB')}
+                    </div>
+                    <div className="table-data-col">
+                      {new Date(report.created_at).toLocaleDateString('en-GB')}
+                    </div>
+                    <div className="table-data-col">
+                      {report.healthcare_provider || 'N/A'}
+                    </div>
+                    <div className="table-data-col">{report.due_status || 'Up to Date'}</div>
+                    <div className="table-data-col table-actions">
+                      <button 
+                        className="btn-action"
+                        onClick={() => onDownload?.(report.id)}
+                      >
+                        View
+                      </button>
+                      <button 
+                        className="btn-action"
+                        onClick={() => onShareClick?.(report)}
+                      >
+                        Share
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="table-data-row">
+                  <div className="table-data-col" style={{ 
+                    gridColumn: '1 / -1', 
+                    textAlign: 'center', 
+                    padding: '2rem', 
+                    color: '#666',
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    No health reports found. Upload your first report to get started.
+                  </div>
                 </div>
-                <div className="table-data-col">Medical Report</div>
-                <div className="table-data-col">05 Aug 2025</div>
-                <div className="table-data-col">11 Aug 2025</div>
-                <div className="table-data-col">Sunrise Hospital</div>
-                <div className="table-data-col">Up to Date</div>
-                <div className="table-data-col table-actions">
-                  <button className="btn-action">View</button>
-                  <button className="btn-action">Share</button>
-                </div>
-              </div>
-
-              <div className="table-data-row">
-                <div className="table-data-col">
-                  <div className="report-title">Prescription</div>
-                  <div className="report-ref">Ref: MR-2025-0072</div>
-                </div>
-                <div className="table-data-col">Medical Report</div>
-                <div className="table-data-col">05 Oct 2025</div>
-                <div className="table-data-col">01 Nov 2025</div>
-                <div className="table-data-col">Hospital Raub</div>
-                <div className="table-data-col">Up to Date</div>
-                <div className="table-data-col table-actions">
-                  <button className="btn-action">View</button>
-                  <button className="btn-action">Share</button>
-                </div>
-              </div>
-
-              <div className="table-data-row">
-                <div className="table-data-col">
-                  <div className="report-title">Vaccination Record</div>
-                  <div className="report-ref">Ref: MR-2025-3024</div>
-                </div>
-                <div className="table-data-col">Medical Report</div>
-                <div className="table-data-col">10 Dec 2025</div>
-                <div className="table-data-col">14 Dec 2025</div>
-                <div className="table-data-col">Clinic Kumar</div>
-                <div className="table-data-col">Up to Date</div>
-                <div className="table-data-col table-actions">
-                  <button className="btn-action">View</button>
-                  <button className="btn-action">Share</button>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -5028,9 +5125,6 @@ function UserHealthReportView({
             onCancel={onCancelUploadModal}
             onFormChange={onUploadFormChange}
             onSubmit={onUploadSubmit}
-            availableApplications={availableApplications}
-            selectedApplicationId={selectedApplicationId}
-            onSelectedApplicationIdChange={onSelectedApplicationIdChange}
             applicationId={applicationId}
           />
         )}
@@ -5092,9 +5186,6 @@ export default function HealthMonitoringView({
   errors,
   successMessage,
   applicationId, // Add applicationId prop
-  availableApplications, // Add availableApplications prop
-  selectedApplicationId, // Add selectedApplicationId prop
-  onSelectedApplicationIdChange, // Add handler for application selection
 
   // User handlers
   onUploadClick,
@@ -5122,6 +5213,8 @@ export default function HealthMonitoringView({
 
   // Admin handlers
   onFilterChange,
+  onClearFilters,
+  onTabFilter,
   onReportSelect,
   onViewReport,
   
@@ -5151,6 +5244,8 @@ export default function HealthMonitoringView({
         actionReport={actionReport}
         onSearchChange={onSearchChange}
         onFilterChange={onFilterChange}
+        onClearFilters={onClearFilters}
+        onTabFilter={onTabFilter}
         onSort={onAdminSort || onSort}
         onReportSelect={onReportSelect}
         onApproveClick={onApproveClick}
@@ -5190,9 +5285,6 @@ export default function HealthMonitoringView({
       statistics={statistics}
       user={user}
       applicationId={applicationId}
-      availableApplications={availableApplications}
-      selectedApplicationId={selectedApplicationId}
-      onSelectedApplicationIdChange={onSelectedApplicationIdChange}
       onUploadClick={onUploadClick}
       onCancelUploadModal={onCancelUploadModal}
       onUploadFormChange={onUploadFormChange}
@@ -5209,7 +5301,9 @@ export default function HealthMonitoringView({
       onShareFormSubmit={onShareFormSubmit}
       onSearchChange={onSearchChange}
       onSearch={onSearch}
-      onFilterChange={onFilter}
+      onFilterChange={onFilterChange}
+      onClearFilters={onClearFilters}
+      onTabFilter={onTabFilter}
       onFilter={onFilter}
       onSetShowFilters={onSetShowFilters}
       onSort={onSort}

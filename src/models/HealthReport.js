@@ -798,10 +798,6 @@ export const getAllHealthReports = async (filters = {}) => {
       query = query.eq('status', filters.uploadStatus)
     }
 
-    if (filters.healthcareProvider) {
-      query = query.ilike('healthcare_provider', `%${filters.healthcareProvider}%`)
-    }
-
     if (filters.startDate && filters.endDate) {
       query = query.gte('report_date', filters.startDate)
       query = query.lte('report_date', filters.endDate)

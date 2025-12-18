@@ -7,13 +7,19 @@ import { supabase } from '../config/supabase'
  * @param {File} file - The file to upload
  * @param {string} userId - Current user ID
  * @param {string} documentType - Type of document (e.g., 'applicantNRIC')
- * @param {Object} options - Optional settings (bucket, signedUrlDuration)
+ * @param {Object} options - Optional settings (bucket, signedUrlDuration, allowedTypes)
  * @returns {Promise<{url, fileName, uploadedAt, error}>}
  */
 export const uploadDocument = async (file, userId, documentType, options = {}) => {
   try {
     const bucket = options.bucket || 'application-documents'
     const signedUrlDuration = options.signedUrlDuration ?? 31536000
+    const allowedTypes = options.allowedTypes || [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png'
+    ]
 
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024
@@ -27,18 +33,22 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
     }
 
     // Validate file type
-    const allowedTypes = [
-      'application/pdf',
-      'image/jpeg',
-      'image/jpg',
-      'image/png'
-    ]
     if (!allowedTypes.includes(file.type)) {
+      const allowedExtensions = allowedTypes.map(type => {
+        switch(type) {
+          case 'application/pdf': return 'PDF'
+          case 'image/jpeg':
+          case 'image/jpg': return 'JPG'
+          case 'image/png': return 'PNG'
+          default: return type
+        }
+      }).join(', ')
+      
       return {
         url: null,
         fileName: null,
         uploadedAt: null,
-        error: { message: 'Only PDF, JPG, and PNG files are allowed' }
+        error: { message: `Only ${allowedExtensions} files are allowed` }
       }
     }
 
@@ -51,13 +61,21 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
 
     console.log('📤 Uploading file:', { fileName, size: file.size, type: file.type })
 
+    // Ensure binary upload for PDFs to prevent corruption
+    const uploadOptions = {
+      cacheControl: '3600',
+      upsert: false
+    }
+    
+    // For PDFs, ensure proper content type
+    if (file.type === 'application/pdf') {
+      uploadOptions.contentType = 'application/pdf'
+    }
+
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
+      .upload(filePath, file, uploadOptions)
 
     if (error) {
       console.error('❌ Upload error:', error)
@@ -121,6 +139,25 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
     console.error('❌ Upload exception:', error)
     return { url: null, fileName: null, uploadedAt: null, error }
   }
+}
+
+/**
+ * Upload health report (PDF only) to Supabase Storage
+ * @param {File} file - The PDF file to upload
+ * @param {string} userId - Current user ID
+ * @param {string} documentType - Type of document (e.g., 'health_report')
+ * @param {Object} options - Optional settings (bucket, signedUrlDuration)
+ * @returns {Promise<{url, fileName, uploadedAt, error}>}
+ */
+export const uploadHealthReport = async (file, userId, documentType, options = {}) => {
+  // Health reports must be PDF only
+  const healthReportOptions = {
+    ...options,
+    allowedTypes: ['application/pdf'],
+    bucket: options.bucket || 'health-reports'
+  }
+  
+  return uploadDocument(file, userId, documentType, healthReportOptions)
 }
 
 /**

@@ -62,15 +62,6 @@ export const validateEnquiryForm = (formData) => {
     errors.email = 'Temporary email addresses are not allowed'
   }
 
-  // Validate subject
-  if (!formData.subject || formData.subject.trim() === '') {
-    errors.subject = 'Subject is required'
-  } else if (formData.subject.trim().length < 3) {
-    errors.subject = 'Subject must be at least 3 characters'
-  } else if (formData.subject.trim().length > 200) {
-    errors.subject = 'Subject must not exceed 200 characters'
-  }
-
   // Validate message
   if (!formData.message || formData.message.trim() === '') {
     errors.message = 'Message is required'

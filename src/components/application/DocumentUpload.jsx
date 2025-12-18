@@ -8,8 +8,8 @@ const DocumentUpload = ({
   onUpload,
   onDelete,
   uploading = false,
-  accept = ".pdf,.jpg,.jpeg,.png",
-  hint = "PDF, JPG, PNG (Max 10MB)"
+  accept = ".pdf",
+  hint = "PDF only (Max 10MB)"
 }) => {
   return (
     <div className="document-upload-field">

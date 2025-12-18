@@ -18,7 +18,6 @@ const EnquiryForm = ({ onSubmit }) => {
     name: '',
     contactNumber: '',
     email: '',
-    subject: '',
     message: '',
     captcha: null,
   })
@@ -76,7 +75,6 @@ const EnquiryForm = ({ onSubmit }) => {
         name: '',
         contactNumber: '',
         email: '',
-        subject: '',
         message: '',
         captcha: null,
       })
@@ -138,21 +136,6 @@ const EnquiryForm = ({ onSubmit }) => {
           className={errors.email ? 'input-error' : ''}
         />
         {errors.email && <span className="error-message">{errors.email}</span>}
-      </div>
-
-      <div className="form-group">
-        <label>
-          Subject <span className="required">*</span>
-        </label>
-        <input 
-          type="text"
-          name="subject"
-          value={formData.subject}
-          onChange={handleChange}
-          placeholder="Enquiry about SSB Loan"
-          className={errors.subject ? 'input-error' : ''}
-        />
-        {errors.subject && <span className="error-message">{errors.subject}</span>}
       </div>
 
       <div className="form-group">

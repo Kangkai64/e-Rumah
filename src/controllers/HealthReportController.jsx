@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import HealthMonitoringView from '../views/HealthMonitoringView'
 import { supabase } from '../config/supabase'
-import { uploadDocument } from '../services/fileUploadService'
+import { uploadDocument, uploadHealthReport as uploadHealthReportFile } from '../services/fileUploadService'
 import {
   getHealthReports,
   uploadHealthReport,
@@ -23,6 +23,7 @@ import {
   updateHealthReportDueStatus
 } from '../models/HealthReport'
 import { useAuth } from '../components/context/AuthContext'
+import { processPDF } from '../utils/pdfCompression'
 
 function HealthReportController() {
   const navigate = useNavigate()
@@ -49,10 +50,10 @@ function HealthReportController() {
   const [showFilters, setShowFilters] = useState(false)
   const [errors, setErrors] = useState({})
   const [statistics, setStatistics] = useState({
-    pending: 0,
-    approved: 0,
-    flagged: 0,
-    generated: 0
+    reminderThisWeek: 0,
+    overdueHealthReport: 0,
+    healthReportDueSoon: 0,
+    flaggedHealthReport: 0
   })
 
   // Admin specific state
@@ -68,7 +69,6 @@ function HealthReportController() {
     reportType: '',
     startDate: '',
     endDate: '',
-    healthcareProvider: '',
     uploadStatus: '',
     dueStatus: ''
   })
@@ -79,7 +79,6 @@ function HealthReportController() {
   const [uploadForm, setUploadForm] = useState({
     reportType: '',
     reportDate: '',
-    healthcareProvider: '',
     notes: '',
     file: null
   })
@@ -101,10 +100,6 @@ function HealthReportController() {
     expiryDays: 7
   })
 
-  // Application selection state for generic health reports page
-  const [availableApplications, setAvailableApplications] = useState([])
-  const [selectedApplicationId, setSelectedApplicationId] = useState(null)
-
   // Initialize - fetch user and reports
   useEffect(() => {
     const initialize = async () => {
@@ -121,11 +116,6 @@ function HealthReportController() {
 
         // Fetch health reports
         await fetchReports(user.id)
-
-        // Fetch user applications if on generic page (no applicationId in URL)
-        if (!applicationId) {
-          await fetchUserApplications(user.id)
-        }
 
         // Check for alerts
         await checkAlerts(user.id)
@@ -148,7 +138,6 @@ function HealthReportController() {
         reportType: filters.reportType || undefined,
         startDate: filters.startDate || undefined,
         endDate: filters.endDate || undefined,
-        healthcareProvider: filters.healthcareProvider || undefined,
         uploadStatus: filters.uploadStatus || undefined,
         dueStatus: filters.dueStatus || undefined,
         sortBy,
@@ -178,28 +167,24 @@ function HealthReportController() {
     }
   }
 
-  // Fetch user applications for application selection
-  const fetchUserApplications = async (userId) => {
+  // Get user's application ID when not provided in URL
+  const getUserApplicationId = async (userId) => {
     try {
       const { data, error } = await supabase
         .from('applications')
-        .select('id, status, created_at, submitted_at')
+        .select('id')
         .eq('user_id', userId)
-        .in('status', ['draft', 'submitted', 'underReviewed', 'approved']) // Include more relevant statuses
-        .order('created_at', { ascending: false })
+        .single()
 
       if (error) {
-        console.error('Error fetching user applications:', error)
-        return
+        console.error('Error fetching user application:', error)
+        return null
       }
 
-      setAvailableApplications(data || [])
-      // Auto-select the most recent application if only one exists
-      if (data && data.length === 1) {
-        setSelectedApplicationId(data[0].id)
-      }
+      return data?.id || null
     } catch (err) {
-      console.error('Error fetching applications:', err)
+      console.error('Error fetching application:', err)
+      return null
     }
   }
 
@@ -242,6 +227,71 @@ function HealthReportController() {
       fetchReports(currentUser.id)
     }
   }, [sortBy, sortOrder])
+
+  // Client-side filtering for real-time search and filter functionality
+  useEffect(() => {
+    if (!reports || reports.length === 0) {
+      setFilteredReports([])
+      return
+    }
+
+    let filtered = reports.filter(report => {
+      // Search filter - search across multiple fields
+      if (searchKey && searchKey.trim()) {
+        const searchTerm = searchKey.toLowerCase().trim()
+        const matchesSearch = 
+          (report.report_type && report.report_type.toLowerCase().includes(searchTerm)) ||
+          (report.notes && report.notes.toLowerCase().includes(searchTerm)) ||
+          (report.id && report.id.toLowerCase().includes(searchTerm))
+        
+        if (!matchesSearch) return false
+      }
+
+      // Report type filter
+      if (filters.reportType && report.report_type !== filters.reportType) {
+        return false
+      }
+
+      // Due status filter  
+      if (filters.dueStatus && report.due_status !== filters.dueStatus) {
+        return false
+      }
+
+      // Date range filter
+      if (filters.startDate) {
+        const reportDate = new Date(report.report_date)
+        const startDate = new Date(filters.startDate)
+        if (reportDate < startDate) return false
+      }
+
+      if (filters.endDate) {
+        const reportDate = new Date(report.report_date)
+        const endDate = new Date(filters.endDate)
+        if (reportDate > endDate) return false
+      }
+
+      return true
+    })
+
+    // Apply tab filter
+    if (activeTab !== 'all') {
+      switch (activeTab) {
+        case 'overdue':
+          filtered = filtered.filter(r => r.due_status === 'Overdue')
+          break
+        case 'due-soon':
+          filtered = filtered.filter(r => r.due_status === 'Due Soon')
+          break
+        case 'up-to-date':
+          filtered = filtered.filter(r => r.due_status === 'Up to Date')
+          break
+        default:
+          break
+      }
+    }
+
+    setFilteredReports(filtered)
+  }, [reports, searchKey, filters, activeTab])
 
   // Handle file selection
   const handleFileSelect = useCallback((file) => {
@@ -295,9 +345,9 @@ function HealthReportController() {
       setError(null)
 
       console.log('🔍 Single file upload - applicationId from URL:', applicationId)
-      console.log('🔍 Single file upload - selectedApplicationId:', selectedApplicationId)
       
-      const finalApplicationId = applicationId || selectedApplicationId
+      // Get user's application ID if not provided in URL
+      const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
       console.log('🔍 Single file upload - final applicationId to use:', finalApplicationId)
 
       // Validate form
@@ -313,10 +363,6 @@ function HealthReportController() {
         setError('Please select report date')
         return
       }
-      if (!uploadForm.healthcareProvider) {
-        setError('Please enter healthcare provider')
-        return
-      }
 
       // Upload report
       const result = await uploadHealthReport(
@@ -326,7 +372,6 @@ function HealthReportController() {
           reportType: uploadForm.reportType,
           applicationId: finalApplicationId || null,
           reportDate: uploadForm.reportDate,
-          healthcareProvider: uploadForm.healthcareProvider,
           notes: uploadForm.notes
         }
       )
@@ -339,7 +384,6 @@ function HealthReportController() {
         setUploadForm({
           reportType: '',
           reportDate: '',
-          healthcareProvider: '',
           notes: '',
           file: null
         })
@@ -363,9 +407,9 @@ function HealthReportController() {
     try {
       console.log('🚀 Starting upload process for', files.length, 'files');
       console.log('🔍 Multiple file upload - applicationId from URL:', applicationId);
-      console.log('🔍 Multiple file upload - selectedApplicationId:', selectedApplicationId);
       
-      const finalApplicationId = applicationId || selectedApplicationId
+      // Get user's application ID if not provided in URL
+      const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
       console.log('🔍 Multiple file upload - final applicationId to use:', finalApplicationId);
 
       const uploadResults = [];
@@ -386,29 +430,47 @@ function HealthReportController() {
       // Upload each file to Supabase Storage
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log(`📤 Uploading file ${i + 1}/${files.length}:`, file.name);
+        console.log(`📤 Processing file ${i + 1}/${files.length}:`, file.name);
 
-        // Upload file using the fileUploadService
-        const uploadResult = await uploadDocument(
-          file,
+        // Process PDF (compress, validate, repair if needed)
+        let processedFile = file;
+        if (file.type === 'application/pdf') {
+          console.log('🔄 Processing PDF file...');
+          const processResult = await processPDF(file, {
+            compress: true,
+            compressionLevel: 0.8,
+            maxFileSize: 5 * 1024 * 1024 // 5MB
+          });
+          
+          if (processResult.success) {
+            processedFile = processResult.file;
+            console.log('✅ PDF processed successfully');
+          } else {
+            console.warn('⚠️ PDF processing failed, using original file:', processResult.error);
+          }
+        }
+
+        // Upload file using the health report specific service (PDF only)
+        const uploadResult = await uploadHealthReportFile(
+          processedFile,
           currentUser.id,
           'health_report',
           {
-            bucket: 'health-reports',
             signedUrlDuration: 31536000 // 1 year
           }
         );
 
         if (uploadResult.error) {
-          console.error('❌ Upload failed for', file.name, ':', uploadResult.error);
+          console.error('❌ Upload failed for', processedFile.name, ':', uploadResult.error);
           return {
             success: false,
-            error: `Failed to upload ${file.name}: ${uploadResult.error.message}`
+            error: `Failed to upload ${processedFile.name}: ${uploadResult.error.message}`
           };
         }
 
         uploadResults.push({
-          file,
+          file: processedFile,
+          originalFile: file,
           uploadResult
         });
 
@@ -429,7 +491,7 @@ function HealthReportController() {
         healthReportRecords.push(healthReportRecord);
 
         console.log('✅ File uploaded successfully:', {
-          fileName: file.name,
+          fileName: processedFile.name,
           url: uploadResult.url,
           size: formatFileSize(file.size)
         });
@@ -577,7 +639,6 @@ function HealthReportController() {
     setUploadForm({
       reportType: '',
       reportDate: '',
-      healthcareProvider: '',
       notes: '',
       file: null
     })
@@ -597,16 +658,29 @@ function HealthReportController() {
     navigate('/')
   }, [navigate])
 
-  // Calculate statistics for admin
+  // Calculate statistics based on actual health report data
   useEffect(() => {
     if (reports && reports.length > 0) {
+      const now = new Date()
+      const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      
       const stats = {
-        pending: reports.filter(r => r.status === 'pending').length,
-        approved: reports.filter(r => r.status === 'approved').length,
-        flagged: reports.filter(r => r.status === 'flagged' || r.status === 'rejected').length,
-        generated: reports.length
+        reminderThisWeek: reports.filter(r => {
+          const reportDate = new Date(r.report_date)
+          return reportDate >= now && reportDate <= oneWeekFromNow
+        }).length,
+        overdueHealthReport: reports.filter(r => r.due_status === 'Overdue').length,
+        healthReportDueSoon: reports.filter(r => r.due_status === 'Due Soon').length,
+        flaggedHealthReport: reports.filter(r => r.health_report_status === 'Flagged').length
       }
       setStatistics(stats)
+    } else {
+      setStatistics({
+        reminderThisWeek: 0,
+        overdueHealthReport: 0,
+        healthReportDueSoon: 0,
+        flaggedHealthReport: 0
+      })
     }
   }, [reports])
 
@@ -711,6 +785,30 @@ function HealthReportController() {
     console.log('Viewing report:', reportId)
   }, [])
 
+  // Filter handlers
+  const handleFilterChange = useCallback((filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }))
+  }, [])
+
+  const handleClearFilters = useCallback(() => {
+    setSearchKey('')
+    setFilters({
+      reportType: '',
+      startDate: '',
+      endDate: '',
+      uploadStatus: '',
+      dueStatus: ''
+    })
+    setActiveTab('all')
+  }, [])
+
+  const handleTabFilter = useCallback((tab) => {
+    setActiveTab(tab)
+  }, [])
+
   // Auto-hide success messages
   useEffect(() => {
     if (successMessage) {
@@ -776,7 +874,9 @@ function HealthReportController() {
 
       // Handlers
       onSearchChange={setSearchKey}
-      onFilterChange={(field, value) => setFilters(prev => ({ ...prev, [field]: value }))}
+      onFilterChange={handleFilterChange}
+      onClearFilters={handleClearFilters}
+      onTabFilter={handleTabFilter}
       onAdminSort={handleSort}
       onReportSelect={handleReportSelect}
       onSearch={handleSearch}
@@ -805,9 +905,6 @@ function HealthReportController() {
       onSort={handleSort}
       onDownload={(reportId) => handleViewReport(reportId)}
       applicationId={applicationId}
-      availableApplications={availableApplications}
-      selectedApplicationId={selectedApplicationId}
-      onSelectedApplicationIdChange={setSelectedApplicationId}
     />
   )
 }
