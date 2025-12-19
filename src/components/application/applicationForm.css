@@ -74,6 +74,15 @@ h1 {
   border-color: #A8202D;
 }
 
+.checkbox-label.error {
+  color: #A8202D;
+}
+
+.checkbox-label.error input[type="checkbox"] {
+  outline: 2px solid #A8202D;
+  outline-offset: 2px;
+}
+
 .error-message {
   color: #A8202D;
   font-size: 0.85rem;
@@ -161,6 +170,13 @@ h1 {
   flex-direction: column;
   gap: 0.75rem;
   margin-top: 0.5rem;
+}
+
+.radio-group.error {
+  border: 2px solid #A8202D;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background-color: #fff5f5;
 }
 
 .radio-label,
@@ -419,6 +435,7 @@ h1 {
   border-radius: 8px;
   margin-bottom: 1.5rem;
   border-left: 4px solid #3498db;
+  display: block !important;
 }
 
 .info-section h3 {

@@ -331,10 +331,11 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
       </div>
 
       <div className="form-group">
-        <label className="checkbox-label">
+        <label className={`checkbox-label ${errors.malaysian ? 'error' : ''}`}>
           <input type="checkbox" name="malaysian" checked={formData.malaysian} onChange={handleChange} required />
           <span>Malaysian *</span>
         </label>
+        {errors.malaysian && <ErrorMessage error={errors.malaysian} />}
       </div>
 
       <div className="form-group">
@@ -812,10 +813,11 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           </div>
 
           <div className="form-group">
-            <label className="checkbox-label">
+            <label className={`checkbox-label ${errors.jMalaysian ? 'error' : ''}`}>
               <input type="checkbox" name="jMalaysian" checked={formData.jMalaysian} onChange={handleChange} required />
               <span>Malaysian *</span>
             </label>
+            {errors.jMalaysian && <ErrorMessage error={errors.jMalaysian} />}
           </div>
 
           <div className="form-group">
@@ -991,13 +993,19 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
         </div>
 
         <div className="form-group">
-          <label>Account Type</label>
-          <div className="radio-group">
+          <label>Account Type *</label>
+          <div className={`radio-group ${errors.accountType ? 'error' : ''}`}>
             <label className="radio-label"><input type="radio" name="accountType" value="savings" checked={formData.accountType === 'savings'} onChange={handleChange} /> Savings</label>
             <label className="radio-label"><input type="radio" name="accountType" value="current" checked={formData.accountType === 'current'} onChange={handleChange} /> Current</label>
             <label className="radio-label"><input type="radio" name="accountType" value="joint_savings" checked={formData.accountType === 'joint_savings'} onChange={handleChange} /> Joint Account Saving</label>
             <label className="radio-label"><input type="radio" name="accountType" value="joint_current" checked={formData.accountType === 'joint_current'} onChange={handleChange} /> Joint Account Current</label>
           </div>
+          {errors.accountType && <ErrorMessage error={errors.accountType} />}
+          {formData.isJointApplicant && !errors.accountType && (
+            <div style={{marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#e7f3ff', border: '1px solid #2196F3', borderRadius: '4px', fontSize: '0.9rem', color: '#1565c0'}}>
+              ℹ️ Note: Since you have a joint applicant, you must select either <strong>Joint Account Saving</strong> or <strong>Joint Account Current</strong> as the account type.
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -1031,7 +1039,39 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         Provide details about the property
       </p>
       
+      <div style={{
+        marginBottom: '1.5rem',
+        padding: '1rem',
+        backgroundColor: '#e8f4fd',
+        border: '1px solid #2196F3',
+        borderRadius: '8px',
+        fontSize: '0.95rem'
+      }}>
+        <strong style={{color: '#0d47a1', display: 'block', marginBottom: '0.5rem'}}>📋 SSB Property Requirements:</strong>
+        <ul style={{margin: '0', paddingLeft: '1.5rem', color: '#1565c0'}}>
+          <li>Property must be a residential property located in Kuala Lumpur, Malaysia</li>
+          <li>Property must be your primary place of residence</li>
+          <li>Property must be free from encumbrances (mortgages/financial liabilities) or existing encumbrances must be settled</li>
+          <li>For leasehold properties: remaining lease tenure must be at least 90 years</li>
+          <li>Joint ownership is required if applying with a joint applicant</li>
+        </ul>
+      </div>
+      
       <ErrorSummary errors={errors} />
+      
+      {formData.isJointApplicant && (
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1rem',
+          backgroundColor: '#fff9e6',
+          border: '1px solid #ff9800',
+          borderRadius: '8px',
+          fontSize: '0.95rem',
+          color: '#e65100'
+        }}>
+          <strong>⚠️ Joint Applicant Notice:</strong> Since you have a joint applicant, the property must be under joint ownership (both applicant and joint applicant must be listed as owners).
+        </div>
+      )}
 
       <section className="form-section">
         <div className="form-group">
@@ -1154,22 +1194,37 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             <label className="radio-label"><input type="radio" name="tenureTitle" value="freehold" checked={formData.tenureTitle === 'freehold'} onChange={handleChange} /> Freehold</label>
             <label className="radio-label"><input type="radio" name="tenureTitle" value="leasehold" checked={formData.tenureTitle === 'leasehold'} onChange={handleChange} /> Leasehold</label>
           </div>
+          {errors.tenureTitle && <ErrorMessage error={errors.tenureTitle} />}
           <div className="form-group" style={{marginTop: '0.5rem', opacity: formData.tenureTitle === 'leasehold' ? 1 : 0.5}}>
-            <label>Specify Expiry Date of Lease (DD/MM/YYYY)</label>
+            <label>Specify Expiry Date of Lease (DD/MM/YYYY) {formData.tenureTitle === 'leasehold' && '*'}</label>
             <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="expiryDay" value={formData.expiryDay} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'}>
+              <select name="expiryDay" value={formData.expiryDay} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
                 <option value="">DD</option>
                 {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
               </select>
-              <select name="expiryMonth" value={formData.expiryMonth} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'}>
+              <select name="expiryMonth" value={formData.expiryMonth} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
                 <option value="">MM</option>
                 {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
               </select>
-              <select name="expiryYear" value={formData.expiryYear} onChange={handleChange} style={{width: '90px'}} disabled={formData.tenureTitle !== 'leasehold'}>
+              <select name="expiryYear" value={formData.expiryYear} onChange={handleChange} style={{width: '90px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
                 <option value="">YYYY</option>
                 {Array.from({length: 100}, (_, i) => 2025 + i).map(year => <option key={year} value={year}>{year}</option>)}
               </select>
             </div>
+            {errors.expiryDate && <ErrorMessage error={errors.expiryDate} />}
+            {formData.tenureTitle === 'leasehold' && !errors.expiryDate && (
+              <div style={{
+                marginTop: '0.5rem',
+                padding: '0.5rem',
+                backgroundColor: '#e7f3ff',
+                border: '1px solid #2196F3',
+                borderRadius: '4px',
+                color: '#0d47a1',
+                fontSize: '0.85rem'
+              }}>
+                ℹ️ Note: Leasehold properties must have at least 90 years remaining on the lease to be eligible for SSB.
+              </div>
+            )}
           </div>
         </div>
 
@@ -1185,11 +1240,25 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Property encumbered</label>
+          <label>Property encumbered (mortgages or other financial liabilities) *</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="propertyEncumbered" value="yes" checked={formData.propertyEncumbered === 'yes'} onChange={handleChange} /> Yes</label>
             <label className="radio-label"><input type="radio" name="propertyEncumbered" value="no" checked={formData.propertyEncumbered === 'no'} onChange={handleChange} /> No</label>
           </div>
+          {errors.propertyEncumbered && <ErrorMessage error={errors.propertyEncumbered} />}
+          {errors.propertyEncumberedWarning && (
+            <div style={{
+              marginTop: '0.5rem',
+              padding: '0.75rem',
+              backgroundColor: '#fff3cd',
+              border: '1px solid #ffc107',
+              borderRadius: '4px',
+              color: '#856404',
+              fontSize: '0.9rem'
+            }}>
+              ⚠️ {errors.propertyEncumberedWarning}
+            </div>
+          )}
           <div style={{marginTop: '0.5rem', opacity: formData.propertyEncumbered === 'yes' ? 1 : 0.5}}>
             <div className="form-group">
               <label>Name of Bank</label>
@@ -1198,9 +1267,11 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
                 name="propertyBankName" 
                 value={formData.propertyBankName} 
                 onChange={handleChange} 
+                className={errors.propertyBankName ? 'error' : ''}
                 disabled={formData.propertyEncumbered !== 'yes'}
                 style={{cursor: formData.propertyEncumbered === 'yes' ? 'text' : 'not-allowed'}}
               />
+              {errors.propertyBankName && <ErrorMessage error={errors.propertyBankName} />}
             </div>
             <div className="form-group">
               <label>Estimated Outstanding Balance</label>
@@ -1209,9 +1280,11 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
                 name="estOutstandingBalance" 
                 value={formData.estOutstandingBalance} 
                 onChange={handleChange} 
+                className={errors.estOutstandingBalance ? 'error' : ''}
                 disabled={formData.propertyEncumbered !== 'yes'}
                 style={{cursor: formData.propertyEncumbered === 'yes' ? 'text' : 'not-allowed'}}
               />
+              {errors.estOutstandingBalance && <ErrorMessage error={errors.estOutstandingBalance} />}
             </div>
           </div>
         </div>
@@ -1247,18 +1320,31 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
                 />
               </div>
             </div>
-            <div className="form-group" style={{flex: 1, opacity: formData.fireInsurance === 'notAvailable' ? 1 : 0.5}}>
-              <label>Insurance/Takaful Policy to be purchased by Organization</label>
-              <div className="radio-group">
-                <label className="radio-label"><input type="radio" name="fireInsuranceNotAvailable" value="yes" checked={formData.fireInsuranceNotAvailable === 'yes'} onChange={handleChange} disabled={formData.fireInsurance !== 'notAvailable'} /> Yes</label>
-                <label className="radio-label"><input type="radio" name="fireInsuranceNotAvailable" value="no" checked={formData.fireInsuranceNotAvailable === 'no'} onChange={handleChange} disabled={formData.fireInsurance !== 'notAvailable'} /> No</label>
+            {formData.fireInsurance === 'notAvailable' && (
+              <div className="form-group" style={{flex: 1}}>
+                <div style={{
+                  padding: '1rem',
+                  backgroundColor: '#e7f3ff',
+                  border: '2px solid #2196F3',
+                  borderRadius: '8px',
+                  color: '#1565c0',
+                  fontSize: '0.95rem'
+                }}>
+                  <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
+                    <span style={{fontSize: '1.2rem'}}>✓</span>
+                    <strong>Insurance/Takaful Policy Purchase Agreement</strong>
+                  </div>
+                  <p style={{margin: 0, lineHeight: '1.5'}}>
+                    The Insurance/Takaful Policy will be purchased by Cagamas and added to the loan/financing amount.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="form-group">
-          <label>Renewal of Fire & Home Insurance/Takaful policy</label>
+          <label>Renewal of Fire & Home Insurance/Takaful policy (In Future)</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="selfRenewal" checked={formData.renewalFireInsurance === 'selfRenewal'} onChange={handleChange} /> Self-renewal</label>
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="cagamasRenew" checked={formData.renewalFireInsurance === 'cagamasRenew'} onChange={handleChange} /> To be renewed by Organization</label>
@@ -1440,10 +1526,11 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
         </div>
 
         <div className="form-group">
-          <label className="checkbox-label">
+          <label className={`checkbox-label ${errors.nominee1Malaysian ? 'error' : ''}`}>
             <input type="checkbox" name="nominee1Malaysian" checked={formData.nominee1Malaysian} onChange={handleChange} required />
             <span>Malaysian *</span>
           </label>
+          {errors.nominee1Malaysian && <ErrorMessage error={errors.nominee1Malaysian} />}
         </div>
 
         <div className="form-group">
@@ -1663,10 +1750,11 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
           </div>
 
           <div className="form-group">
-            <label className="checkbox-label">
+            <label className={`checkbox-label ${errors.nominee2Malaysian ? 'error' : ''}`}>
               <input type="checkbox" name="nominee2Malaysian" checked={formData.nominee2Malaysian} onChange={handleChange} required />
               <span>Malaysian *</span>
             </label>
+            {errors.nominee2Malaysian && <ErrorMessage error={errors.nominee2Malaysian} />}
           </div>
 
           <div className="form-group">
@@ -2411,7 +2499,7 @@ function Step7Review({ formData }) {
           </div>
         )}
         {formData.fireInsurance === 'notAvailable' && (
-          <div className="review-field"><strong>Insurance to be purchased by Organization:</strong> {getValue(formData.fireInsuranceNotAvailable)}</div>
+          <div className="review-field"><strong>Insurance to be purchased by Organization:</strong> Yes (to be added to loan amount)</div>
         )}
         <div className="review-field"><strong>Renewal Status:</strong> {getValue(formData.renewalFireInsurance)}</div>
       </div>

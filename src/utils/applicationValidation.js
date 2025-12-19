@@ -265,6 +265,13 @@ export const validateStep2 = (formData) => {
   errors.accountType = validateRequired(formData.accountType, 'Account Type')
   errors.accountNumber = validateRequired(formData.accountNumber, 'Account Number')
   
+  // If joint applicant, account type must be joint account
+  if (formData.isJointApplicant) {
+    if (formData.accountType && formData.accountType !== 'joint_savings' && formData.accountType !== 'joint_current') {
+      errors.accountType = 'Account type must be Joint Account Saving or Joint Account Current when applying with a joint applicant'
+    }
+  }
+  
   return Object.fromEntries(Object.entries(errors).filter(([_, v]) => v !== null))
 }
 
@@ -276,6 +283,14 @@ export const validateStep3 = (formData) => {
   errors.propertyType = validateRequired(formData.propertyType, 'Property Type')
   errors.propertyAddress = validateRequired(formData.propertyAddress, 'Property Address')
   errors.propertyPostcode = validatePostcode(formData.propertyPostcode)
+  
+  // SSB Requirement 1: Property must be located in Malaysia (Kuala Lumpur only for SSB)
+  // Valid postcodes for Kuala Lumpur
+  const validKLPostcodes = ['41100', '42100', '42000', '45800', '45600', '42500', '42600', '45000', '42700', '43950', '42200', '41300', '41050']
+  if (formData.propertyPostcode && !validKLPostcodes.includes(formData.propertyPostcode)) {
+    errors.propertyPostcode = 'Property must be located in Kuala Lumpur (valid postcodes: 41100, 42100, 42000, 45800, 45600, 42500, 42600, 45000, 42700, 43950, 42200, 41300, 41050)'
+  }
+  
   errors.indicativeMarketValue = validateNumeric(formData.indicativeMarketValue, 'Indicative Market Value')
   errors.expectedMarketValue = validateNumeric(formData.expectedMarketValue, 'Expected Market Value')
   errors.purchasePrice = validateNumeric(formData.purchasePrice, 'Purchase Price')
@@ -288,17 +303,27 @@ export const validateStep3 = (formData) => {
   
   // Tenure
   errors.tenureTitle = validateRequired(formData.tenureTitle, 'Tenure Title')
+  
+  // SSB Requirement 4: For leasehold properties, remaining lease tenure must be at least 90 years
   if (formData.tenureTitle === 'leasehold') {
     if (!formData.expiryDay || !formData.expiryMonth || !formData.expiryYear) {
       errors.expiryDate = 'Lease Expiry Date is required for leasehold property'
+    } else {
+      // Calculate remaining lease tenure
+      const expiryDate = new Date(formData.expiryYear, formData.expiryMonth - 1, formData.expiryDay)
+      const today = new Date()
+      const yearsRemaining = (expiryDate - today) / (365.25 * 24 * 60 * 60 * 1000)
+      
+      if (yearsRemaining < 90) {
+        errors.expiryDate = `Leasehold property must have at least 90 years remaining on the lease. Current remaining: ${Math.floor(yearsRemaining)} years. The lease tenure must be renewed to at least 90 years before submission.`
+      }
     }
   }
   
-  // Property encumbered
+  // SSB Requirement: Property must be free from encumbrances (BLOCKING)
   errors.propertyEncumbered = validateRequired(formData.propertyEncumbered, 'Property Encumbered')
   if (formData.propertyEncumbered === 'yes') {
-    errors.propertyBankName = validateRequired(formData.propertyBankName, 'Bank Name')
-    errors.estOutstandingBalance = validateNumeric(formData.estOutstandingBalance, 'Outstanding Balance')
+    errors.propertyEncumbered = 'Property must be free from encumbrances such as mortgages and other financial liabilities. This is a requirement for SSB eligibility.'
   }
   
   // Fire insurance
@@ -307,9 +332,7 @@ export const validateStep3 = (formData) => {
     errors.insuranceCompany = validateRequired(formData.insuranceCompany, 'Insurance Company')
     errors.periodValidity = validateRequired(formData.periodValidity, 'Period Validity')
   }
-  if (formData.fireInsurance === 'notAvailable') {
-    errors.fireInsuranceNotAvailable = validateRequired(formData.fireInsuranceNotAvailable, 'Insurance Purchase Option')
-  }
+  // If insurance not available, it will automatically be purchased by Cagamas (no validation needed)
   
   // Renewal
   errors.renewalFireInsurance = validateRequired(formData.renewalFireInsurance, 'Fire Insurance Renewal')
@@ -326,9 +349,6 @@ export const validateStep3 = (formData) => {
   }
   if (!formData.documents?.fireInsurance?.url) {
     errors.fireInsuranceDoc = 'Fire Insurance Policy document is required'
-  }
-  if (formData.propertyEncumbered === 'yes' && !formData.documents?.propertyLoanStatement?.url) {
-    errors.propertyLoanStatement = 'Property Loan Statement is required'
   }
   
   return Object.fromEntries(Object.entries(errors).filter(([_, v]) => v !== null))
