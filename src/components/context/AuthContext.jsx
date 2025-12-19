@@ -17,8 +17,14 @@ export const useAuth = () => {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [userRole, setUserRole] = useState(null)
-  const [applicationStatus, setApplicationStatus] = useState(null) // 'incomplete' or 'complete'
+  const [userRole, setUserRole] = useState(() => {
+    // Initialize from localStorage cache
+    return localStorage.getItem('userRole') || null
+  })
+  const [applicationStatus, setApplicationStatus] = useState(() => {
+    // Initialize from localStorage cache
+    return localStorage.getItem('applicationStatus') || null
+  })
   const [loading, setLoading] = useState(true)
 
   const fetchUserData = async (authUser) => {
@@ -26,6 +32,9 @@ export function AuthProvider({ children }) {
       setUser(null)
       setUserRole(null)
       setApplicationStatus(null)
+      // Clear cache on logout
+      localStorage.removeItem('userRole')
+      localStorage.removeItem('applicationStatus')
       return
     }
 
@@ -51,12 +60,23 @@ export function AuthProvider({ children }) {
         return { data: null, error: null }
       })
 
-      // Default to 'user' role (will check application status regardless)
-      const role = userData?.role || 'user'
+      // Determine role: use database data, then cache, then default to 'user'
+      const cachedRole = localStorage.getItem('userRole')
+      const role = userData?.role || cachedRole || 'user'
       setUserRole(role)
+      
+      // Only update cache if we got fresh data from database
+      if (userData?.role) {
+        localStorage.setItem('userRole', role)
+        console.log('✅ User data from database:', userData)
+      } else if (cachedRole) {
+        console.log('📦 Using cached role:', cachedRole)
+      } else {
+        console.warn('⚠️ User not found in database and no cache, defaulting to user role')
+      }
 
-      if (!userData) {
-        console.warn('⚠️ User not found in users table, defaulting to user role')
+      if (!userData && !cachedRole) {
+        console.warn('⚠️ No user data and no cache available')
       } else {
         console.log('✅ User data:', userData)
       }
@@ -87,8 +107,17 @@ export function AuthProvider({ children }) {
           const isComplete = result.data ? 'complete' : 'incomplete'
           console.log('📊 Application status:', isComplete, '- App data:', result.data)
           setApplicationStatus(isComplete)
+          // Cache the application status in localStorage
+          localStorage.setItem('applicationStatus', isComplete)
         } else {
-          console.log('⚠️ Keeping existing application status due to timeout')
+          // Use cached status on timeout
+          const cachedStatus = localStorage.getItem('applicationStatus')
+          if (cachedStatus) {
+            console.log('⚠️ Timeout - using cached application status:', cachedStatus)
+            setApplicationStatus(cachedStatus)
+          } else {
+            console.log('⚠️ Keeping existing application status due to timeout')
+          }
         }
       }
 
@@ -96,8 +125,10 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('❌ Error fetching user data:', error)
       // Fallback: set user with default role
-      setUserRole('user')
-      setApplicationStatus('incomplete')
+      const cachedRole = localStorage.getItem('userRole') || 'user'
+      const cachedStatus = localStorage.getItem('applicationStatus') || 'incomplete'
+      setUserRole(cachedRole)
+      setApplicationStatus(cachedStatus)
       setUser(authUser)
     }
   }

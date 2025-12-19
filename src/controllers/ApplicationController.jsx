@@ -259,6 +259,13 @@ function ApplicationController() {
         setCurrentUser(user)
         console.log('👤 User authenticated:', user.id)
 
+        // Fetch user profile data for auto-complete
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('full_name, email')
+          .eq('id', user.id)
+          .single()
+
         // Get or create application (includes draft applications)
         const { getOrCreateApplication } = await import('../services/applicationService')
         const { application, applicationData, error } = await getOrCreateApplication(user.id)
@@ -280,8 +287,17 @@ function ApplicationController() {
             setCurrentStep(applicationData.current_step || 1)
             console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(applicationData.form_data).length)
           } else {
-            // New application - keep default formData
-            console.log('✅ Created new application - App ID:', application?.id)
+            // New application - auto-populate with user profile data
+            if (!profileError && userProfile) {
+              setFormData(prev => ({
+                ...prev,
+                nameAsPerNRIC: userProfile.full_name || '',
+                email: userProfile.email || ''
+              }))
+              console.log('✅ Created new application with auto-filled user data - App ID:', application?.id)
+            } else {
+              console.log('✅ Created new application - App ID:', application?.id)
+            }
           }
         }
 
@@ -295,6 +311,71 @@ function ApplicationController() {
 
     initializeApplication()
   }, [])
+
+  // ==========================================
+  // AUTO-FILL: Steps 5, 6, 7 when data is available
+  // ==========================================
+  useEffect(() => {
+    if (isLoading) return // Don't run during initial load
+    
+    const currentDate = getCurrentDate()
+    const updates = {}
+    
+    // Step 5: Signature fields
+    if (formData.nameAsPerNRIC && !formData.applicant_signature_name) {
+      updates.applicant_signature_name = formData.nameAsPerNRIC
+      updates.applicant_signature_date = `${currentDate.day}/${currentDate.month}/${currentDate.year}`
+    }
+    
+    if (formData.jName && !formData.jApplicant_signature_name) {
+      updates.jApplicant_signature_name = formData.jName
+      updates.jApplicant_signature_date = `${currentDate.day}/${currentDate.month}/${currentDate.year}`
+    }
+    
+    // Step 6: Acknowledgement fields
+    if (formData.nominee1Name && !formData.ack_nomineeName) {
+      updates.ack_nomineeName = formData.nominee1Name
+    }
+    if (formData.nominee1Ic && !formData.ack_nomineeNRIC) {
+      updates.ack_nomineeNRIC = formData.nominee1Ic
+    }
+    if (formData.nominee1Address && !formData.ack_nomineeAddress) {
+      updates.ack_nomineeAddress = formData.nominee1Address
+    }
+    if (formData.nameAsPerNRIC && !formData.ack_applicantName) {
+      updates.ack_applicantName = formData.nameAsPerNRIC
+      updates.ack_signName = formData.nameAsPerNRIC
+    }
+    if (formData.nricNo && !formData.ack_applicantNRIC) {
+      updates.ack_applicantNRIC = formData.nricNo
+      updates.ack_signIC = formData.nricNo
+    }
+    if (formData.address && !formData.ack_applicantAddress) {
+      updates.ack_applicantAddress = formData.address
+    }
+    if (formData.jName && !formData.ack_jointApplicantName) {
+      updates.ack_jointApplicantName = formData.jName
+    }
+    if (formData.jIc && !formData.ack_jointApplicantNRIC) {
+      updates.ack_jointApplicantNRIC = formData.jIc
+    }
+    
+    // Auto-fill dates for acknowledgement
+    if (!formData.ack_dateDay) {
+      updates.ack_dateDay = currentDate.day
+      updates.ack_dateMonth = currentDate.month
+      updates.ack_dateYear = currentDate.year
+      updates.ack_applicationDay = currentDate.day
+      updates.ack_applicationMonth = currentDate.month
+      updates.ack_applicationYear = currentDate.year
+    }
+    
+    // Apply updates if there are any
+    if (Object.keys(updates).length > 0) {
+      setFormData(prev => ({ ...prev, ...updates }))
+    }
+  }, [formData.nameAsPerNRIC, formData.jName, formData.nominee1Name, formData.nominee1Ic, 
+      formData.nominee1Address, formData.nricNo, formData.address, formData.jIc, isLoading])
 
   // ==========================================
   // AUTO-SAVE: Debounced save to Supabase
