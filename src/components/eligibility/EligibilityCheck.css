@@ -33,73 +33,111 @@
   background-color: #8a1a24;
 }
 
-/* Hero Section */
+/* Hero Wrapper */
 .eligibility-hero {
-  position: relative;
-  height: 400px;
   width: 100%;
+  min-height: 400px;
+  background: #a8202d;
+  display: flex;
+  justify-content: center;
   overflow: hidden;
 }
 
-.eligibility-hero .eligibility-bg-image {
+/* Grid Container */
+.eligibility-hero-container {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 400px;
 }
 
-.eligibility-hero-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.4);
+/* Left Content */
+.eligibility-hero-left {
+  padding: 60px 80px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
 }
 
 .eligibility-hero-content {
-  text-align: center;
-  max-width: 900px;
-  padding: 0 2rem;
+  max-width: 500px;
+  text-align: left;
 }
 
+/* Typography */
 .hero-title {
   font-size: 3.5rem;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 2rem;
-  text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: white;
 }
 
 .hero-subtitle {
   font-size: 1.1rem;
-  color: #a8202d;
-  font-weight: 600;
-  margin-bottom: 2rem;
+  font-weight: 500;
   line-height: 1.6;
-  padding-bottom: 1rem;
-  border-bottom: 3px solid #a8202d;
+  margin-bottom: 2rem;
+  border-bottom: 3px solid white;
+  padding-bottom: 0.75rem;
   display: inline-block;
+  color: white;
 }
 
+/* Button */
 .hero-login-btn {
   display: inline-block;
   padding: 0.75rem 3rem;
-  background-color: #a8202d;
-  color: white;
+  background: white;
+  color: #a8202d;
   text-decoration: none;
-  border-radius: 4px;
   font-weight: 600;
-  transition: background-color 0.3s;
-  text-transform: uppercase;
+  border-radius: 4px;
   letter-spacing: 1px;
-  margin-top: 1rem;
+  transition: all 0.3s;
 }
 
 .hero-login-btn:hover {
-  background-color: #8a1a24;
+  background: #f2f2f2;
+}
+
+/* Right Image with "/" Slash */
+.eligibility-hero-right {
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(
+    20% 0,
+    100% 0,
+    100% 100%,
+    5% 100%
+  );
+}
+
+.eligibility-bg-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .eligibility-hero-container {
+    grid-template-columns: 1fr;
+  }
+
+  .eligibility-hero-right {
+    clip-path: none;
+    height: 220px;
+  }
+
+  .eligibility-hero-left {
+    padding: 40px 24px;
+  }
+
+  .hero-title {
+    font-size: 2.4rem;
+  }
 }
 
 /* Form Section */

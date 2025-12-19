@@ -514,6 +514,7 @@ h1 {
   /* white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis; */
+  word-break: break-all;
 }
 
 /* .review-field:last-child {
