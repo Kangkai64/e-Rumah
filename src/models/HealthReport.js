@@ -488,7 +488,7 @@ export const shareHealthReport = async (reportId, shareOption, shareData) => {
       case 'healthcare':
         return await shareWithHealthcare(report, shareData)
       case 'download':
-        return { success: true, action: 'download', url: report.report_file_url }
+        return await downloadHealthReportFile(report)
       case 'link':
         return await generateShareableLink(report, shareData)
       case 'email':
@@ -561,8 +561,56 @@ function formatDate(date) {
   return `${day}/${month}/${year}`
 }
 
+async function downloadHealthReportFile(report) {
+  try {
+    // Extract file extension from URL
+    const url = report.report_file_url
+    const urlParts = url.split('.')
+    const extension = urlParts.length > 1 ? `.${urlParts.pop()}` : ''
+    
+    // Create filename with proper extension
+    const filename = `${report.report_title || 'health-report'}${extension}`
+    
+    // Try to fetch and download the file directly
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('Failed to fetch file')
+    
+    const blob = await response.blob()
+    const downloadUrl = window.URL.createObjectURL(blob)
+    
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    link.style.display = 'none'
+    
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Clean up the blob URL
+    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100)
+    
+    return { success: true, action: 'downloaded', message: 'File downloaded successfully' }
+  } catch (error) {
+    console.error('Direct download failed:', error)
+    // Fallback to returning URL for manual download
+    return { success: true, action: 'download', url: report.report_file_url, message: 'Please click the link to download' }
+  }
+}
+
 async function shareWithCaregiver(report, shareData) {
   try {
+    // Validate that the caregiver exists and get their user info
+    const { data: caregiverData, error: caregiverError } = await supabase
+      .from('caregivers')
+      .select('id, user_id, users(email)')
+      .eq('id', shareData.caregiverId)
+      .single()
+
+    if (caregiverError || !caregiverData) {
+      return { success: false, error: 'Caregiver not found or invalid' }
+    }
+
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
 
@@ -570,9 +618,10 @@ async function shareWithCaregiver(report, shareData) {
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
+        shared_by_user_id: report.user_id,
         shared_with_type: 'caregiver',
-        shared_with_id: shareData.caregiverId,
-        shared_with_email: shareData.email,
+        shared_with_id: caregiverData.user_id,
+        shared_with_email: shareData.email || caregiverData.users.email,
         expires_at: expiryDate.toISOString()
       }])
       .select()
@@ -588,6 +637,24 @@ async function shareWithCaregiver(report, shareData) {
 
 async function shareWithFamily(report, shareData) {
   try {
+    // Validate that the family member relationship exists and is verified
+    const { data: familyData, error: familyError } = await supabase
+      .from('family_members')
+      .select('id, family_member_user_id, permissions_level, is_verified, users(email)')
+      .eq('user_id', report.user_id)
+      .eq('family_member_user_id', shareData.familyMemberId)
+      .eq('is_verified', true)
+      .single()
+
+    if (familyError || !familyData) {
+      return { success: false, error: 'Family member relationship not found or not verified' }
+    }
+
+    // Check permissions
+    if (!['view_and_share', 'full'].includes(familyData.permissions_level)) {
+      return { success: false, error: 'Family member does not have permission to view reports' }
+    }
+
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
 
@@ -595,9 +662,10 @@ async function shareWithFamily(report, shareData) {
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
+        shared_by_user_id: report.user_id,
         shared_with_type: 'family',
-        shared_with_id: shareData.familyMemberId,
-        shared_with_email: shareData.email,
+        shared_with_id: familyData.family_member_user_id,
+        shared_with_email: shareData.email || familyData.users.email,
         expires_at: expiryDate.toISOString()
       }])
       .select()
@@ -613,6 +681,18 @@ async function shareWithFamily(report, shareData) {
 
 async function shareWithHealthcare(report, shareData) {
   try {
+    // Validate that the healthcare provider exists and is verified
+    const { data: providerData, error: providerError } = await supabase
+      .from('healthcare_providers')
+      .select('id, user_id, is_verified, users(email)')
+      .eq('id', shareData.providerId)
+      .eq('is_verified', true)
+      .single()
+
+    if (providerError || !providerData) {
+      return { success: false, error: 'Healthcare provider not found or not verified' }
+    }
+
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
 
@@ -620,8 +700,10 @@ async function shareWithHealthcare(report, shareData) {
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
+        shared_by_user_id: report.user_id,
         shared_with_type: 'healthcare_provider',
-        shared_with_email: shareData.providerEmail || shareData.email,
+        shared_with_id: providerData.user_id,
+        shared_with_email: shareData.providerEmail || shareData.email || providerData.users.email,
         expires_at: expiryDate.toISOString()
       }])
       .select()
@@ -801,7 +883,10 @@ export const getAllHealthReports = async (filters = {}) => {
       .from('health_reports')
       .select(`
         *,
-        applications(user_id, users(full_name, email))
+        applications!health_reports_application_id_fkey(
+          user_id,
+          users!applications_user_id_fkey(full_name, email)
+        )
       `)
 
     // Apply search filter

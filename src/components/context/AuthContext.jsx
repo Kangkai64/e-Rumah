@@ -46,19 +46,22 @@ export function AuthProvider({ children }) {
       const { data: userData } = await Promise.race([
         fetchPromise,
         userTimeout
-      ]).catch(() => {
-        // Silently handle timeout - not an error, just slow query
-        return { data: null, error: null }
+      ]).catch((error) => {
+        console.warn('⚠️ Timeout or error fetching user data:', error.message)
+        // Don't set default values on timeout - keep trying
+        return { data: null, error: error }
       })
 
-      // Default to 'user' role (will check application status regardless)
-      const role = userData?.role || 'user'
+      // Set role from database, but don't default to 'user' if data is missing
+      const role = userData?.role || null  // Keep as null if no data to avoid false assumptions
       setUserRole(role)
 
       if (!userData) {
-        console.warn('⚠️ User not found in users table, defaulting to user role')
+        console.warn('⚠️ User not found in users table, role will remain null until data is available')
+        // Don't set a default role here - let the UI handle null role state
+        return  // Early return to avoid further processing
       } else {
-        console.log('✅ User data:', userData)
+        console.log('✅ User data:', userData, '- Role:', role)
       }
 
       // Check if user has completed application (for 'user' role) - with timeout
@@ -95,10 +98,11 @@ export function AuthProvider({ children }) {
       setUser(authUser)
     } catch (error) {
       console.error('❌ Error fetching user data:', error)
-      // Fallback: set user with default role
-      setUserRole('user')
-      setApplicationStatus('incomplete')
+      // Don't set fallback values - let the app handle the null state properly
+      // This prevents admin users from being treated as regular users
       setUser(authUser)
+      // Keep userRole as null to indicate data fetch failure
+      console.warn('⚠️ User role could not be determined due to error')
     }
   }
 

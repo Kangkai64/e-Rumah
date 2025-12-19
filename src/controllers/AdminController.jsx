@@ -4,10 +4,12 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../components/context/AuthContext'
 import Admin from '../models/Admin'
 import AdminView from '../views/AdminView'
 
 function AdminController() {
+  const { user, userRole, loading: authLoading } = useAuth()
   // State management
   const [statistics, setStatistics] = useState({
     pending: 0,
@@ -38,13 +40,25 @@ function AdminController() {
 
   // Load dashboard data on mount
   useEffect(() => {
-    loadDashboardData()
-  }, [filters])
+    console.log('🔍 AdminController mounting - Auth state:', { 
+      user: user?.email, 
+      userRole, 
+      authLoading 
+    })
+    
+    // Only load data if user is authenticated and confirmed as admin
+    if (user && userRole === 'admin' && !authLoading) {
+      loadDashboardData()
+    } else if (user && userRole && userRole !== 'admin') {
+      console.warn('⚠️ Non-admin user trying to access admin dashboard:', userRole)
+    }
+  }, [filters, user, userRole, authLoading])
 
   /**
    * Load all dashboard data
    */
   const loadDashboardData = async () => {
+    console.log('📊 Loading admin dashboard data...')
     setLoading(true)
     setError(null)
 

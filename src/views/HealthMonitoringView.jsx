@@ -3717,7 +3717,8 @@ function AdminHealthReportDashboardView({
   onCancelAdminAction,
   onFlagReasonChange,
   onViewReport,
-  onTabChange
+  onTabChange,
+  onGenerateReport
 }) {
   // Loading state
   if (isLoading) {
@@ -3733,7 +3734,8 @@ function AdminHealthReportDashboardView({
 
   return (
     <div className="admin-dashboard-container">
-      {/* Success/Error Messages */}
+      {/* Alerts and Messages */}
+      {alerts && alerts.length > 0 && <AlertMessage alerts={alerts} />}
       {successMessage && (
         <div className="alert alert-success">
           <span>✓</span> {successMessage}
@@ -3747,106 +3749,120 @@ function AdminHealthReportDashboardView({
 
       {/* Main Content */}
       <div className="dashboard-content">
-        {/* Heading */}
+        {/* Heading Section */}
         <div className="section-heading">
           <h1>Health Report Dashboard</h1>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="statistics-cards">
-          <div className="stat-card">
-            <div className="stat-label">Pending Reports</div>
-            <div className="stat-value">{statistics?.pending || 0}</div>
-            <div className="stat-sublabel">Awaiting review</div>
-          </div>
+        {/* Statistics Cards Section */}
+        <div className="statistics-section">
+          <div className="statistics-cards">
+            <div className="stat-card">
+              <div className="stat-label">Pending Reports</div>
+              <div className="stat-value">{statistics?.pending || 0}</div>
+              <div className="stat-sublabel">Awaiting review</div>
+            </div>
 
-          <div className="stat-card">
-            <div className="stat-label">Approved</div>
-            <div className="stat-value">{statistics?.approved || 0}</div>
-            <div className="stat-sublabel">Active health records</div>
-          </div>
+            <div className="stat-card">
+              <div className="stat-label">Approved</div>
+              <div className="stat-value">{statistics?.approved || 0}</div>
+              <div className="stat-sublabel">Active health records</div>
+            </div>
 
-          <div className="stat-card">
-            <div className="stat-label">Flagged</div>
-            <div className="stat-value">{statistics?.flagged || 0}</div>
-            <div className="stat-sublabel">Requires attention</div>
-          </div>
+            <div className="stat-card">
+              <div className="stat-label">Flagged</div>
+              <div className="stat-value">{statistics?.flagged || 0}</div>
+              <div className="stat-sublabel">Requires attention</div>
+            </div>
 
-          <div className="stat-card stat-card-small">
-            <div className="stat-label">Reports Generated</div>
-            <div className="stat-value">{statistics?.generated || 0}</div>
-            <div className="stat-sublabel">This month</div>
+            <div className="stat-card">
+              <div className="stat-label">Reports Generated</div>
+              <div className="stat-value">{statistics?.generated || 0}</div>
+              <div className="stat-sublabel">This month</div>
+            </div>
           </div>
         </div>
 
         {/* Records Management Section */}
-        <div className="records-management">
-          {/* Records Table */}
-          <div className="records-table-container">
-            <div className="table-heading">
-              <h3>Records</h3>
-            </div>
+        <div className="search-section">
+          <div className="search-header">
+            <h2>Health Reports Management</h2>
+            <button 
+              className="btn-clear-filters"
+              onClick={() => onFilterChange('clear', null)}
+            >
+              Clear all filters
+            </button>
+          </div>
 
-            {/* Search and Filters */}
-            <div className="search-filter-bar">
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search applicants, reports, IDs"
-                value={searchKey}
-                onChange={(e) => onSearchChange(e.target.value)}
-              />
-
-              <div className="filter-group">
-                <span className="filter-label">Filter field:</span>
-                <select
-                  className="filter-select"
-                  value={filters.field || 'status'}
-                  onChange={(e) => onFilterChange('field', e.target.value)}
-                >
-                  <option value="status">Status</option>
-                  <option value="reportType">Report Type</option>
-                  <option value="date">Date</option>
-                </select>
+          {/* Search and Filters Bar */}
+          <div className="search-bar-container">
+            <div className="search-input-group">
+              <div className="search-input">
+                <input
+                  type="text"
+                  className="search-field"
+                  placeholder="Search applicants, reports, IDs..."
+                  value={searchKey || ''}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                />
               </div>
 
-              <div className="filter-group">
-                <span className="filter-label">Value:</span>
-                <select
-                  className="filter-select"
-                  value={filters.value || 'pending'}
-                  onChange={(e) => onFilterChange('value', e.target.value)}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="flagged">Flagged</option>
-                </select>
-              </div>
+              <div className="filter-controls">
+                <div className="filter-group">
+                  <label className="filter-label">Filter field:</label>
+                  <select
+                    className="filter-select"
+                    value={filters?.field || 'status'}
+                    onChange={(e) => onFilterChange('field', e.target.value)}
+                  >
+                    <option value="status">Status</option>
+                    <option value="reportType">Report Type</option>
+                    <option value="date">Date</option>
+                    <option value="provider">Provider</option>
+                  </select>
+                </div>
 
-              <div className="filter-group">
-                <span className="filter-label">Sort:</span>
-                <select
-                  className="filter-select"
-                  value={sortBy}
-                  onChange={(e) => onSort(e.target.value)}
-                >
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="name">Name</option>
-                </select>
+                <div className="filter-group">
+                  <label className="filter-label">Value:</label>
+                  <select
+                    className="filter-select"
+                    value={filters?.value || 'pending'}
+                    onChange={(e) => onFilterChange('value', e.target.value)}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="flagged">Flagged</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label className="filter-label">Sort:</label>
+                  <select
+                    className="filter-select"
+                    value={sortBy || 'newest'}
+                    onChange={(e) => onSort(e.target.value)}
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name">By Name</option>
+                    <option value="type">By Type</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             {/* Record Type Tabs */}
-            <div className="record-tabs">
+            <div className="filter-buttons">
               <button
-                className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+                className={`filter-btn ${activeTab === 'reports' ? 'active' : ''}`}
                 onClick={() => onTabChange('reports')}
               >
                 Health Reports
               </button>
               <button
-                className={`tab-button ${activeTab === 'patients' ? 'active' : ''}`}
+                className={`filter-btn ${activeTab === 'patients' ? 'active' : ''}`}
                 onClick={() => onTabChange('patients')}
               >
                 Patients
@@ -3855,50 +3871,64 @@ function AdminHealthReportDashboardView({
                 Use filters to refine by status, dates, report type and more.
               </div>
             </div>
+          </div>
 
-            {/* Table Headers */}
-            <div className="table-header">
-              <div className="table-col">Applicant</div>
-              <div className="table-col">Report Type</div>
-              <div className="table-col">Submitted</div>
-              <div className="table-col">Status</div>
-              <div className="table-col">Actions</div>
+          {/* Results Table */}
+          <div className="results-table">
+            <div className="table-header-row">
+              <div className="table-header-col">Applicant</div>
+              <div className="table-header-col">Report Type</div>
+              <div className="table-header-col">Report Date</div>
+              <div className="table-header-col">Upload Date</div>
+              <div className="table-header-col">Provider</div>
+              <div className="table-header-col">Status</div>
+              <div className="table-header-col">Actions</div>
             </div>
 
-            {/* Table Rows */}
             <div className="table-body">
               {reports && reports.length > 0 ? (
                 reports.map((report) => (
                   <div
                     key={report.id}
-                    className={`table-row ${selectedReport?.id === report.id ? 'selected' : ''}`}
+                    className={`table-data-row ${selectedReport?.id === report.id ? 'selected' : ''}`}
                     onClick={() => onReportSelect(report)}
                   >
-                    <div className="table-col">
-                      <span className="applicant-name">
-                        {report.applications?.users?.full_name || 
-                         report.users?.full_name || 
-                         'N/A'}
-                      </span>
+                    <div className="table-data-col">
+                      <div className="applicant-info">
+                        <div className="applicant-name">
+                          {report.applications?.users?.full_name || 
+                           report.users?.full_name || 
+                           'N/A'}
+                        </div>
+                        <div className="applicant-ic">
+                          IC: {report.applications?.users?.ic_number || 
+                               report.users?.ic_number || 
+                               'N/A'}
+                        </div>
+                      </div>
                     </div>
-                    <div className="table-col">
-                      <span className="report-type">{report.report_type || 'General'}</span>
+                    <div className="table-data-col">{report.report_type || 'General'}</div>
+                    <div className="table-data-col">
+                      {report.report_date ? 
+                        new Date(report.report_date).toLocaleDateString('en-GB') : 
+                        'N/A'}
                     </div>
-                    <div className="table-col">
-                      <span className="date">
-                        {new Date(report.created_at || report.report_date).toLocaleDateString('en-GB')}
-                      </span>
+                    <div className="table-data-col">
+                      {new Date(report.created_at || report.report_date).toLocaleDateString('en-GB')}
                     </div>
-                    <div className="table-col">
+                    <div className="table-data-col">
+                      {report.provider_name || 'N/A'}
+                    </div>
+                    <div className="table-data-col">
                       <span className={`status-badge status-${(report.health_report_status || 'pending').toLowerCase()}`}>
                         {(report.health_report_status || 'Pending').charAt(0).toUpperCase() + (report.health_report_status || 'pending').slice(1).toLowerCase()}
                       </span>
                     </div>
-                    <div className="table-col actions-col">
+                    <div className="table-data-col table-actions">
                       {(report.health_report_status || 'pending').toLowerCase() === 'pending' && (
                         <>
                           <button
-                            className="action-btn approve-btn"
+                            className="btn-action approve-btn"
                             onClick={(e) => {
                               e.stopPropagation()
                               onApproveClick(report)
@@ -3908,7 +3938,7 @@ function AdminHealthReportDashboardView({
                             Approve
                           </button>
                           <button
-                            className="action-btn flag-btn"
+                            className="btn-action flag-btn"
                             onClick={(e) => {
                               e.stopPropagation()
                               onFlagClick(report)
@@ -3920,7 +3950,7 @@ function AdminHealthReportDashboardView({
                         </>
                       )}
                       <button
-                        className="action-btn view-btn"
+                        className="btn-action view-btn"
                         onClick={(e) => {
                           e.stopPropagation()
                           onViewReport(report.id)
@@ -3930,7 +3960,7 @@ function AdminHealthReportDashboardView({
                         View
                       </button>
                       <button
-                        className="action-btn archive-btn"
+                        className="btn-action archive-btn"
                         onClick={(e) => {
                           e.stopPropagation()
                           onArchiveClick(report)
@@ -3943,16 +3973,29 @@ function AdminHealthReportDashboardView({
                   </div>
                 ))
               ) : (
-                <div className="empty-state">
-                  <p>No health reports found</p>
+                <div className="table-data-row">
+                  <div className="table-data-col" style={{ 
+                    gridColumn: '1 / -1', 
+                    textAlign: 'center', 
+                    padding: '2rem', 
+                    color: '#666',
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    No health reports found. Upload your first report to get started.
+                  </div>
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Report Details Card */}
+        {/* Report Details Section */}
+        <div className="health-monitoring-section">
           <div className="report-details-card">
-            <div className="details-heading">
+            <div className="details-header">
               <h3>Report Details</h3>
             </div>
 
@@ -4002,113 +4045,134 @@ function AdminHealthReportDashboardView({
                   <div className="info-sublabel">{selectedReport.provider_address || 'Address not provided'}</div>
                 </div>
 
+                {/* Report Notes */}
+                <div className="info-section">
+                  <div className="info-label">Notes</div>
+                  <div className="info-value">{selectedReport.notes || 'No additional notes'}</div>
+                </div>
+
                 {/* Key Findings */}
                 <div className="findings-section">
+                  <div className="info-label">Status Information</div>
                   <ul className="findings-list">
                     <li>Report uploaded and verified</li>
                     <li>Medical history reviewed</li>
-                    <li>No risk flags detected</li>
+                    <li>{(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' ? 'Awaiting review' : 'Review completed'}</li>
                   </ul>
                 </div>
 
                 {/* Action Buttons */}
-                <button className="btn-primary-action">Approve Report</button>
-
-                {/* Additional Info */}
-                <div className="additional-info">
-                  <div className="info-row">
-                    <div className="info-col">
-                      <div className="info-label">Notes</div>
-                      <div className="info-sublabel">{selectedReport.notes || 'No additional notes'}</div>
-                    </div>
+                {(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' && (
+                  <div className="action-buttons">
+                    <button 
+                      className="btn-primary-action approve"
+                      onClick={() => onApproveClick(selectedReport)}
+                    >
+                      Approve Report
+                    </button>
+                    <button 
+                      className="btn-primary-action flag"
+                      onClick={() => onFlagClick(selectedReport)}
+                    >
+                      Flag Report
+                    </button>
                   </div>
-                </div>
+                )}
               </>
             ) : (
               <div className="empty-selection">
-                <p>Select a report to view details</p>
+                <p>Select a report from the table to view details</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Reports Section */}
+        {/* Reports Generation Section */}
         <div className="reports-section">
           <div className="reports-header">
-            <h3>Reports</h3>
+            <h3>Generated Reports</h3>
             <div className="filter-group">
-              <span className="filter-label">Filter</span>
+              <label className="filter-label">Filter:</label>
               <select className="filter-select">
                 <option>This month</option>
                 <option>Last month</option>
                 <option>This year</option>
+                <option>All time</option>
               </select>
             </div>
           </div>
 
           {/* Reports Table */}
-          <div className="reports-table">
-            <div className="reports-table-header">
-              <div className="report-col">Report name</div>
-              <div className="report-col">Generated on</div>
-              <div className="report-col"></div>
-              <div className="report-col">Actions</div>
+          <div className="archived-reports-card">
+            <div className="archived-table">
+              <div className="table-header">
+                <div className="table-col">Report name</div>
+                <div className="table-col">Generated on</div>
+                <div className="table-col">Type</div>
+                <div className="table-col">Actions</div>
+              </div>
+
+              <div className="table-body">
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Nov 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">01 Dec 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-action" onClick={() => onViewReport('report-1')}>View</button>
+                    <button className="btn-action" onClick={() => onShareReport('report-1')}>Share</button>
+                    <button className="btn-action" onClick={() => onArchiveReport('report-1')}>Archive</button>
+                  </div>
+                </div>
+
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Oct 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">28 Nov 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-action" onClick={() => onViewReport('report-2')}>View</button>
+                    <button className="btn-action" onClick={() => onShareReport('report-2')}>Share</button>
+                    <button className="btn-action" onClick={() => onArchiveReport('report-2')}>Archive</button>
+                  </div>
+                </div>
+
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Sep 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">30 Sep 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-action" onClick={() => onViewReport('report-3')}>View</button>
+                    <button className="btn-action" onClick={() => onShareReport('report-3')}>Share</button>
+                    <button className="btn-action" onClick={() => onArchiveReport('report-3')}>Archive</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="reports-table-body">
-              <div className="report-row">
-                <div className="report-col">
-                  <span className="report-name">Health Report - Nov 2025</span>
-                </div>
-                <div className="report-col">
-                  <span className="report-date">01 Dec 2025</span>
-                </div>
-                <div className="report-col"></div>
-                <div className="report-col actions-col">
-                  <button className="action-btn-sm" onClick={() => onViewReport('report-1')}>View</button>
-                  <button className="action-btn-sm" onClick={() => onShareReport('report-1')}>Share</button>
-                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-1')}>Archive</button>
-                </div>
-              </div>
-
-              <div className="report-row">
-                <div className="report-col">
-                  <span className="report-name">Health Report - OCT 2025</span>
-                </div>
-                <div className="report-col">
-                  <span className="report-date">28 Nov 2025</span>
-                </div>
-                <div className="report-col"></div>
-                <div className="report-col actions-col">
-                  <button className="action-btn-sm" onClick={() => onViewReport('report-2')}>View</button>
-                  <button className="action-btn-sm" onClick={() => onShareReport('report-2')}>Share</button>
-                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-2')}>Archive</button>
-                </div>
-              </div>
-
-              <div className="report-row">
-                <div className="report-col">
-                  <span className="report-name">Health Report - Sep 2025</span>
-                </div>
-                <div className="report-col">
-                  <span className="report-date">30 Sep 2025</span>
-                </div>
-                <div className="report-col"></div>
-                <div className="report-col actions-col">
-                  <button className="action-btn-sm" onClick={() => onViewReport('report-3')}>View</button>
-                  <button className="action-btn-sm" onClick={() => onShareReport('report-3')}>Share</button>
-                  <button className="action-btn-sm" onClick={() => onArchiveReport('report-3')}>Archive</button>
-                </div>
-              </div>
+            {/* Generate Report Footer */}
+            <div className="reports-footer">
+              <p className="footer-note">Store and access reports securely for audit and compliance purposes.</p>
+              <button className="btn btn-primary btn-generate-report" onClick={onGenerateReport}>
+                Generate Health Analysis Report (PDF)
+              </button>
             </div>
-          </div>
-
-          {/* Generate Report Footer */}
-          <div className="reports-footer">
-            <p className="footer-note">Store and access reports securely for audit and Compliance.</p>
-            <button className="btn-generate-report" onClick={onGenerateReport}>
-              Generate Health Analysis Report (PDF)
-            </button>
           </div>
         </div>
       </div>

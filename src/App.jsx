@@ -20,6 +20,8 @@ import RegistrationPage from './components/auth/RegistrationPage'
 import EligibilityCheck from './components/eligibility/EligibilityCheck'
 import HealthReportController from './controllers/HealthReportController.jsx'
 import ProtectedRoute from './components/ProtectedRoute'
+import downloadIcon from './assets/icons/health_report_page/icon_download.svg'
+import infoIcon from './assets/icons/health_report_page/icon_info.svg'
 
 const ScrollToTop = () => {
   const { pathname, search, hash } = useLocation()
@@ -117,14 +119,46 @@ const SharedReportPage = () => {
     }
   }, [token])
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (report?.report_file_url) {
-      const link = document.createElement('a')
-      link.href = report.report_file_url
-      link.download = report.report_title || 'health-report'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      try {
+        // Extract file extension from URL
+        const url = report.report_file_url
+        const urlParts = url.split('.')
+        const extension = urlParts.length > 1 ? `.${urlParts.pop()}` : ''
+        
+        // Create filename with proper extension
+        const filename = `${report.report_title || 'health-report'}${extension}`
+        
+        // Try to fetch and download the file
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('Failed to fetch file')
+        
+        const blob = await response.blob()
+        const downloadUrl = window.URL.createObjectURL(blob)
+        
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = filename
+        link.style.display = 'none'
+        
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up the blob URL
+        setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100)
+      } catch (error) {
+        console.error('Download failed:', error)
+        // Fallback to direct link method
+        const link = document.createElement('a')
+        link.href = report.report_file_url
+        link.download = report.report_title || 'health-report'
+        link.target = '_blank'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
     }
   }
 
@@ -226,18 +260,26 @@ const SharedReportPage = () => {
         <button 
           onClick={handleDownload}
           style={{
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#007bff',
-            color: 'white',
+            backgroundColor: '#B91C1C',
             border: 'none',
-            borderRadius: '6px',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: 'white',
+            lineHeight: '20px',
             cursor: 'pointer',
+            fontFamily: 'Poppins, sans-serif',
+            transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem'
+            gap: '8px',
+            boxShadow: '0 2px 4px rgba(185, 28, 28, 0.2)'
           }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#991B1B'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#B91C1C'}
         >
-          📥 Download
+          <img src={downloadIcon} alt="Download Icon" style={{ width: '20px', height: '20px' }} /> Download Report
         </button>
       </header>
 
@@ -288,7 +330,7 @@ const SharedReportPage = () => {
           marginBottom: '2rem',
           border: '1px solid #bbdefb'
         }}>
-          <strong>ℹ️ Shared Report:</strong> This link expires on{' '}
+          <strong><img src={infoIcon} alt="Info Icon" style={{ width: '24px', height: '24px', marginRight: '6px', verticalAlign: 'middle' }} /> Shared Report:</strong> This link expires on{' '}
           {formatDate(shareData.expires_at)}
           {shareData.shared_with_email && (
             <span> • Shared with: {shareData.shared_with_email}</span>
@@ -339,15 +381,29 @@ const SharedReportPage = () => {
             <div style={{ fontSize: '3rem' }}>📄</div>
             <h3>Medical Document</h3>
             <p>{report.report_title}</p>
-            <button onClick={handleDownload} style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}>
-              📥 Download File
+            <button 
+              onClick={handleDownload} 
+              style={{
+                backgroundColor: '#B91C1C',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'white',
+                lineHeight: '20px',
+                cursor: 'pointer',
+                fontFamily: 'Poppins, sans-serif',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(185, 28, 28, 0.2)'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#991B1B'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#B91C1B'}
+            >
+              <img src={downloadIcon} alt="Download Icon" style={{ width: '20px', height: '20px' }} /> Download File
             </button>
           </div>
         )}
@@ -527,7 +583,9 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requireRole="admin">
-              <AdminController />
+              <Header />
+                <AdminController />
+                <Footer />
             </ProtectedRoute>
           } />
 
