@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { signIn } from '../../services/authService'
 import './auth.css'
+import leftArrow from '../../assets/icons/icon_arrowLeft.svg'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -51,6 +52,9 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
+      <button onClick={() => navigate('/')} className="back-button">
+        <img src={leftArrow} alt="Back" />
+      </button>
       <div className="auth-container">
         <div className="auth-box">
           <h1>Login to e-Rumah</h1>

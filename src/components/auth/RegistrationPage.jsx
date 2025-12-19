@@ -5,6 +5,7 @@ import { signUp } from '../../services/authService'
 import './authLayout.css'
 import logo from '../../assets/images/logo.png'
 import bgImage from '../../assets/images/loginPageBg.jpg'
+import leftArrow from '../../assets/icons/icon_arrowLeft.svg'
 
 export default function SignupPage() {
   const navigate = useNavigate()
@@ -75,6 +76,9 @@ export default function SignupPage() {
 
   return (
     <div className="auth-layout">
+      <button onClick={() => navigate('/')} className="back-button">
+        <img src={leftArrow} alt="Back" />
+      </button>
       <div className="auth-content">
         <div className="auth-form-side">
           <div className="auth-form-container">
