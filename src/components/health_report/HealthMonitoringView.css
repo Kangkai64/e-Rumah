@@ -2966,7 +2966,7 @@ input:checked + .slider:before {
 .status-flagged,
 .status-rejected {
   background: #fee2e2;
-  color: #b91c1c;
+  color: #dc2626;
 }
 
 .status-archived {

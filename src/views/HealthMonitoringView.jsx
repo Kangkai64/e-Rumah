@@ -24,6 +24,7 @@ import healthcareProviderIcon from '../assets/icons/health_report_page/icon_heal
 import downloadIcon from '../assets/icons/health_report_page/icon_download.svg'
 import ascIcon from '../assets/icons/health_report_page/icon_arrow_up.svg'
 import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
+import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 import '../components/health_report/HealthMonitoringView.css'
 
@@ -84,6 +85,29 @@ function ErrorMessage({ error }) {
       <span className="error-icon">✗</span>
       <span>{error}</span>
     </div>
+  )
+}
+
+// Status Badge Component
+function StatusBadge({ status }) {
+  const getStatusClass = (status) => {
+    const statusLower = (status || '').toLowerCase()
+    if (statusLower.includes('flagged')) return 'status-flagged'
+    if (statusLower.includes('pending')) return 'status-pending'
+    if (statusLower.includes('reviewed') || statusLower.includes('approved')) return 'status-reviewed'
+    if (statusLower.includes('rejected')) return 'status-rejected'
+    if (statusLower.includes('archived')) return 'status-archived'
+    return 'status-pending'
+  }
+
+  const statusClass = getStatusClass(status)
+  const isFlagged = statusClass === 'status-flagged'
+
+  return (
+    <span className={`status-badge ${statusClass}`}>
+      {isFlagged && <img src={warningIcon} alt="Warning" style={{ width: '12px', height: '12px', marginRight: '4px', display: 'inline-block' }} />}
+      {status || 'Pending'}
+    </span>
   )
 }
 
@@ -1824,7 +1848,7 @@ function UserHealthReportView({
                     <div className="table-data-col">
                       {report.provider_name || 'N/A'}
                     </div>
-                    <div className="table-data-col">{report.health_report_status || report.due_status || 'Up to Date'}</div>
+                    <div className="table-data-col"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
                     <div className="table-data-col table-actions">
                       <button 
                         className="btn-secondary btn-action"
@@ -2574,7 +2598,7 @@ function AdminHealthReportDashboardView() {
                     <div className="table-data-col">
                       {report.provider_name || 'N/A'}
                     </div>
-                    <div className="table-data-col">{report.health_report_status || report.due_status || 'Up to Date'}</div>
+                    <div className="table-data-col"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
                     <div className="table-data-col table-actions">
                       <button 
                         className="btn-secondary btn-action"

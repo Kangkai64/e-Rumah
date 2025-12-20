@@ -119,22 +119,53 @@ class ReminderService {
       // Remove user_id from update data if present (shouldn't be updated)
       const { user_id, id, created_at, ...cleanUpdateData } = updateData
 
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({
-          ...cleanUpdateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating reminder:', error)
-        throw new Error(error.message)
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('No active session')
       }
 
-      return Reminder.fromDatabase(data)
+      // Use fetch to bypass CORS issues
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({
+            ...cleanUpdateData,
+            updated_at: new Date().toISOString()
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const contentType = res.headers.get('content-type')
+      let data = null
+      
+      if (contentType && contentType.includes('application/json')) {
+        const responseData = await res.json()
+        data = Array.isArray(responseData) ? responseData[0] : responseData
+      }
+
+      return data ? Reminder.fromDatabase(data) : null
     } catch (error) {
       console.error('Service error updating reminder:', error)
       throw error
@@ -144,14 +175,38 @@ class ReminderService {
   // Delete a reminder
   async deleteReminder(reminderId) {
     try {
-      const { error } = await supabase
-        .from('reminders')
-        .delete()
-        .eq('id', reminderId)
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('No active session')
+      }
 
-      if (error) {
-        console.error('Error deleting reminder:', error)
-        throw new Error(error.message)
+      // Use fetch to bypass CORS issues
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          }
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        throw new Error(errorMessage)
       }
 
       return true
@@ -164,22 +219,53 @@ class ReminderService {
   // Toggle reminder enabled status
   async toggleReminder(reminderId, isEnabled) {
     try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({ 
-          is_enabled: isEnabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error toggling reminder:', error)
-        throw new Error(error.message)
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('No active session')
       }
 
-      return Reminder.fromDatabase(data)
+      // Use fetch to bypass CORS issues
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({
+            is_enabled: isEnabled,
+            updated_at: new Date().toISOString()
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const contentType = res.headers.get('content-type')
+      let data = null
+      
+      if (contentType && contentType.includes('application/json')) {
+        const responseData = await res.json()
+        data = Array.isArray(responseData) ? responseData[0] : responseData
+      }
+
+      return data ? Reminder.fromDatabase(data) : null
     } catch (error) {
       console.error('Service error toggling reminder:', error)
       throw error
@@ -289,22 +375,53 @@ class ReminderService {
   // Mark reminder as notified
   async markAsNotified(reminderId) {
     try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({ 
-          notified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error marking reminder as notified:', error)
-        throw new Error(error.message)
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        throw new Error('No active session')
       }
 
-      return Reminder.fromDatabase(data)
+      // Use fetch to bypass CORS issues
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({
+            notified_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      const contentType = res.headers.get('content-type')
+      let data = null
+      
+      if (contentType && contentType.includes('application/json')) {
+        const responseData = await res.json()
+        data = Array.isArray(responseData) ? responseData[0] : responseData
+      }
+
+      return data ? Reminder.fromDatabase(data) : null
     } catch (error) {
       console.error('Service error marking reminder as notified:', error)
       throw error
