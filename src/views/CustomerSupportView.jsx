@@ -1,7 +1,7 @@
 // src/views/CustomerSupportView.jsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import './CustomerSupport.css'
+import '../components/customerSupport/CustomerSupport.css'
 import PDFViewer from '../components/common/PDFViewer'
 
 // ============================================================================
@@ -315,25 +315,64 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
 
           {/* Inquiry Details */}
           <div className="inquiry-details">
-            {/* Subject */}
-            <div className="detail-field">
-              <label>Subject</label>
-              <p className="subject-title">{inquiry.subject || 'No subject'}</p>
-            </div>
+            {/* Flagged Health Report Details */}
+            {inquiry.type === 'flagged_report' ? (
+              <>
+                {/* Report Title */}
+                <div className="detail-field">
+                  <label>Report Title</label>
+                  <p className="subject-title">{inquiry.report_title || 'Health Report'}</p>
+                </div>
 
-            {/* Date and Contact Row */}
-            <div className="detail-row">
-              <div className="detail-field">
-                <label>Received</label>
-                <p>{formatDate(inquiry.created_at)}</p>
-              </div>
-            </div>
+                {/* Report Date and Type */}
+                <div className="detail-row" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px'}}>
+                  <div className="detail-field">
+                    <label>Report Date</label>
+                    <p>{inquiry.report_date ? new Date(inquiry.report_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : 'N/A'}</p>
+                  </div>
+                  <div className="detail-field">
+                    <label>Report Type</label>
+                    <p>{inquiry.report_type || 'N/A'}</p>
+                  </div>
+                </div>
 
-            {/* Context/Message */}
-            <div className="detail-field">
-              <label>Context</label>
-              <p className="context-text">{inquiry.message}</p>
-            </div>
+                {/* Provider Name */}
+                <div className="detail-field">
+                  <label>Provider Name</label>
+                  <p>{inquiry.provider_name || 'N/A'}</p>
+                </div>
+
+                {/* Submission Notes */}
+                {inquiry.notes && (
+                  <div className="detail-field">
+                    <label>Submission Notes</label>
+                    <p className="context-text">{inquiry.notes}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Subject */}
+                <div className="detail-field">
+                  <label>Subject</label>
+                  <p className="subject-title">{inquiry.subject || 'No subject'}</p>
+                </div>
+
+                {/* Date and Contact Row */}
+                <div className="detail-row">
+                  <div className="detail-field">
+                    <label>Received</label>
+                    <p>{formatDate(inquiry.created_at)}</p>
+                  </div>
+                </div>
+
+                {/* Context/Message */}
+                <div className="detail-field">
+                  <label>Context</label>
+                  <p className="context-text">{inquiry.message}</p>
+                </div>
+              </>
+            )}
 
             {/* Current Nominees (for Nominee tab only) */}
             {activeTab === 'nominees' && nominees && nominees.length > 0 && (
@@ -368,12 +407,14 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
           <div className="conversation-section">
             <h3>Conversation</h3>
             <div className="conversation-messages">
-              {/* Original message from elder */}
-              <div className="message elder-message">
-                <div className="message-header">Elder</div>
-                <div className="message-body">{inquiry.message}</div>
-                <div className="message-meta">{formatDate(inquiry.created_at)}</div>
-              </div>
+              {/* Original message from elder - only show for inquiries, not flagged reports */}
+              {inquiry.type !== 'flagged_report' && inquiry.message && (
+                <div className="message elder-message">
+                  <div className="message-header">Elder</div>
+                  <div className="message-body">{inquiry.message}</div>
+                  <div className="message-meta">{formatDate(inquiry.created_at)}</div>
+                </div>
+              )}
 
               {/* System alerts or replies */}
               {conversations.map((conv) => (
@@ -397,26 +438,42 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
           </div>
         </div>
 
-        {/* Reply Section */}
-        <div className="reply-section">
-          <div className="reply-input-area">
-            <div className="reply-label-row">
-              <div>
-                <label>Reply to elder</label>
-                <p className="reply-hint">Type your reply here or adjust the drafted message above before sending...</p>
-              </div>
+        {/* Reply Section - Hide if resolved */}
+        {inquiry.status === 'resolved' ? (
+          <div className="reply-section" style={{padding: '1.5rem'}}>
+            <div style={{
+              padding: '1rem',
+              background: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '6px',
+              textAlign: 'center'
+            }}>
+              <p style={{color: '#166534', margin: 0, fontWeight: 500}}>
+                ✓ This inquiry has been resolved and is now closed.
+              </p>
             </div>
-            
-            <textarea
-              className="modal-reply-textarea"
-              placeholder="Type your reply..."
-              value={replyMessage}
-              onChange={(e) => setReplyMessage(e.target.value)}
-              disabled={isSending}
-              rows={4}
-            />
           </div>
-        </div>
+        ) : (
+          <div className="reply-section">
+            <div className="reply-input-area">
+              <div className="reply-label-row">
+                <div>
+                  <label>Reply to elder</label>
+                  <p className="reply-hint">Type your reply here or adjust the drafted message above before sending...</p>
+                </div>
+              </div>
+              
+              <textarea
+                className="modal-reply-textarea"
+                placeholder="Type your reply..."
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                disabled={isSending}
+                rows={4}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Bottom Action Bar */}
         <div className="modal-actions">
@@ -424,31 +481,61 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
             <button className="btn-secondary" onClick={onClose}>
               <span>←</span> Back
             </button>
-            {activeTab === 'nominees' ? (
-              <button 
-                className="btn-resolve"
-                onClick={onFlag}
-                style={{backgroundColor: '#dc2626'}}
-              >
-                Flag Application
-              </button>
-            ) : (
-              <button 
-                className="btn-resolve"
-                onClick={handleMarkResolved}
-              >
-                Mark as Resolved
-              </button>
+            {inquiry.status !== 'resolved' && (
+              activeTab === 'nominees' ? (
+                <button 
+                  className="btn-resolve"
+                  onClick={onFlag}
+                  style={{backgroundColor: '#dc2626'}}
+                >
+                  Flag Application
+                </button>
+              ) : (
+                <button 
+                  className="btn-resolve"
+                  onClick={handleMarkResolved}
+                >
+                  Mark as Resolved
+                </button>
+              )
             )}
           </div>
           <div className="modal-actions-right">
-            <button 
-              className="btn-primary"
-              onClick={handleSend}
-              disabled={isSending || !replyMessage.trim()}
-            >
-              {isSending ? 'Sending...' : 'Send reply'}
-            </button>
+            {/* View Document button for flagged reports */}
+            {inquiry.type === 'flagged_report' && inquiry.report_file_url && (
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  const event = new CustomEvent('openPDFViewer', {
+                    detail: {
+                      fileUrl: inquiry.report_file_url,
+                      fileName: inquiry.report_title || 'Health Report'
+                    }
+                  })
+                  window.dispatchEvent(event)
+                }}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderColor: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>📄</span>
+                View Document
+              </button>
+            )}
+            {inquiry.status !== 'resolved' && (
+              <button 
+                className="btn-primary"
+                onClick={handleSend}
+                disabled={isSending || !replyMessage.trim()}
+              >
+                {isSending ? 'Sending...' : 'Send reply'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -499,6 +586,19 @@ export default function CustomerSupportView({
   const [pdfFileName, setPdfFileName] = useState('')
   const [internalNote, setInternalNote] = useState('')
   const navigate = useNavigate()
+
+  // Listen for PDF viewer events from modal
+  useEffect(() => {
+    const handleOpenPDFViewer = (event) => {
+      const { fileUrl, fileName } = event.detail
+      handleViewDocument(fileUrl, fileName)
+    }
+
+    window.addEventListener('openPDFViewer', handleOpenPDFViewer)
+    return () => {
+      window.removeEventListener('openPDFViewer', handleOpenPDFViewer)
+    }
+  }, [])
 
   // Format status for display (in_progress → In Progress)
   const formatStatus = (status) => {
@@ -639,7 +739,7 @@ export default function CustomerSupportView({
         >
           <div className="item-header">
             <span className="item-name">{item.user?.full_name || item.elder?.full_name || 'Unknown User'}</span>
-            <span className="item-subject">{item.subject}</span>
+            <span className="item-subject">{item.displayText || item.message || item.subject}</span>
             <span className="item-date">{formatDate(item.created_at)}</span>
           </div>
         </div>
@@ -751,60 +851,76 @@ export default function CustomerSupportView({
             </div>
           )}
 
-          {/* 回复表单 */}
-          <div className="detail-section">
-            <p className="detail-label">REPLY TO ELDER</p>
-            <div className="reply-form">
-              <textarea
-                className="reply-textarea"
-                placeholder="Type your response to answer the inquiry..."
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                disabled={isSending}
-              />
-              <div className="reply-actions">
-                <div className="template-buttons">
-                  <button 
-                    className="template-btn"
-                    onClick={() => insertTemplate('critical_deadline')}
-                    disabled={isSending}
-                  >
-                    Critical deadline
-                  </button>
-                  <button 
-                    className="template-btn"
-                    onClick={() => insertTemplate('incorrect_document')}
-                    disabled={isSending}
-                  >
-                    Incorrect document
-                  </button>
-                  <button 
-                    className="template-btn"
-                    onClick={() => insertTemplate('reminder_needed')}
-                    disabled={isSending}
-                  >
-                    Reminder needed
-                  </button>
-                </div>
-                <div className="action-buttons">
-                  <button 
-                    className="btn-secondary"
-                    onClick={handleViewDetails}
-                    disabled={!selectedItem}
-                  >
-                    View details
-                  </button>
-                  <button 
-                    className="btn-primary"
-                    onClick={() => handleSendClick('reply')}
-                    disabled={isSending || !replyMessage.trim()}
-                  >
-                    {isSending ? 'Sending...' : 'Send reply'}
-                  </button>
+          {/* 回复表单 - Hide if resolved */}
+          {selectedItem.status === 'resolved' ? (
+            <div className="detail-section">
+              <div style={{
+                padding: '1rem',
+                background: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: '6px',
+                textAlign: 'center'
+              }}>
+                <p style={{color: '#166534', margin: 0, fontWeight: 500}}>
+                  ✓ This inquiry has been resolved and is now closed.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="detail-section">
+              <p className="detail-label">REPLY TO ELDER</p>
+              <div className="reply-form">
+                <textarea
+                  className="reply-textarea"
+                  placeholder="Type your response to answer the inquiry..."
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  disabled={isSending}
+                />
+                <div className="reply-actions">
+                  <div className="template-buttons">
+                    <button 
+                      className="template-btn"
+                      onClick={() => insertTemplate('critical_deadline')}
+                      disabled={isSending}
+                    >
+                      Critical deadline
+                    </button>
+                    <button 
+                      className="template-btn"
+                      onClick={() => insertTemplate('incorrect_document')}
+                      disabled={isSending}
+                    >
+                      Incorrect document
+                    </button>
+                    <button 
+                      className="template-btn"
+                      onClick={() => insertTemplate('reminder_needed')}
+                      disabled={isSending}
+                    >
+                      Reminder needed
+                    </button>
+                  </div>
+                  <div className="action-buttons">
+                    <button 
+                      className="btn-secondary"
+                      onClick={handleViewDetails}
+                      disabled={!selectedItem}
+                    >
+                      View details
+                    </button>
+                    <button 
+                      className="btn-primary"
+                      onClick={() => handleSendClick('reply')}
+                      disabled={isSending || !replyMessage.trim()}
+                    >
+                      {isSending ? 'Sending...' : 'Send reply'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )
     }

@@ -16,12 +16,12 @@ export default function CustomerSupportController() {
   const [healthReports, setHealthReports] = useState([])
   const [selectedItem, setSelectedItem] = useState(null) // Currently selected item
   const [selectedNominees, setSelectedNominees] = useState([]) // Nominees of the currently selected item
-  const [conversations, setConversations] = useState([]) // Conversation records (all tabs)
+  const [conversations, setConversations] = useState([]) // Conversations (all tabs)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterField, setFilterField] = useState('status') // Filter Field: status | priority
-  const [filterValue, setFilterValue] = useState('') // Filter Value
-  const [sortBy, setSortBy] = useState('latest') // Sort Method
+  const [filterField, setFilterField] = useState('status') // Filter field: status | priority
+  const [filterValue, setFilterValue] = useState('') // Filter value
+  const [sortBy, setSortBy] = useState('latest') // Sort method
 
   // Contact Settings State
   const [contactEmail, setContactEmail] = useState('')
@@ -118,7 +118,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 5. Get Data
+  // 5. Fetch Data
   useEffect(() => {
     let mounted = true
     fetchData(mounted)
@@ -137,7 +137,14 @@ export default function CustomerSupportController() {
         
         const { data, success } = await Inquiry.getAll(filters)
         console.log('Fetched inquiries:', data) // Debug log
-        if (success && mounted) setInquiries(data || [])
+        // Add displayText to show message content instead of subject
+        if (success && mounted) {
+          const formattedData = data?.map(item => ({
+            ...item,
+            displayText: item.message || item.subject
+          }))
+          setInquiries(formattedData || [])
+        }
       } else if (activeTab === 'nominees') {
         // Filter by subject = 'nominee'
         const filters = { subject: 'nominee' }
@@ -147,7 +154,14 @@ export default function CustomerSupportController() {
         
         const { data, success } = await Inquiry.getAll(filters)
         console.log('Fetched nominees:', data) // Debug log
-        if (success && mounted) setNominees(data || [])
+        // Add displayText to show message content instead of subject
+        if (success && mounted) {
+          const formattedData = data?.map(item => ({
+            ...item,
+            displayText: item.message || item.subject
+          }))
+          setNominees(formattedData || [])
+        }
       } else if (activeTab === 'healthReports') {
         // Fetch both health report inquiries AND flagged health reports
         const filters = { subject: 'health_report' }
@@ -169,8 +183,8 @@ export default function CustomerSupportController() {
           combinedData = inquiryData.map(item => ({
             ...item,
             type: 'inquiry',
-            // Use subject as the "inquiry" column text
-            displayText: item.subject || item.message
+            // Use message content (not subject) to match other inquiry tabs
+            displayText: item.message || item.subject
           }))
         }
         
@@ -208,7 +222,7 @@ export default function CustomerSupportController() {
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setSelectedItem(null) // Clear selected item
-    setSelectedNominees([]) // Clear selected nominees
+    setSelectedNominees([]) // Clear nominees
     setConversations([])
     setSearchTerm('')
     setFilterField('status')
@@ -265,7 +279,7 @@ export default function CustomerSupportController() {
     try {
       const currentUserId = await getCurrentUserId()
       
-
+      // Determine entity type
       let entityType = ''
       if (activeTab === 'inquiries') entityType = 'inquiry'
       else if (activeTab === 'nominees') entityType = 'nominee'
@@ -282,17 +296,36 @@ export default function CustomerSupportController() {
       )
 
       if (success) {
-        // update conversations
+        // Refresh conversation list
         const { data: updatedConversations } = await SupportConversation.getByEntity(entityType, selectedItem.id)
         setConversations(updatedConversations || [])
         
-        // update inquiry status to in_progress
-        if (activeTab === 'inquiries') {
-          setInquiries(prev => prev.map(inq => 
-            inq.id === selectedItem.id 
-              ? { ...inq, status: 'in_progress' }
-              : inq
-          ))
+        // Update inquiry status to in_progress (only for inquiries, not flagged reports)
+        // Works for all tabs: Inquiries, Nominees, and Health Reports (inquiry type)
+        if (selectedItem.type !== 'flagged_report' && selectedItem.status === 'open') {
+          await Inquiry.updateStatus(selectedItem.id, 'in_progress')
+          
+          // Update state based on active tab
+          if (activeTab === 'inquiries') {
+            setInquiries(prev => prev.map(inq => 
+              inq.id === selectedItem.id 
+                ? { ...inq, status: 'in_progress' }
+                : inq
+            ))
+          } else if (activeTab === 'nominees') {
+            setNominees(prev => prev.map(nom => 
+              nom.id === selectedItem.id 
+                ? { ...nom, status: 'in_progress' }
+                : nom
+            ))
+          } else if (activeTab === 'healthReports') {
+            setHealthReports(prev => prev.map(hr => 
+              hr.id === selectedItem.id 
+                ? { ...hr, status: 'in_progress' }
+                : hr
+            ))
+          }
+          
           setSelectedItem(prev => prev ? { ...prev, status: 'in_progress' } : prev)
         }
         
@@ -304,7 +337,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 6. Search Functionality
+  // 6. Search Function
   const searchTimerRef = useRef(null)
   const handleSearch = (term) => {
     setSearchTerm(term)
@@ -335,7 +368,7 @@ export default function CustomerSupportController() {
     }, 350)
   }
 
-  // 7. Filter Functionality
+  // 7. Filter Function
   const handleFilterFieldChange = (field) => {
     setFilterField(field)
     setFilterValue('') // Reset value when field changes
@@ -345,7 +378,7 @@ export default function CustomerSupportController() {
     setFilterValue(value)
   }
 
-  // 8. Sort Functionality
+  // 8. Sort Function
   const handleSortChange = (sort) => {
     setSortBy(sort)
   }
@@ -356,7 +389,7 @@ export default function CustomerSupportController() {
       if (activeTab === 'inquiries') {
         const { success } = await Inquiry.updateStatus(id, status, internalNote)
         if (success) {
-          fetchData() // 刷新列表
+          fetchData() // Refresh list
           if (selectedItem?.id === id) {
             const updatedItem = { ...selectedItem, status }
             if (internalNote !== null) {
@@ -415,7 +448,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 10. Get Current List Data (with Sorting)
+  // 10. Get Current Data (Including Sorting)
   const getCurrentData = () => {
     let data = []
     switch (activeTab) {

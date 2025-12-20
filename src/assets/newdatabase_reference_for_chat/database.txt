@@ -24,7 +24,7 @@ create trigger update_application_data_updated_at BEFORE
 update on application_data for EACH row
 execute FUNCTION update_updated_at_column ();
 
-create table applications (
+create table public.applications (
   id uuid not null default extensions.uuid_generate_v4 (),
   user_id uuid not null,
   joint_user_id uuid null,
@@ -41,6 +41,7 @@ create table applications (
   flagged_at timestamp with time zone null,
   flagged_by uuid null,
   flagged_code public.flagged_code null,
+  termination_reason text null,
   constraint applications_pkey primary key (id),
   constraint applications_flagged_by_fkey foreign KEY (flagged_by) references users (id),
   constraint applications_joint_user_id_fkey foreign KEY (joint_user_id) references users (id) on delete set null,
