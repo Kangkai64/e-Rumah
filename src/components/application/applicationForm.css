@@ -323,6 +323,9 @@ h1 {
   background-color: #A8202D;
   color: white;
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .wizard-btn-submit:hover {
@@ -330,28 +333,32 @@ h1 {
   transform: scale(1.05);
 }
 
-.wizard-btn-primary {
-  background-color: #0066cc;
-  color: white;
-  margin-left: auto;
-  font-weight: 600;
+.wizard-btn-submit:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.wizard-btn-primary:hover {
-  background-color: #0052a3;
-  transform: scale(1.05);
+.wizard-btn-submit:disabled:hover {
+  background-color: #ccc;
+  transform: none;
 }
 
-.wizard-btn-danger {
-  background-color: #A8202D;
-  color: white;
-  margin-left: auto;
-  font-weight: 600;
+/* Spinner animation */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-.wizard-btn-danger:hover {
-  background-color: #8a1a24;
-  transform: scale(1.05);
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .wizard-btn:active {

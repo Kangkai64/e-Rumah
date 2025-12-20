@@ -123,7 +123,7 @@ function SignaturePad({ value, onChange, label = 'Signature' }) {
 }
 
 // Wizard Navigation Component
-function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep, editNomineeOnly = false, nomineeCount = 0 }) {
+function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep, isSubmitting, editNomineeOnly = false, nomineeCount = 0 }) {
   const progress = (currentStep / totalSteps) * 100
 
   const stepTitles = [
@@ -166,17 +166,22 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
         ) : (
           <>
             {currentStep > 1 && (
-              <button type="button" className="wizard-btn wizard-btn-back" onClick={onBack}>
+              <button type="button" className="wizard-btn wizard-btn-back" onClick={onBack} disabled={isSubmitting}>
                 ← Back
               </button>
             )}
             {!isLastStep ? (
-              <button type="button" className="wizard-btn wizard-btn-next" onClick={onNext}>
+              <button type="button" className="wizard-btn wizard-btn-next" onClick={onNext} disabled={isSubmitting}>
                 Next →
               </button>
             ) : (
-              <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit}>
-                Submit
+              <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <span className="spinner"></span>
+                Submitting...
+              </>
+                ) : 'Submit'}
               </button>
             )}
           </>
@@ -464,31 +469,32 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-row">
         <div className="form-group">
-          <label>Telephone No. (Residence)</label>
+          <label>Telephone No. (Residence) *</label>
           <input 
             type="tel" 
             name="residencePhone" 
             value={formData.residencePhone} 
             onChange={handleChange} 
-            className={errors.residencePhone || errors.phone ? 'error' : ''}
+            className={errors.residencePhone ? 'error' : ''}
             placeholder="10-11 digits"
+            required
           />
           <ErrorMessage error={errors.residencePhone} />
         </div>
         <div className="form-group">
-          <label>Telephone No (H/P)</label>
+          <label>Telephone No (H/P) *</label>
           <input 
             type="tel" 
             name="telephone" 
             value={formData.telephone} 
             onChange={handleChange} 
-            className={errors.telephone || errors.phone ? 'error' : ''}
+            className={errors.telephone ? 'error' : ''}
             placeholder="10-11 digits"
+            required
           />
           <ErrorMessage error={errors.telephone} />
         </div>
       </div>
-      {errors.phone && <ErrorMessage error={errors.phone} />}
 
       <div className="form-group">
         <label>Present House</label>
@@ -911,24 +917,30 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Telephone No. (Residence)</label>
+              <label>Telephone No. (Residence) *</label>
               <input 
                 type="tel" 
                 name="jResidencePhone" 
                 value={formData.jResidencePhone} 
                 onChange={handleChange} 
+                className={errors.jResidencePhone ? 'error' : ''}
                 placeholder="10-11 digits"
+                required
               />
+              <ErrorMessage error={errors.jResidencePhone} />
             </div>
             <div className="form-group">
-              <label>Telephone No (H/P)</label>
+              <label>Telephone No (H/P) *</label>
               <input 
                 type="tel" 
                 name="jTelephone" 
                 value={formData.jTelephone} 
                 onChange={handleChange} 
+                className={errors.jTelephone ? 'error' : ''}
                 placeholder="10-11 digits"
+                required
               />
+              <ErrorMessage error={errors.jTelephone} />
             </div>
           </div>
 
@@ -1015,8 +1027,8 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           <div className={`radio-group ${errors.accountType ? 'error' : ''}`}>
             <label className="radio-label"><input type="radio" name="accountType" value="savings" checked={formData.accountType === 'savings'} onChange={handleChange} /> Savings</label>
             <label className="radio-label"><input type="radio" name="accountType" value="current" checked={formData.accountType === 'current'} onChange={handleChange} /> Current</label>
-            <label className="radio-label"><input type="radio" name="accountType" value="joint_savings" checked={formData.accountType === 'joint_savings'} onChange={handleChange} /> Joint Account Saving</label>
-            <label className="radio-label"><input type="radio" name="accountType" value="joint_current" checked={formData.accountType === 'joint_current'} onChange={handleChange} /> Joint Account Current</label>
+            <label className="radio-label"><input type="radio" name="accountType" value="joinAccountSaving" checked={formData.accountType === 'joinAccountSaving'} onChange={handleChange} /> Joint Account Saving</label>
+            <label className="radio-label"><input type="radio" name="accountType" value="jointAccountCurrent" checked={formData.accountType === 'jointAccountCurrent'} onChange={handleChange} /> Joint Account Current</label>
           </div>
           {errors.accountType && <ErrorMessage error={errors.accountType} />}
           {formData.isJointApplicant && !errors.accountType && (
@@ -1646,14 +1658,17 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
         <div className="form-row">
           <div className="form-group">
-            <label>Telephone No. (Residence)</label>
+            <label>Telephone No. (Residence) *</label>
             <input 
               type="tel" 
               name="nominee1ResidencePhone" 
               value={formData.nominee1ResidencePhone} 
               onChange={handleChange} 
+              className={errors.nominee1ResidencePhone ? 'error' : ''}
               placeholder="10-11 digits"
+              required
             />
+            <ErrorMessage error={errors.nominee1ResidencePhone} />
           </div>
           <div className="form-group">
             <label>Telephone No (H/P) *</label>
@@ -1747,8 +1762,8 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           <div className="form-group">
             <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Male" checked={formData.nominee2Sex === 'Male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Female" checked={formData.nominee2Sex === 'Female'} onChange={handleChange} /> Female</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="male" checked={formData.nominee2Sex === 'male'} onChange={handleChange} required /> Male</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="female" checked={formData.nominee2Sex === 'female'} onChange={handleChange} /> Female</label>
             </div>
           </div>
 
@@ -1870,14 +1885,17 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
           <div className="form-row">
             <div className="form-group">
-              <label>Telephone No. (Residence)</label>
+              <label>Telephone No. (Residence) *</label>
               <input 
                 type="tel" 
                 name="nominee2ResidencePhone" 
                 value={formData.nominee2ResidencePhone} 
                 onChange={handleChange} 
+                className={errors.nominee2ResidencePhone ? 'error' : ''}
                 placeholder="10-11 digits"
+                required
               />
+              <ErrorMessage error={errors.nominee2ResidencePhone} />
             </div>
             <div className="form-group">
               <label>Telephone No (H/P) *</label>
@@ -2613,6 +2631,7 @@ export default function ApplicationFormView({
   handleSubmit,
   isLoading = false,
   isSaving = false,
+  isSubmitting = false,
   handleFileUpload,
   handleFileDelete,
   uploadProgress,
@@ -2684,6 +2703,7 @@ export default function ApplicationFormView({
             onBack={handleBack}
             onSubmit={handleSubmit}
             isLastStep={currentStep === totalSteps}
+            isSubmitting={isSubmitting}
             editNomineeOnly={editNomineeOnly}
             nomineeCount={nomineeCount}
           />
@@ -2695,6 +2715,7 @@ export default function ApplicationFormView({
             onBack={handleBack}
             onSubmit={handleSubmit}
             isLastStep={currentStep === totalSteps}
+            isSubmitting={isSubmitting}
             editNomineeOnly={editNomineeOnly}
             nomineeCount={nomineeCount}
           />
