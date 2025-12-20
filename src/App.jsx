@@ -74,7 +74,7 @@ const SharedReportPage = () => {
             health_reports(*)
           `)
           .eq('share_token', token)
-          .eq('shared_with_type', 'public_link')
+          .eq('is_revoked', false)
           .gt('expires_at', new Date().toISOString())
           .single()
 
@@ -88,7 +88,7 @@ const SharedReportPage = () => {
         }
 
         if (!data || !data.health_reports) {
-          setError('Report not found or access denied.')
+          setError('Report not found, expired, or access revoked.')
           return
         }
 
@@ -585,7 +585,7 @@ function App() {
             <ProtectedRoute requireRole="admin">
               <Header />
                 <AdminController />
-                <Footer />
+              <Footer />
             </ProtectedRoute>
           } />
 

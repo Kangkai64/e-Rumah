@@ -12,6 +12,7 @@ create table public.health_reports (
   due_status text null,
   report_title text null,
   provider_name text null,
+  share_token text not null,
   constraint health_reports_pkey primary key (id),
   constraint health_reports_application_id_fkey foreign KEY (application_id) references applications (id) on delete set null,
   constraint health_reports_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE,

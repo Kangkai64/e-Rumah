@@ -3,7 +3,15 @@
 // NO business logic - only UI rendering
 // Now includes both User and Admin views with conditional rendering based on userRole
 
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
+import { useAuth } from '../components/context/AuthContext'
+import {
+  getAllHealthReports,
+  approveHealthReport,
+  flagHealthReport,
+  archiveHealthReport,
+  getAdminStatistics
+} from '../models/HealthReport'
 import searchIcon from '../assets/icons/health_report_page/icon_search.svg'
 import filterIcon from '../assets/icons/health_report_page/icon_filter.svg'
 import uploadIcon from '../assets/icons/health_report_page/icon_upload_document.svg'
@@ -17,3183 +25,7 @@ import downloadIcon from '../assets/icons/health_report_page/icon_download.svg'
 import ascIcon from '../assets/icons/health_report_page/icon_arrow_up.svg'
 import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
-
-// Embedded CSS Styles
-const styles = `
-/* Health Report View Styles */
-
-/* ============================================================================
-   CONTAINER & LAYOUT
-   ============================================================================ */
-
-.health-report-container {
-  max-width: 1920px;
-  margin: 0 auto;
-  padding: 2rem;
-  position: relative;
-  min-height: 100vh;
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-}
-
-.health-report-container.drag-active {
-  pointer-events: none;
-}
-
-/* ============================================================================
-   HEADER
-   ============================================================================ */
-
-.health-report-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.health-report-header h1 {
-  font-size: 2rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  color: #333;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-help,
-.btn-exit {
-  padding: 0.5rem 1rem;
-  border-radius: 30px;
-  border: 1px solid #ddd;
-  background: white;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.btn-help:hover {
-  background: #f0f0f0;
-  border-color: #A8202D;
-  color: #A8202D;
-}
-
-.btn-exit:hover {
-  background: #f0f0f0;
-  border-color: #666;
-}
-
-/* ============================================================================
-   ALERTS & MESSAGES
-   ============================================================================ */
-
-.health-alerts {
-  margin-bottom: 1.5rem;
-}
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 0.75rem;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-}
-
-.alert-error {
-  background: #fee;
-  border: 1px solid #fcc;
-  color: #c00;
-}
-
-.alert-warning {
-  background: #fff3cd;
-  border: 1px solid #ffe69c;
-  color: #856404;
-}
-
-.alert-icon {
-  font-size: 1.25rem;
-}
-
-.success-message {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: #d4edda;
-  border: 1px solid #c3e6cb;
-  color: #155724;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-family: 'Poppins', sans-serif;
-  animation: slideIn 0.3s ease;
-}
-
-.success-icon {
-  font-size: 1.25rem;
-  font-weight: bold;
-}
-
-.error-message {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: #fee;
-  border: 1px solid #fcc;
-  color: #c00;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  font-family: 'Poppins', sans-serif;
-  animation: slideIn 0.3s ease;
-}
-
-.error-icon {
-  font-size: 1.25rem;
-  font-weight: bold;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ============================================================================
-   LOADING STATE
-   ============================================================================ */
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #A8202D;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* ============================================================================
-   UPLOAD SECTION
-   ============================================================================ */
-
-.upload-section {
-  margin-bottom: 2rem;
-}
-
-.section-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 2rem;
-  font-family: 'Poppins', sans-serif;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* ============================================================================
-   NEW DASHBOARD STYLES
-   ============================================================================ */
-
-/* Statistics Section */
-.statistics-section {
-  margin: 2rem 0;
-}
-
-.statistics-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin: 2rem 0;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  font-family: 'Poppins', sans-serif;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.stat-label {
-  font-size: 1rem;
-  font-family: 'Poppins', sans-serif;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.stat-value {
-  font-size: 2rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  color: #333;
-}
-
-/* Upload Section Compact */
-.upload-section-compact {
-  margin: 2rem 0;
-  display: flex;
-  justify-content: center;
-}
-
-.upload-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  max-width: 800px;
-  text-align: center;
-}
-
-.upload-card h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.upload-subtitle {
-  color: #666;
-  margin-bottom: 1.5rem;
-}
-
-.upload-drop-area {
-  border: 2px dashed #ddd;
-  border-radius: 8px;
-  padding: 3rem 1rem;
-  margin-bottom: 1.5rem;
-  transition: all 0.2s;
-  cursor: pointer;
-  text-align: center;
-  background: #fafafa;
-}
-
-.upload-drop-area:hover,
-.upload-drop-area.dragging {
-  border-color: #A8202D;
-  background: #fef2f2;
-}
-
-.upload-drop-area.has-files {
-  border-color: #28a745;
-  background: #f0fff4;
-}
-
-.upload-drop-area.converting {
-  border-color: #f59e0b;
-  background: #fffbeb;
-  cursor: not-allowed;
-}
-
-.upload-drop-area.converting .spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #fbbf24;
-  border-top-color: #f59e0b;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.upload-icon {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 1rem;
-  opacity: 0.6;
-}
-
-.btn-submit {
-  background: #A8202D;
-  color: white;
-  border: none;
-  padding: 0.875rem 2rem;
-  border-radius: 30px;
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-submit:hover {
-  background: #8c1a24;
-  transform: translateY(-1px);
-}
-
-/* Health Monitoring Section */
-.health-monitoring-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin: 3rem 0;
-}
-
-/* Reminder Modal */
-.reminder-modal {
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.reminder-modal .form-group {
-  margin-bottom: 1.25rem;
-}
-
-.reminder-modal label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
-  font-size: 0.95rem;
-}
-
-.reminder-modal input,
-.reminder-modal select,
-.reminder-modal textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-  background: white;
-}
-
-.reminder-modal input:focus,
-.reminder-modal select:focus,
-.reminder-modal textarea:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
-}
-
-.reminder-modal textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  font-weight: normal !important;
-  margin-bottom: 0 !important;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto !important;
-  margin: 0;
-  transform: scale(1.2);
-}
-
-.checkmark {
-  font-size: 0.95rem;
-  color: #333;
-}
-
-/* Reminder buttons */
-.btn-add-reminder,
-.btn-add-first {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-add-reminder:hover {
-  background: #8b1a24 !important;
-  transform: translateY(-1px);
-}
-
-.btn-add-first:hover {
-  background: #A8202D !important;
-  color: white !important;
-}
-
-.btn-edit {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.btn-edit:hover {
-  background: #f0f0f0;
-  border-color: #A8202D;
-  color: #A8202D;
-}
-
-/* Reminders Card */
-.reminders-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.reminders-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.reminders-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.tab-indicator {
-  background: #f0f0f0;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  color: #666;
-  margin-left: 0.5rem;
-}
-
-.reminder-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.reminder-item:last-child {
-  border-bottom: none;
-}
-
-.reminder-title {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.reminder-description {
-  color: #666;
-  font-size: 0.875rem;
-}
-
-.reminder-toggle .switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-}
-
-.reminder-toggle .switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 20px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #A8202D;
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-.btn-edit {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 0.5rem 1rem;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-}
-
-.btn-edit:hover {
-  background: #e0e0e0;
-  border-color: #A8202D;
-}
-
-.reminder-tags {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-
-.reminder-tag {
-  background: #f0f0f0;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: #666;
-}
-
-/* Archived Reports Card */
-.archived-reports-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.archived-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.archived-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.btn-view-all {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 0.5rem 1rem;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-}
-
-.btn-view-all:hover {
-  background: #e0e0e0;
-  border-color: #A8202D;
-}
-
-.archived-table {
-  width: 100%;
-}
-
-.table-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 2px solid #e0e0e0;
-  font-weight: 600;
-  color: #666;
-}
-
-.table-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.table-row:hover {
-  background: #fafafa;
-}
-
-.table-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-action {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 0.5rem 1rem;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-}
-
-.btn-action:hover {
-  background: #e0e0e0;
-  border-color: #ccc;
-}
-
-/* Search Section */
-.search-section {
-  margin: 2rem 0;
-  padding: 2rem;
-  background: #f8f9fa;
-  border-radius: 12px;
-  font-family: 'Poppins', sans-serif;
-}
-
-.search-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.search-header h2 {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-}
-
-.btn-clear-filters {
-  background: transparent;
-  border: none;
-  color: #A8202D;
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  text-decoration: underline;
-  transition: all 0.2s ease;
-}
-
-.btn-clear-filters:hover {
-  color: #8c1a24;
-}
-
-/* Search Bar */
-.search-bar-container {
-  margin-bottom: 1.5rem;
-}
-
-.search-input-group {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  align-items: stretch;
-  flex-wrap: wrap;
-}
-
-.search-input {
-  position: relative;
-  flex: 1;
-  max-width: 600px;
-}
-
-.search-input input {
-  width: 100%;
-  padding: 0.875rem 3rem 0.875rem 2.5rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-}
-
-.search-input input:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  opacity: 0.6;
-}
-
-.clear-search {
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  color: #999;
-}
-
-.btn-filter,
-.btn-sort {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.25rem;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  min-height: 50px;
-}
-
-.btn-filter:hover,
-.btn-sort:hover {
-  background: #f0f0f0;
-  border-color: #A8202D;
-}
-
-.btn-filter img {
-  width: 20px;
-  height: 20px;
-}
-
-.filter-buttons {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.filter-btn {
-  padding: 0.625rem 1.25rem;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.filter-btn:hover,
-.filter-btn.active {
-  background: #A8202D;
-  color: white;
-  border-color: #A8202D;
-}
-
-/* Advanced Filters */
-.advanced-filters {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 1.5rem;
-  font-family: 'Poppins', sans-serif;
-}
-
-.filter-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.filter-row:last-child {
-  margin-bottom: 0;
-}
-
-.filter-row.two-columns {
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
-
-.filter-group {
-  margin-bottom: 0;
-}
-
-.filter-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: #333;
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.95rem;
-}
-
-.filter-options {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 0;
-  justify-content: flex-start;
-}
-
-.filter-option {
-  padding: 0.625rem 1rem;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.filter-option:hover,
-.filter-option.active {
-  background: #A8202D;
-  color: white;
-  border-color: #A8202D;
-}
-
-.date-inputs {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0;
-}
-
-.date-input {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  width: 280px;
-}
-
-.date-input input {
-  width: 100%;
-  padding: 1rem 2.5rem 1rem 1.5rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-}
-
-.date-input input:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
-}
-
-.calendar-icon {
-  position: absolute;
-  right: 1.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 20px;
-  height: 20px;
-  opacity: 0.6;
-}
-
-.date-separator {
-  font-weight: 500;
-  color: #666;
-  font-family: 'Poppins', sans-serif;
-  white-space: nowrap;
-}
-
-.filter-group input[type="text"] {
-  width: 100%;
-  padding: 0.875rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.filter-group input[type="text"]:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 2px rgba(168, 32, 45, 0.1);
-}
-
-.filter-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 2rem;
-  justify-content: flex-start;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn-reset,
-.btn-apply {
-  padding: 0.875rem 2rem;
-  border: 1px solid #ddd;
-  border-radius: 30px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-  min-width: 100px;
-}
-
-.btn-reset {
-  background: white;
-  color: #666;
-}
-
-.btn-reset:hover {
-  background: #f0f0f0;
-  border-color: #999;
-}
-
-.btn-apply {
-  background: #A8202D;
-  color: white;
-  border-color: #A8202D;
-}
-
-.btn-apply:hover {
-  background: #8c1a24;
-}
-
-/* Results Table */
-.results-table {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  font-family: 'Poppins', sans-serif;
-}
-
-.table-header-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-bottom: 2px solid #e0e0e0;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  color: #666;
-}
-
-.table-body {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.table-data-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  font-family: 'Poppins', sans-serif;
-  transition: background-color 0.2s;
-}
-
-.table-data-row:hover {
-  background: #fafafa;
-}
-
-.report-title {
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  margin-bottom: 0.25rem;
-}
-
-.report-ref {
-  font-size: 0.875rem;
-  font-family: 'Poppins', sans-serif;
-  color: #666;
-}
-
-@media (max-width: 1200px) {
-  .health-monitoring-section {
-    grid-template-columns: 1fr;
-  }
-  
-  .search-input-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-  
-  .search-input {
-    max-width: none;
-  }
-  
-  .filter-row.two-columns {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-  
-  .date-inputs {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .filter-buttons {
-    justify-content: center;
-    gap: 0.5rem;
-  }
-  
-  .filter-btn {
-    flex: 1;
-    min-width: 120px;
-  }
-  
-  .advanced-filters {
-    padding: 1.5rem;
-  }
-  
-  .filter-actions {
-    justify-content: center;
-  }
-  
-  .table-header-row,
-  .table-data-row {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
-  }
-  
-  .table-header-col,
-  .table-data-col {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f0f0f0;
-  }
-}
-
-@media (max-width: 768px) {
-  .health-report-container {
-    padding: 1rem;
-  }
-  
-  .search-section {
-    padding: 1.5rem;
-    margin: 1rem 0;
-  }
-  
-  .search-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .advanced-filters {
-    padding: 1rem;
-  }
-  
-  .filter-row {
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .filter-options {
-    justify-content: flex-start;
-  }
-  
-  .filter-option {
-    flex: 1;
-    text-align: center;
-    min-width: 100px;
-  }
-  
-  .filter-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .btn-reset,
-  .btn-apply {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-.section-card h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-}
-
-.section-subtitle {
-  color: #666;
-  margin: 0 0 1.5rem 0;
-  font-size: 0.95rem;
-  font-family: 'Poppins', sans-serif;
-}
-
-.btn-upload {
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-/* ============================================================================
-   DATE PICKER STYLES
-   ============================================================================ */
-
-.date-input-wrapper {
-  position: relative;
-  display: inline-block;
-  width: 100%;
-}
-
-.date-picker-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  margin-top: 4px;
-}
-
-.date-picker-dropdown input[type="date"] {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 14px;
-}
-
-.date-picker-dropdown input[type="date"]:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.calendar-icon {
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.calendar-icon:hover {
-  opacity: 0.7;
-}
-
-.date-input {
-  position: relative;
-}
-
-/* ============================================================================
-   SUCCESS OVERLAY MODAL
-   ============================================================================ */
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 20px;
-  padding: 60px 40px;
-  max-width: 500px;
-  width: 90%;
-  text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease-in-out;
-  position: relative;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.modal-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #666;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.modal-close:hover {
-  color: #000;
-}
-
-.modal-checkmark {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-checkmark svg {
-  width: 100%;
-  height: 100%;
-}
-
-.modal-title {
-  color: #22c55e;
-  font-size: 32px;
-  font-weight: 700;
-  font-family: 'Poppins', sans-serif;
-  margin: 20px 0 10px 0;
-  line-height: 1.4;
-}
-
-.modal-message {
-  color: #161519;
-  font-size: 18px;
-  font-weight: 400;
-  font-family: 'Poppins', sans-serif;
-  margin: 0;
-  line-height: 1.5;
-}
-
-.modal-file-list {
-  color: #666;
-  font-size: 14px;
-  font-family: 'Poppins', sans-serif;
-  margin: 15px 0;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-@media (max-width: 768px) {
-  .modal-content {
-    padding: 40px 30px;
-  }
-
-  .modal-title {
-    font-size: 28px;
-  }
-
-  .modal-message {
-    font-size: 16px;
-  }
-
-  .modal-checkmark {
-    width: 100px;
-    height: 100px;
-  }
-}
-
-/* ============================================================================
-   FULL PAGE DROP ZONE
-   ============================================================================ */
-
-.full-page-drop-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(168, 32, 45, 0.9);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: auto;
-  animation: fadeIn 0.2s ease;
-  font-family: 'Poppins', sans-serif;
-}
-
-.full-page-drop-content {
-  text-align: center;
-  color: white;
-  pointer-events: none;
-}
-
-.full-page-drop-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  animation: bounce 0.6s infinite;
-}
-
-.full-page-drop-content h2 {
-  font-size: 2rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  font-family: 'Poppins', sans-serif;
-}
-
-.full-page-drop-content p {
-  font-size: 1.2rem;
-  margin: 0;
-  opacity: 0.9;
-  font-family: 'Poppins', sans-serif;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-10px); }
-  60% { transform: translateY(-5px); }
-}
-
-/* File Preview Styles */
-.file-preview-section {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-}
-
-.file-preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.file-preview-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.file-preview-item:hover {
-  border-color: #A8202D;
-  box-shadow: 0 2px 4px rgba(168, 32, 45, 0.1);
-}
-
-.file-icon {
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.file-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.file-name {
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: 'Poppins', sans-serif;
-}
-
-.file-size {
-  font-size: 0.75rem;
-  color: #666;
-  margin-top: 0.25rem;
-  font-family: 'Poppins', sans-serif;
-}
-
-.remove-file-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.remove-file-btn:hover {
-  background: #c82333;
-  transform: scale(1.1);
-}
-
-.drag-drop-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.drag-drop-icon {
-  color: #999;
-  transition: color 0.3s;
-}
-
-.drag-drop-area:hover .drag-drop-icon,
-.drag-drop-area.dragging .drag-drop-icon {
-  color: #A8202D;
-}
-
-.drag-drop-text {
-  font-size: 1.1rem;
-  color: #666;
-  margin: 0;
-}
-
-.file-info {
-  font-size: 0.9rem;
-  color: #28a745;
-  font-weight: 500;
-  margin: 0;
-}
-
-/* ============================================================================
-   SEARCH & FILTER
-   ============================================================================ */
-
-.search-filter-bar {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.search-box {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.search-box input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-.search-box input:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.btn-search {
-  padding: 0.75rem 1.5rem;
-  background: #A8202D;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.btn-search:hover {
-  background: #8B1A24;
-}
-
-.btn-filter {
-  padding: 0.75rem 1.5rem;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-}
-
-.btn-filter:hover {
-  background: #f0f0f0;
-  border-color: #A8202D;
-  color: #A8202D;
-}
-
-.filter-panel {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #FEF2F2;
-}
-
-.sort-panel {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #FEF2F2;
-}
-
-.filter-row {
-  display: grid;
-  grid-template-columns: repeat(1, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.sort-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sort-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sort-order-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.sort-order-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  background: white;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.sort-order-btn:hover {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-.sort-order-btn.active {
-  background: #A8202D;
-  color: white;
-  border-color: #A8202D;
-}
-
-.filter-group label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #555;
-}
-
-.sort-group label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #555;
-}
-
-.filter-group input,
-.filter-group select {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-.sort-group input,
-.sort-group select {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-}
-
-.filter-group input:focus,
-.filter-group select:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.sort-group input:focus,
-.sort-group select:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.filter-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-/* ============================================================================
-   REPORTS TABLE
-   ============================================================================ */
-
-.reports-table-container {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.reports-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.reports-table thead {
-  background: #f8f9fa;
-  border-bottom: 2px solid #e0e0e0;
-}
-
-.reports-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #333;
-  font-size: 0.95rem;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s;
-}
-
-.reports-table th:hover {
-  background: #e9ecef;
-}
-
-.reports-table tbody tr {
-  border-bottom: 1px solid #e0e0e0;
-  transition: background 0.2s;
-}
-
-.reports-table tbody tr:hover {
-  background: #f8f9fa;
-}
-
-.reports-table td {
-  padding: 1rem;
-  color: #555;
-  font-size: 0.95rem;
-}
-
-.actions-cell {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.8rem;
-  font-size: 0.85rem;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-view {
-  background: #A8202D;
-  color: white;
-}
-
-.btn-view:hover {
-  background: #8B1A24;
-}
-
-.btn-share {
-  background: #A8202D;
-  color: white;
-  border-radius: 8px;
-  font-weight: 500;
-  padding: 8px 16px;
-  transition: all 0.2s ease;
-}
-
-.btn-share:hover {
-  background: #8B1A24;
-  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
-}
-
-/* Specific styling for action-btn share buttons */
-.action-btn.share-btn {
-  background: #A8202D;
-  border: 1px solid #A8202D;
-  color: white;
-}
-
-.action-btn.share-btn:hover {
-  background: #8B1A24;
-  border-color: #8B1A24;
-  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
-}
-
-/* Target Share buttons specifically by their position and context */
-.actions-col .action-btn-sm:nth-child(2),
-.table-actions .btn-action:nth-child(2) {
-  background: #A8202D;
-  border: 1px solid #A8202D;
-  color: white;
-  border-radius: 30px;
-  font-weight: 600;
-}
-
-.actions-col .action-btn-sm:nth-child(2):hover,
-.table-actions .btn-action:nth-child(2):hover {
-  background: #8B1A24;
-  border-color: #8B1A24;
-  box-shadow: 0 2px 6px rgba(168, 32, 45, 0.3);
-  transform: translateY(-1px);
-}
-
-.btn-delete {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c82333;
-}
-
-/* ============================================================================
-   NO DATA STATE
-   ============================================================================ */
-
-.no-data {
-  text-align: center;
-  padding: 4rem 2rem;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.no-data p {
-  font-size: 1.1rem;
-  color: #666;
-  margin: 0 0 0.5rem 0;
-}
-
-.no-data-subtitle {
-  font-size: 0.95rem;
-  color: #999;
-}
-
-/* ============================================================================
-   MODALS
-   ============================================================================ */
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #999;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-}
-
-.close-button:hover {
-  color: #333;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-/* ============================================================================
-   FORM GROUPS
-   ============================================================================ */
-
-.form-group {
-  margin-bottom: 1.5rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #333;
-  font-size: 0.95rem;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-family: inherit;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
-
-/* ============================================================================
-   SHARE OPTIONS
-   ============================================================================ */
-
-.share-options {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-top: 0.5rem;
-}
-
-.share-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1.5rem 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: center;
-}
-
-.share-option:hover {
-  border-color: #A8202D;
-  background: #fef2f2;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(168, 32, 45, 0.15);
-}
-
-.share-option.active {
-  border-color: #A8202D;
-  background: #fee2e2;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.option-icon {
-  font-size: 2rem;
-}
-
-/* ============================================================================
-   BUTTONS
-   ============================================================================ */
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 30px;
-  border: none;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #A8202D;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #8B1A24;
-  box-shadow: 0 4px 12px rgba(168, 32, 45, 0.3);
-}
-
-.btn-secondary {
-  background: transparent;
-  color: #F5F5F5;
-  border: 2px solid #F5F5F5;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #F5F5F5;
-  color: #A8202D;
-}
-
-/* ============================================================================
-   RESPONSIVE DESIGN
-   ============================================================================ */
-
-@media (max-width: 1200px) {
-  .filter-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .share-options {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .health-report-container {
-    padding: 1rem;
-  }
-
-  .health-report-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-
-  .filter-row {
-    grid-template-columns: 1fr;
-  }
-
-  .search-box {
-    flex-direction: column;
-  }
-
-  .reports-table-container {
-    overflow-x: auto;
-  }
-
-  .reports-table {
-    min-width: 600px;
-  }
-
-  .actions-cell {
-    flex-direction: column;
-  }
-}
-
-/* Admin Health Report Dashboard Styles - Based on Figma Design */
-
-/* ============================================================================
-   CONTAINER & LAYOUT
-   ============================================================================ */
-
-.admin-dashboard-container {
-  background: #f9fafb;
-  min-height: 100vh;
-  padding: 2rem 352px;
-  position: relative;
-}
-
-.dashboard-content {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  gap: 1rem;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #b91c1c;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ============================================================================
-   ALERTS & MESSAGES
-   ============================================================================ */
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  font-family: 'Poppins', sans-serif;
-  font-size: 14px;
-}
-
-.alert-success {
-  background: #dcfce7;
-  border: 1px solid #15803d;
-  color: #15803d;
-}
-
-.alert-error {
-  background: #fee2e2;
-  border: 1px solid #b91c1c;
-  color: #b91c1c;
-}
-
-/* ============================================================================
-   SECTION HEADING
-   ============================================================================ */
-
-.section-heading h1 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 30px;
-  line-height: 36px;
-  color: #111827;
-  margin: 0;
-}
-
-/* ============================================================================
-   STATISTICS CARDS
-   ============================================================================ */
-
-.statistics-cards {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0,0,0,0.05), 0px 2px 4px -2px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 286px;
-  flex-shrink: 0;
-}
-
-.stat-card-small {
-  width: 210px;
-}
-
-.stat-label {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #6b7280;
-}
-
-.stat-value {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 36px;
-  line-height: 40px;
-  color: #1f2937;
-}
-
-.stat-sublabel {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-}
-
-/* ============================================================================
-   RECORDS MANAGEMENT
-   ============================================================================ */
-
-.records-management {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.records-table-container {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0,0,0,0.05), 0px 2px 4px -2px rgba(0,0,0,0.05);
-  flex: 1;
-  min-width: 500px;
-  max-width: 786px;
-}
-
-.table-heading h3 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #1f2937;
-  margin: 0 0 20px 0;
-}
-
-/* ============================================================================
-   SEARCH & FILTER BAR
-   ============================================================================ */
-
-.search-filter-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.search-input {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
-  font-family: 'Poppins', sans-serif;
-  font-size: 14px;
-  color: #1f2937;
-  flex: 1;
-  min-width: 200px;
-}
-
-.search-input::placeholder {
-  color: #9ca3af;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.filter-label {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #6b7280;
-}
-
-.filter-select {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f2937;
-  cursor: pointer;
-}
-
-/* ============================================================================
-   RECORD TABS
-   ============================================================================ */
-
-.record-tabs {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 8px;
-  padding-bottom: 1px;
-}
-
-.tab-button {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 8px 12px 10px 12px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-button.active {
-  color: #A8202D;
-  border-bottom-color: #A8202D;
-}
-
-.tab-button:hover:not(.active) {
-  color: #1f2937;
-}
-
-.tab-info {
-  flex: 1;
-  padding-left: 16px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-}
-
-/* ============================================================================
-   TABLE
-   ============================================================================ */
-
-.table-header {
-  display: flex;
-  gap: 16px;
-  padding: 8px;
-  margin-bottom: 8px;
-}
-
-.table-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #9ca3af;
-  width: 131.73px;
-  flex-shrink: 0;
-}
-
-.table-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.table-row {
-  display: flex;
-  gap: 16px;
-  padding: 7px 8px 8px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.table-row.selected {
-  background: #fef2f2;
-}
-
-.table-row .table-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f2937;
-  display: flex;
-  align-items: center;
-}
-
-.applicant-name {
-  font-weight: 500;
-}
-
-/* Status Badges */
-.status-badge {
-  padding: 4.5px 10px;
-  border-radius: 9999px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 16px;
-  display: inline-block;
-}
-
-.status-pending {
-  background: #ffedd5;
-  color: #ea580c;
-}
-
-.status-approved {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-flagged,
-.status-rejected {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-/* Admin Action Buttons */
-.approve-btn {
-  background: #16a34a;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-right: 4px;
-  transition: background 0.2s ease;
-}
-
-.approve-btn:hover {
-  background: #15803d;
-}
-
-.flag-btn {
-  background: #dc2626;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-right: 4px;
-  transition: background 0.2s ease;
-}
-
-.flag-btn:hover {
-  background: #b91c1c;
-}
-
-.view-btn {
-  background: #A8202D;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  margin-right: 4px;
-  transition: background 0.2s ease;
-}
-
-.view-btn:hover {
-  background: #8B1A24;
-}
-
-.archive-btn {
-  background: #f59e0b;
-  color: #111827;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.archive-btn:hover {
-  background: #d97706;
-  color: white;
-}
-
-/* Admin Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  font-family: 'Poppins', sans-serif;
-}
-
-/* PDF Viewer Modal Styles */
-.pdf-viewer-overlay {
-  z-index: 1100;
-}
-
-.pdf-viewer-modal {
-  max-width: 90vw;
-  max-height: 95vh;
-  width: 1000px;
-  height: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.pdf-viewer-modal .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 1rem;
-}
-
-.pdf-viewer-modal .modal-header h3 {
-  margin: 0;
-  color: #111827;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.pdf-viewer-modal .close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-}
-
-.pdf-viewer-modal .close-button:hover {
-  background: #f3f4f6;
-}
-
-.pdf-viewer-body {
-  flex: 1;
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
-
-.pdf-viewer-modal .modal-footer {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.modal h3 {
-  margin: 0 0 1rem 0;
-  color: #111827;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.modal p {
-  margin: 0 0 1rem 0;
-  color: #6b7280;
-  line-height: 1.5;
-  font-size: 0.875rem;
-}
-
-.report-preview {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-}
-
-.report-preview p {
-  margin: 0.5rem 0;
-  font-size: 0.875rem;
-  color: #374151;
-}
-
-.flag-reason-input {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 0.75rem;
-  font-family: 'Poppins', sans-serif;
-  font-size: 0.875rem;
-  resize: vertical;
-  margin-bottom: 1rem;
-  box-sizing: border-box;
-}
-
-.flag-reason-input:focus {
-  outline: none;
-  border-color: #A8202D;
-  box-shadow: 0 0 0 3px rgba(168, 32, 45, 0.1);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 30px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: 'Poppins', sans-serif;
-}
-
-.btn-primary {
-  background: #A8202D;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #8B1A24;
-}
-
-.btn-secondary {
-  background: #6b7280;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #4b5563;
-}
-
-.btn-danger {
-  background: #dc2626;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #b91c1c;
-}
-
-.btn-danger:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.btn-warning {
-  background: #f59e0b;
-  color: #111827;
-}
-
-.btn-warning:hover {
-  background: #d97706;
-  color: white;
-}
-
-.flag-modal {
-  max-width: 600px;
-}
-
-/* Actions Column */
-.actions-col {
-  display: flex;
-  gap: 8px;
-  width: 144px !important;
-}
-
-.action-btn {
-  background: #e5e7eb;
-  border: none;
-  border-radius: 30px;
-  padding: 6px 16px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 16px;
-  color: #1f2937;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn:hover {
-  background: #d1d5db;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #9ca3af;
-  font-family: 'Poppins', sans-serif;
-}
-
-/* ============================================================================
-   REPORT DETAILS CARD
-   ============================================================================ */
-
-.report-details-card {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0,0,0,0.05), 0px 2px 4px -2px rgba(0,0,0,0.05);
-  width: 405px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: 555px;
-  overflow-y: auto;
-}
-
-.details-heading h3 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #1f2937;
-  margin: 0;
-}
-
-.details-tabs {
-  display: flex;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 1px;
-}
-
-.details-tab {
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 8px 12px 10px 12px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #9ca3af;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.details-tab.active {
-  color: #A8202D;
-  border-bottom-color: #A8202D;
-}
-
-/* Info Section */
-.info-section {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.info-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.info-item.text-right {
-  align-items: flex-end;
-}
-
-.info-label {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-}
-
-.info-value {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f2937;
-}
-
-.info-value.primary {
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
-}
-
-.info-value.large {
-  font-weight: 700;
-  font-size: 30px;
-  line-height: 36px;
-}
-
-.info-sublabel {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-}
-
-/* Findings List */
-.findings-section {
-  margin: 8px 0;
-}
-
-.findings-list {
-  margin: 0;
-  padding-left: 1.5em;
-  list-style: disc;
-}
-
-.findings-list li {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-  margin-bottom: 3.5px;
-}
-
-/* Primary Action Button */
-.btn-primary-action {
-  background: #A8202D;
-  border: none;
-  border-radius: 30px;
-  padding: 10px 0;
-  width: 100%;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary-action:hover {
-  background: #8B1A24;
-}
-
-/* Additional Info */
-.additional-info {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 17px;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.info-col {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Empty Selection */
-.empty-selection {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
-  color: #9ca3af;
-  font-family: 'Poppins', sans-serif;
-}
-
-/* ============================================================================
-   REPORTS SECTION
-   ============================================================================ */
-
-.reports-section {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0,0,0,0.05), 0px 2px 4px -2px rgba(0,0,0,0.05);
-}
-
-.reports-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.reports-header h3 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #1f2937;
-  margin: 0;
-}
-
-/* Reports Table */
-.reports-table-header {
-  display: flex;
-  gap: 16px;
-  padding: 8px;
-  margin-bottom: 8px;
-}
-
-.report-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #9ca3af;
-  width: 276px;
-  flex-shrink: 0;
-}
-
-.reports-table-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 8px;
-}
-
-.report-row {
-  display: flex;
-  gap: 16px;
-  padding: 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.report-row:hover {
-  background: #f9fafb;
-}
-
-.report-row .report-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f2937;
-  display: flex;
-  align-items: center;
-}
-
-.report-name {
-  font-weight: 500;
-}
-
-.report-row .actions-col {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn-sm {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 30px;
-  padding: 6px 16px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 16px;
-  color: #1f2937;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.action-btn-sm:hover {
-  background: #e5e7eb;
-}
-
-/* Reports Footer */
-.reports-footer {
-  border-top: 1px solid #e5e7eb;
-  padding-top: 25px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.footer-note {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 16px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-/* Sort Button Styles */
-.sort-button {
-  background: none;
-  border: none;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  color: #9ca3af;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  width: 100%;
-  justify-content: space-between;
-}
-
-.sort-button:hover {
-  background: #f3f4f6;
-  color: #1f2937;
-}
-
-.sort-button.active {
-  color: #A8202D;
-}
-
-.sort-icon {
-  font-size: 12px;
-  min-width: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sort-icon.neutral {
-  opacity: 0.6;
-}
-
-.sort-icon.asc {
-  color: #A8202D;
-}
-
-.sort-icon.desc {
-  color: #A8202D;
-}
-
-.btn-generate-report {
-  background: #A8202D;
-  border: none;
-  border-radius: 30px;
-  padding: 8px 20px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-generate-report:hover {
-  background: #8B1A24;
-}
-
-/* ============================================================================
-   RESPONSIVE
-   ============================================================================ */
-
-@media (max-width: 1400px) {
-  .admin-dashboard-container {
-    padding: 2rem 100px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .admin-dashboard-container {
-    padding: 2rem 50px;
-  }
-
-  .statistics-cards {
-    flex-wrap: wrap;
-  }
-
-  .records-management {
-    flex-direction: column;
-  }
-
-  .report-details-card {
-    width: 100%;
-    max-width: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .admin-dashboard-container {
-    padding: 1rem;
-  }
-
-  .statistics-cards {
-    flex-direction: column;
-  }
-
-  .stat-card,
-  .stat-card-small {
-    width: 100%;
-  }
-
-  .search-filter-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-input {
-    width: 100%;
-  }
-
-  .records-table-container {
-    overflow-x: auto;
-  }
-
-  .table-header,
-  .table-row {
-    min-width: 700px;
-  }
-
-  .reports-footer {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-}
-`
-
-// Create and inject style element
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style')
-  styleSheet.textContent = styles
-  document.head.appendChild(styleSheet)
-}
+import '../components/health_report/HealthMonitoringView.css'
 
 // ============================================================================
 // HELPER COMPONENTS
@@ -3225,6 +57,20 @@ function SuccessMessage({ message }) {
     <div className="success-message">
       <span className="success-icon">✓</span>
       <span>{message}</span>
+    </div>
+  )
+}
+
+// Success Overlay Component (Full screen overlay notification)
+function SuccessOverlay({ show, message }) {
+  if (!show) return null
+
+  return (
+    <div className="success-overlay">
+      <div className="success-overlay-content">
+        <div className="success-overlay-icon">✓</div>
+        <p>{message}</p>
+      </div>
     </div>
   )
 }
@@ -3436,7 +282,13 @@ function ShareModal({
   errors,
   onCancel,
   onShareFormChange,
-  onShareFormSubmit
+  onShareFormSubmit,
+  errorMessage,
+  successMessage,
+  shareLinks = [],
+  isShareLinksLoading = false,
+  onCopyShareLink,
+  onRevokeShareLink
 }) {
   if (!show) return null
 
@@ -3449,6 +301,8 @@ function ShareModal({
         </div>
         
         <div className="modal-body">
+          {/* Status messages for share actions */}
+          <ErrorMessage error={errorMessage} />
           <div className="form-group">
             <label>Select Sharing Option *</label>
             <div className="share-options">
@@ -3547,6 +401,68 @@ function ShareModal({
               </select>
             </div>
           )}
+
+          <div className="form-group">
+            <label>Manage Shared Links</label>
+            {(isShareLinksLoading) ? (
+              <div className="info-box">Loading shared links...</div>
+            ) : (
+              <>
+                {(!shareLinks || shareLinks.length === 0) ? (
+                  <div className="info-box">No shared links created for this report yet.</div>
+                ) : (
+                  <div className="shared-links-list">
+                    {shareLinks.map((share) => {
+                      const expiresAt = share.expires_at ? new Date(share.expires_at) : null
+                      const expired = expiresAt ? expiresAt < new Date() : false
+                      const statusLabel = share.is_revoked ? 'Revoked' : expired ? 'Expired' : 'Active'
+                      const shareTypeLabel = (share.shared_with_type || 'link').replace(/_/g, ' ')
+
+                      return (
+                        <div
+                          key={share.id}
+                          className="shared-link-row"
+                          style={{
+                            border: '1px solid #e5e5e5',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            marginBottom: '10px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: '12px'
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>{shareTypeLabel}</div>
+                            <div className="share-meta-line">Target: {share.shared_with_email || (share.shared_with_type === 'link' ? 'Shareable link' : 'Direct share')}</div>
+                            <div className="share-meta-line">Status: {statusLabel}</div>
+                            <div className="share-meta-line">Expires: {expiresAt ? expiresAt.toLocaleString('en-GB') : 'No expiry set'}</div>
+                            <div className="share-meta-line">Accessed: {share.access_count || 0} times</div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => onCopyShareLink?.(share.shareUrl)}
+                              disabled={!share.shareUrl || share.is_revoked}
+                            >
+                              Copy link
+                            </button>
+                            <button
+                              className="btn btn-danger"
+                              onClick={() => onRevokeShareLink?.(share.id)}
+                              disabled={share.is_revoked}
+                            >
+                              Revoke access
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="modal-footer">
@@ -3680,591 +596,6 @@ function ReminderModal({
 }
 
 // ============================================================================
-// ADMIN VIEW COMPONENT
-// ============================================================================
-
-function AdminHealthReportDashboardView({
-  // State
-  isLoading,
-  statistics,
-  reports,
-  selectedReport,
-  alerts,
-  error,
-  successMessage,
-  searchKey,
-  filters,
-  sortBy,
-  sortOrder,
-  activeTab,
-  showApprovalConfirm,
-  showArchiveConfirm,
-  showFlagModal,
-  flagReason,
-  actionReport,
-
-  // Handlers
-  onSearchChange,
-  onFilterChange,
-  onSort,
-  onReportSelect,
-  onApproveClick,
-  onApproveConfirm,
-  onFlagClick,
-  onFlagConfirm,
-  onArchiveClick,
-  onArchiveConfirm,
-  onCancelAdminAction,
-  onFlagReasonChange,
-  onViewReport,
-  onTabChange,
-  onGenerateReport
-}) {
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="admin-dashboard-container">
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Loading health reports...</p>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="admin-dashboard-container">
-      {/* Alerts and Messages */}
-      {alerts && alerts.length > 0 && <AlertMessage alerts={alerts} />}
-      {successMessage && (
-        <div className="alert alert-success">
-          <span>✓</span> {successMessage}
-        </div>
-      )}
-      {error && (
-        <div className="alert alert-error">
-          <span>⚠</span> {error}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="dashboard-content">
-        {/* Heading Section */}
-        <div className="section-heading">
-          <h1>Health Report Dashboard</h1>
-        </div>
-
-        {/* Statistics Cards Section */}
-        <div className="statistics-section">
-          <div className="statistics-cards">
-            <div className="stat-card">
-              <div className="stat-label">Pending Reports</div>
-              <div className="stat-value">{statistics?.pending || 0}</div>
-              <div className="stat-sublabel">Awaiting review</div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-label">Approved</div>
-              <div className="stat-value">{statistics?.approved || 0}</div>
-              <div className="stat-sublabel">Active health records</div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-label">Flagged</div>
-              <div className="stat-value">{statistics?.flagged || 0}</div>
-              <div className="stat-sublabel">Requires attention</div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-label">Reports Generated</div>
-              <div className="stat-value">{statistics?.generated || 0}</div>
-              <div className="stat-sublabel">This month</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Records Management Section */}
-        <div className="search-section">
-          <div className="search-header">
-            <h2>Health Reports Management</h2>
-            <button 
-              className="btn-clear-filters"
-              onClick={() => onFilterChange('clear', null)}
-            >
-              Clear all filters
-            </button>
-          </div>
-
-          {/* Search and Filters Bar */}
-          <div className="search-bar-container">
-            <div className="search-input-group">
-              <div className="search-input">
-                <input
-                  type="text"
-                  className="search-field"
-                  placeholder="Search applicants, reports, IDs..."
-                  value={searchKey || ''}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-              </div>
-
-              <div className="filter-controls">
-                <div className="filter-group">
-                  <label className="filter-label">Filter field:</label>
-                  <select
-                    className="filter-select"
-                    value={filters?.field || 'status'}
-                    onChange={(e) => onFilterChange('field', e.target.value)}
-                  >
-                    <option value="status">Status</option>
-                    <option value="reportType">Report Type</option>
-                    <option value="date">Date</option>
-                    <option value="provider">Provider</option>
-                  </select>
-                </div>
-
-                <div className="filter-group">
-                  <label className="filter-label">Value:</label>
-                  <select
-                    className="filter-select"
-                    value={filters?.value || 'pending'}
-                    onChange={(e) => onFilterChange('value', e.target.value)}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="flagged">Flagged</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-
-                <div className="filter-group">
-                  <label className="filter-label">Sort:</label>
-                  <select
-                    className="filter-select"
-                    value={sortBy || 'newest'}
-                    onChange={(e) => onSort(e.target.value)}
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="name">By Name</option>
-                    <option value="type">By Type</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Record Type Tabs */}
-            <div className="filter-buttons">
-              <button
-                className={`filter-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                onClick={() => onTabChange('reports')}
-              >
-                Health Reports
-              </button>
-              <button
-                className={`filter-btn ${activeTab === 'patients' ? 'active' : ''}`}
-                onClick={() => onTabChange('patients')}
-              >
-                Patients
-              </button>
-              <div className="tab-info">
-                Use filters to refine by status, dates, report type and more.
-              </div>
-            </div>
-          </div>
-
-          {/* Results Table */}
-          <div className="results-table">
-            <div className="table-header-row">
-              <div className="table-header-col">Applicant</div>
-              <div className="table-header-col">Report Type</div>
-              <div className="table-header-col">Report Date</div>
-              <div className="table-header-col">Upload Date</div>
-              <div className="table-header-col">Provider</div>
-              <div className="table-header-col">Status</div>
-              <div className="table-header-col">Actions</div>
-            </div>
-
-            <div className="table-body">
-              {reports && reports.length > 0 ? (
-                reports.map((report) => (
-                  <div
-                    key={report.id}
-                    className={`table-data-row ${selectedReport?.id === report.id ? 'selected' : ''}`}
-                    onClick={() => onReportSelect(report)}
-                  >
-                    <div className="table-data-col">
-                      <div className="applicant-info">
-                        <div className="applicant-name">
-                          {report.applications?.users?.full_name || 
-                           report.users?.full_name || 
-                           'N/A'}
-                        </div>
-                        <div className="applicant-ic">
-                          IC: {report.applications?.users?.ic_number || 
-                               report.users?.ic_number || 
-                               'N/A'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="table-data-col">{report.report_type || 'General'}</div>
-                    <div className="table-data-col">
-                      {report.report_date ? 
-                        new Date(report.report_date).toLocaleDateString('en-GB') : 
-                        'N/A'}
-                    </div>
-                    <div className="table-data-col">
-                      {new Date(report.created_at || report.report_date).toLocaleDateString('en-GB')}
-                    </div>
-                    <div className="table-data-col">
-                      {report.provider_name || 'N/A'}
-                    </div>
-                    <div className="table-data-col">
-                      <span className={`status-badge status-${(report.health_report_status || 'pending').toLowerCase()}`}>
-                        {(report.health_report_status || 'Pending').charAt(0).toUpperCase() + (report.health_report_status || 'pending').slice(1).toLowerCase()}
-                      </span>
-                    </div>
-                    <div className="table-data-col table-actions">
-                      {(report.health_report_status || 'pending').toLowerCase() === 'pending' && (
-                        <>
-                          <button
-                            className="btn-action approve-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onApproveClick(report)
-                            }}
-                            title="Approve Report"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="btn-action flag-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onFlagClick(report)
-                            }}
-                            title="Flag Report"
-                          >
-                            Flag
-                          </button>
-                        </>
-                      )}
-                      <button
-                        className="btn-action view-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onViewReport(report.id)
-                        }}
-                        title="View Report"
-                      >
-                        View
-                      </button>
-                      <button
-                        className="btn-action archive-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onArchiveClick(report)
-                        }}
-                        title="Archive Report"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="table-data-row">
-                  <div className="table-data-col" style={{ 
-                    gridColumn: '1 / -1', 
-                    textAlign: 'center', 
-                    padding: '2rem', 
-                    color: '#666',
-                    width: '100%',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                  }}>
-                    No health reports found. Upload your first report to get started.
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Report Details Section */}
-        <div className="health-monitoring-section">
-          <div className="report-details-card">
-            <div className="details-header">
-              <h3>Report Details</h3>
-            </div>
-
-            <div className="details-tabs">
-              <button className="details-tab active">Overview</button>
-              <button className="details-tab">Documents</button>
-              <button className="details-tab">History</button>
-            </div>
-
-            {selectedReport ? (
-              <>
-                {/* Applicant and Report Info */}
-                <div className="info-section">
-                  <div className="info-group">
-                    <div className="info-item">
-                      <div className="info-label">Applicant</div>
-                      <div className="info-value primary">
-                        {selectedReport.applications?.users?.full_name || 
-                         selectedReport.users?.full_name || 
-                         'N/A'}
-                      </div>
-                      <div className="info-sublabel">
-                        IC: {selectedReport.applications?.users?.ic_number || 
-                             selectedReport.users?.ic_number || 
-                             'N/A'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="info-group">
-                    <div className="info-item text-right">
-                      <div className="info-label">Report Type</div>
-                      <div className="info-value primary">{selectedReport.report_type || 'General'}</div>
-                      <div className="info-sublabel">
-                        Date: {selectedReport.report_date ? 
-                               new Date(selectedReport.report_date).toLocaleDateString('en-GB') : 
-                               'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Healthcare Provider */}
-                <div className="info-section">
-                  <div className="info-label">Healthcare Provider</div>
-                  <div className="info-value large">{selectedReport.provider_name || 'N/A'}</div>
-                  <div className="info-sublabel">{selectedReport.provider_address || 'Address not provided'}</div>
-                </div>
-
-                {/* Report Notes */}
-                <div className="info-section">
-                  <div className="info-label">Notes</div>
-                  <div className="info-value">{selectedReport.notes || 'No additional notes'}</div>
-                </div>
-
-                {/* Key Findings */}
-                <div className="findings-section">
-                  <div className="info-label">Status Information</div>
-                  <ul className="findings-list">
-                    <li>Report uploaded and verified</li>
-                    <li>Medical history reviewed</li>
-                    <li>{(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' ? 'Awaiting review' : 'Review completed'}</li>
-                  </ul>
-                </div>
-
-                {/* Action Buttons */}
-                {(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' && (
-                  <div className="action-buttons">
-                    <button 
-                      className="btn-primary-action approve"
-                      onClick={() => onApproveClick(selectedReport)}
-                    >
-                      Approve Report
-                    </button>
-                    <button 
-                      className="btn-primary-action flag"
-                      onClick={() => onFlagClick(selectedReport)}
-                    >
-                      Flag Report
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="empty-selection">
-                <p>Select a report from the table to view details</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Reports Generation Section */}
-        <div className="reports-section">
-          <div className="reports-header">
-            <h3>Generated Reports</h3>
-            <div className="filter-group">
-              <label className="filter-label">Filter:</label>
-              <select className="filter-select">
-                <option>This month</option>
-                <option>Last month</option>
-                <option>This year</option>
-                <option>All time</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Reports Table */}
-          <div className="archived-reports-card">
-            <div className="archived-table">
-              <div className="table-header">
-                <div className="table-col">Report name</div>
-                <div className="table-col">Generated on</div>
-                <div className="table-col">Type</div>
-                <div className="table-col">Actions</div>
-              </div>
-
-              <div className="table-body">
-                <div className="table-row">
-                  <div className="table-col">
-                    <span className="report-name">Health Report Analysis - Nov 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-date">01 Dec 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-type">Monthly Analysis</span>
-                  </div>
-                  <div className="table-col table-actions">
-                    <button className="btn-action" onClick={() => onViewReport('report-1')}>View</button>
-                    <button className="btn-action" onClick={() => onShareReport('report-1')}>Share</button>
-                    <button className="btn-action" onClick={() => onArchiveReport('report-1')}>Archive</button>
-                  </div>
-                </div>
-
-                <div className="table-row">
-                  <div className="table-col">
-                    <span className="report-name">Health Report Analysis - Oct 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-date">28 Nov 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-type">Monthly Analysis</span>
-                  </div>
-                  <div className="table-col table-actions">
-                    <button className="btn-action" onClick={() => onViewReport('report-2')}>View</button>
-                    <button className="btn-action" onClick={() => onShareReport('report-2')}>Share</button>
-                    <button className="btn-action" onClick={() => onArchiveReport('report-2')}>Archive</button>
-                  </div>
-                </div>
-
-                <div className="table-row">
-                  <div className="table-col">
-                    <span className="report-name">Health Report Analysis - Sep 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-date">30 Sep 2024</span>
-                  </div>
-                  <div className="table-col">
-                    <span className="report-type">Monthly Analysis</span>
-                  </div>
-                  <div className="table-col table-actions">
-                    <button className="btn-action" onClick={() => onViewReport('report-3')}>View</button>
-                    <button className="btn-action" onClick={() => onShareReport('report-3')}>Share</button>
-                    <button className="btn-action" onClick={() => onArchiveReport('report-3')}>Archive</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Generate Report Footer */}
-            <div className="reports-footer">
-              <p className="footer-note">Store and access reports securely for audit and compliance purposes.</p>
-              <button className="btn btn-primary btn-generate-report" onClick={onGenerateReport}>
-                Generate Health Analysis Report (PDF)
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Admin Modals */}
-      
-      {/* Approval Confirmation Modal */}
-      {showApprovalConfirm && actionReport && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>Approve Health Report</h3>
-            <p>Are you sure you want to approve this health report?</p>
-            <div className="report-preview">
-              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
-              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
-              <p><strong>Notes:</strong> {actionReport.notes || 'No notes'}</p>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={onApproveConfirm}>
-                Approve Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Flag Modal */}
-      {showFlagModal && actionReport && (
-        <div className="modal-overlay">
-          <div className="modal flag-modal">
-            <h3>Flag Health Report</h3>
-            <p>Please provide a reason for flagging this report:</p>
-            <div className="report-preview">
-              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
-              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
-              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
-            </div>
-            <textarea
-              className="flag-reason-input"
-              placeholder="Enter reason for flagging (required)"
-              value={flagReason}
-              onChange={(e) => onFlagReasonChange(e.target.value)}
-              rows={4}
-              required
-            />
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
-                Cancel
-              </button>
-              <button 
-                className="btn btn-danger" 
-                onClick={onFlagConfirm}
-                disabled={!flagReason.trim()}
-              >
-                Flag Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Archive Confirmation Modal */}
-      {showArchiveConfirm && actionReport && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>Archive Health Report</h3>
-            <p>Are you sure you want to archive this health report?</p>
-            <div className="report-preview">
-              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
-              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
-              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
-              <p><strong>Notes:</strong> {actionReport.notes || 'No notes'}</p>
-            </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
-                Cancel
-              </button>
-              <button className="btn btn-warning" onClick={onArchiveConfirm}>
-                Archive Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ============================================================================
 // USER VIEW COMPONENT
 // ============================================================================
 
@@ -4272,10 +603,13 @@ function UserHealthReportView({
   // State
   alerts,
   successMessage,
+  showSuccessOverlay,
   errorMessage,
   reports,
   uploadForm,
   shareForm,
+  shareLinks,
+  isShareLinksLoading,
   multiUploadForm,
   searchKey,
   filters,
@@ -4302,6 +636,7 @@ function UserHealthReportView({
   showReminderModal,
   reminderForm,
   editingReminder,
+  selectedReminderCategory,
 
   // Handlers
   onUploadClick,
@@ -4319,8 +654,11 @@ function UserHealthReportView({
   onCancelShareModal,
   onShareFormChange,
   onShareFormSubmit,
+  onCopyShareLink,
+  onRevokeShareLink,
   onSearchChange,
   onSearch,
+  onClearSearch,
   onFilterChange,
   onClearFilters,
   onTabFilter,
@@ -4339,7 +677,8 @@ function UserHealthReportView({
   onToggleReminder,
   onReminderFormChange,
   onSubmitReminder,
-  onCancelReminderModal
+  onCancelReminderModal,
+  onReminderCategoryFilter
 }) {
   // Add default values to prevent undefined errors
   const defaultStatistics = {
@@ -4361,7 +700,13 @@ function UserHealthReportView({
   const safeOnDrop = onDrop || ((e) => e.preventDefault());
   const safeOnFileSelect = onFileSelect || (() => {});
   const safeOnUploadSubmit = onUploadSubmit || (() => {});
-  const safeOnSearchChange = onSearchChange || (() => {});
+  const safeOnSearchChange = onSearchChange || ((value) => { console.log('Search change:', value); });
+  const safeOnSearch = onSearch || (() => { console.log('Search triggered'); });
+  const safeOnClearSearch = onClearSearch || (() => { 
+    console.log('Clear search triggered');
+    if (safeOnSearchChange) safeOnSearchChange('');
+    if (safeOnSearch) safeOnSearch();
+  });
 
   // Local state for managing selected files
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -4420,13 +765,15 @@ function UserHealthReportView({
 
   // Helper functions for date picker
   const getUserJoinDate = () => {
-    // Default to 1 year ago if no user join date is available
+    // Default to 10 years ago if no user join date is available
     if (user && user.created_at) {
-      return new Date(user.created_at).toISOString().split('T')[0];
+      const joinDate = new Date(user.created_at);
+      joinDate.setFullYear(joinDate.getFullYear() - 10);
+      return joinDate.toISOString().split('T')[0];
     }
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    return oneYearAgo.toISOString().split('T')[0];
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+    return tenYearsAgo.toISOString().split('T')[0];
   };
 
   const getTodayDate = () => {
@@ -4680,6 +1027,9 @@ function UserHealthReportView({
 
   return (
     <div className={`health-report-container ${isDragActive ? 'drag-active' : ''}`}>
+      {/* Success Overlay */}
+      <SuccessOverlay show={showSuccessOverlay} message={successMessage} />
+      
       {/* Full Page Drop Overlay */}
       {isDragActive && (
         <div 
@@ -5079,9 +1429,36 @@ function UserHealthReportView({
             )}
 
             <div className="reminder-tags">
-              <span className="reminder-tag">Medication refill</span>
-              <span className="reminder-tag">Blood pressure check</span>
-              <span className="reminder-tag">Doctor visit</span>
+              <button 
+                className={`reminder-tag ${selectedReminderCategory === 'Health & appointments' ? 'active' : ''}`}
+                onClick={() => onReminderCategoryFilter?.('Health & appointments')}
+              >
+                Health & appointments
+              </button>
+              <button 
+                className={`reminder-tag ${selectedReminderCategory === 'Medication' ? 'active' : ''}`}
+                onClick={() => onReminderCategoryFilter?.('Medication')}
+              >
+                Medication
+              </button>
+              <button 
+                className={`reminder-tag ${selectedReminderCategory === 'Personal' ? 'active' : ''}`}
+                onClick={() => onReminderCategoryFilter?.('Personal')}
+              >
+                Personal
+              </button>
+              <button 
+                className={`reminder-tag ${selectedReminderCategory === 'Other' ? 'active' : ''}`}
+                onClick={() => onReminderCategoryFilter?.('Other')}
+              >
+                Other
+              </button>
+              <button 
+                className={`reminder-tag ${selectedReminderCategory === 'all' || !selectedReminderCategory ? 'active' : ''}`}
+                onClick={() => onReminderCategoryFilter?.('all')}
+              >
+                All
+              </button>
             </div>
           </div>
 
@@ -5104,13 +1481,13 @@ function UserHealthReportView({
                   <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
                   <div className="table-col table-actions">
                     <button 
-                      className="btn-action"
+                      className="btn-secondary btn-action"
                       onClick={() => onDownload?.(report.id)}
                     >
                       View
                     </button>
                     <button 
-                      className="btn-action"
+                      className="btn-primary btn-action"
                       onClick={() => onShareClick?.(report)}
                     >
                       Share
@@ -5118,8 +1495,8 @@ function UserHealthReportView({
                   </div>
                 </div>
               )) : (
-                <div className="table-row">
-                  <div className="table-col" style={{textAlign: 'center', padding: '20px', color: '#666'}}>No reports available</div>
+                <div className="table-row" style={{alignItems: 'center', justifyContent: 'center', display: 'flex'}}>
+                  <div className="table-col" style={{textAlign: 'center', padding: '20px', color: '#666', width: 'fit-content'}}>No reports available</div>
                 </div>
               )}
             </div>
@@ -5147,9 +1524,786 @@ function UserHealthReportView({
                   type="text" 
                   placeholder="Search health reports, providers, titles"
                   value={searchKey || ''}
-                  onChange={safeOnSearchChange}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    safeOnSearchChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      safeOnSearch();
+                    }
+                  }}
+                  onBlur={() => {
+                    // Trigger search when user leaves the input field
+                    safeOnSearch();
+                  }}
                 />
-                <button className="clear-search">×</button>
+                <button 
+                  className="clear-search"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    safeOnClearSearch();
+                  }}
+                  type="button"
+                  aria-label="Clear search"
+                  style={{ 
+                    display: searchKey && searchKey.length > 0 ? 'block' : 'none' 
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <button 
+                className="btn-filter"
+                onClick={() => {
+                  if (showSort) {
+                    onSetShowSort?.(false)
+                  }
+                  onSetShowFilters?.(!showFilters)
+                }}
+              >
+                <img src={filterIcon} alt="Filter" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
+                {showFilters ? 'Hide' : 'Show'} Filter
+              </button>
+              
+              <button 
+                className="btn-sort"
+                onClick={() => {
+                  if (showFilters) {
+                    onSetShowFilters?.(false)
+                  }
+                  onSetShowSort?.(!showSort)
+                }}
+              >
+                <img src={sortIcon} alt="Sort" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}} />
+                {showSort ? 'Hide' : 'Show'} Sort
+              </button>
+            </div>
+
+            <div className="filter-buttons">
+              <button 
+                className={`filter-btn ${activeTab === 'all' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('all')}
+              >
+                All
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'overdue' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('overdue')}
+              >
+                Overdue
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'due-soon' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('due-soon')}
+              >
+                Due Soon
+              </button>
+              <button 
+                className={`filter-btn ${activeTab === 'up-to-date' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('up-to-date')}
+              >
+                Up to Date
+              </button>
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="advanced-filters">
+              <div className="filter-row">
+              <div className="filter-group">
+                <label>Report Type</label>
+                <div className="filter-options">
+                  <button 
+                    className={`filter-option ${!filters?.reportType || filters.reportType === 'Medical Report' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Medical Report')}
+                  >
+                    Medical Report
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Lab Test' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Lab Test')}
+                  >
+                    Lab Test
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Prescription' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Prescription')}
+                  >
+                    Prescription
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Vaccination Record' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Vaccination Record')}
+                  >
+                    Vaccination Record
+                  </button>
+                  <button 
+                    className={`filter-option ${filters?.reportType === 'Doctor\'s Visit Summary' ? 'active' : ''}`}
+                    onClick={() => onFilterChange?.('reportType', 'Doctor\'s Visit Summary')}
+                  >
+                    Doctor's Visit Summary
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="filter-row">
+              <div className="filter-group">
+                <label>Date Range</label>
+                <div className="date-inputs">
+                  <div className="date-input-wrapper" style={{position: 'relative'}}>
+                    <div className="date-input">
+                      <input 
+                        type="text" 
+                        placeholder="Start date (DD/MM/YYYY)" 
+                        value={formatDateForDisplay(filters?.startDate)}
+                        readOnly
+                      />
+                      <img 
+                        src={calendarIcon} 
+                        alt="Calendar" 
+                        className="calendar-icon" 
+                        style={{cursor: 'pointer', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}}
+                        onClick={() => handleCalendarClick('start')}
+                      />
+                    </div>
+                    {showDatePicker.start && (
+                      <div className="date-picker-dropdown">
+                        <input
+                          type="date"
+                          min={getUserJoinDate()}
+                          max={getTodayDate()}
+                          value={filters?.startDate || ''}
+                          onChange={(e) => handleDateSelect('start', e.target.value)}
+                          onBlur={(e) => {
+                            // Keep picker open if user is still interacting with it
+                            setTimeout(() => {
+                              if (!e.target.matches(':focus')) {
+                                setShowDatePicker(prev => ({ ...prev, start: false }));
+                              }
+                            }, 100);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <span className="date-separator">to</span>
+                  <div className="date-input-wrapper" style={{position: 'relative'}}>
+                    <div className="date-input">
+                      <input 
+                        type="text" 
+                        placeholder="End date (DD/MM/YYYY)" 
+                        value={formatDateForDisplay(filters?.endDate)}
+                        readOnly
+                      />
+                      <img 
+                        src={calendarIcon} 
+                        alt="Calendar" 
+                        className="calendar-icon" 
+                        style={{cursor: 'pointer', filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'}}
+                        onClick={() => handleCalendarClick('end')}
+                      />
+                    </div>
+                    {showDatePicker.end && (
+                      <div className="date-picker-dropdown">
+                        <input
+                          type="date"
+                          min={filters?.startDate || getUserJoinDate()}
+                          max={getTodayDate()}
+                          value={filters?.endDate || ''}
+                          onChange={(e) => handleDateSelect('end', e.target.value)}
+                          onBlur={(e) => {
+                            // Keep picker open if user is still interacting with it
+                            setTimeout(() => {
+                              if (!e.target.matches(':focus')) {
+                                setShowDatePicker(prev => ({ ...prev, end: false }));
+                              }
+                            }, 100);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="filter-actions">
+              <button 
+                className="btn-reset"
+                onClick={onClearFilters}
+              >
+                Reset
+              </button>
+            </div>
+            </div>
+          )}
+
+          {/* Sort Panel */}
+          {showSort && (
+            <div className="sort-panel">
+              <div className="sort-row">
+                <div className="sort-group">
+                  <label>Sort By</label>
+                  <select
+                    value={sortBy || 'report_date'}
+                    onChange={(e) => onSort?.(e.target.value)}
+                  >
+                    <option value="report_date">Report Date</option>
+                    <option value="created_at">Upload Date</option>
+                    <option value="report_title">Report Title</option>
+                    <option value="report_type">Report Type</option>
+                    <option value="provider_name">Provider Name</option>
+                    <option value="health_report_status">Status</option>
+                  </select>
+                </div>
+
+                <div className="sort-group">
+                  <label>Sort Order</label>
+                  <div className="sort-order-buttons">
+                    <button
+                      className={`sort-order-btn ${sortOrder === 'asc' ? 'active' : ''}`}
+                      onClick={() => onSort?.(sortBy, 'asc')}
+                    >
+                      <img src={ascIcon} alt="Ascending" style={{
+                      width: '24px', 
+                      height: '18px', 
+                      marginRight: '8px',
+                      filter: sortOrder === 'asc' ? 'brightness(0) invert(1)' : 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'
+                    }} /> Ascending
+                    </button>
+                    <button
+                      className={`sort-order-btn ${sortOrder === 'desc' ? 'active' : ''}`}
+                      onClick={() => onSort?.(sortBy, 'desc')}
+                    >
+                      <img src={descIcon} alt="Descending" style={{
+                      width: '24px', 
+                      height: '18px', 
+                      marginRight: '8px',
+                      filter: sortOrder === 'desc' ? 'brightness(0) invert(1)' : 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)'
+                    }}/> Descending
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Results Table */}
+          <div className="results-table">
+            <div className="table-header-row">
+              <div className="table-header-col">Report Title</div>
+              <div className="table-header-col">Report Type</div>
+              <div className="table-header-col">Report Date</div>
+              <div className="table-header-col">Upload Date</div>
+              <div className="table-header-col">Provider name</div>
+              <div className="table-header-col">Report Status</div>
+              <div className="table-header-col">Actions</div>
+            </div>
+
+            <div className="table-body">
+              {reports && reports.length > 0 ? (
+                reports.map((report) => (
+                  <div key={report.id} className="table-data-row">
+                    <div className="table-data-col">
+                      <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
+                      <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                    </div>
+                    <div className="table-data-col">{report.report_type || 'Medical Report'}</div>
+                    <div className="table-data-col">
+                      {new Date(report.report_date).toLocaleDateString('en-GB')}
+                    </div>
+                    <div className="table-data-col">
+                      {new Date(report.created_at).toLocaleDateString('en-GB')}
+                    </div>
+                    <div className="table-data-col">
+                      {report.provider_name || 'N/A'}
+                    </div>
+                    <div className="table-data-col">{report.health_report_status || report.due_status || 'Up to Date'}</div>
+                    <div className="table-data-col table-actions">
+                      <button 
+                        className="btn-secondary btn-action"
+                        onClick={() => onDownload?.(report.id)}
+                      >
+                        View
+                      </button>
+                      <button 
+                        className="btn-primary btn-action"
+                        onClick={() => onShareClick?.(report)}
+                      >
+                        Share
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="table-data-row">
+                  <div className="table-data-col" style={{ 
+                    gridColumn: '1 / -1', 
+                    textAlign: 'center', 
+                    padding: '2rem', 
+                    color: '#666',
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}>
+                    No health reports found
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Upload Modal */}
+        {showUploadModal && (
+          <UploadModal
+            uploadForm={uploadForm}
+            onCancel={onCancelUploadModal}
+            onFormChange={onUploadFormChange}
+            onSubmit={onUploadSubmit}
+            applicationId={applicationId}
+          />
+        )}
+
+        {/* Share Modal */}
+        {showShareModal && (
+          <ShareModal
+            show={showShareModal}
+            shareForm={shareForm}
+            errors={errors}
+            onCancel={onCancelShareModal}
+            onShareFormChange={onShareFormChange}
+            onShareFormSubmit={onShareFormSubmit}
+            errorMessage={errorMessage}
+            successMessage={successMessage}
+            shareLinks={shareLinks}
+            isShareLinksLoading={isShareLinksLoading}
+            onCopyShareLink={onCopyShareLink}
+            onRevokeShareLink={onRevokeShareLink}
+          />
+        )}
+
+        {/* Reminder Modal */}
+        {showReminderModal && (
+          <ReminderModal
+            show={showReminderModal}
+            reminderForm={reminderForm}
+            editingReminder={editingReminder}
+            errors={errors}
+            onCancel={onCancelReminderModal}
+            onFormChange={onReminderFormChange}
+            onSubmit={onSubmitReminder}
+          />
+        )}
+
+        {/* PDF Viewer Modal */}
+        {showPDFViewer && viewingReportUrl && (
+          <div className="modal-overlay pdf-viewer-overlay" onClick={onClosePDFViewer}>
+            <div className="modal-content pdf-viewer-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Health Report</h3>
+                <button className="close-button" onClick={onClosePDFViewer}>×</button>
+              </div>
+              
+              <div className="modal-body pdf-viewer-body">
+                <iframe
+                  src={viewingReportUrl}
+                  style={{
+                    width: '100%',
+                    height: '80vh',
+                    border: 'none',
+                    borderRadius: '8px'
+                  }}
+                  title="Health Report PDF"
+                />
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onClosePDFViewer}
+                >
+                  Close
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => window.open(viewingReportUrl, '_blank')}
+                >
+                  Open in New Tab
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// ADMIN VIEW COMPONENT
+// ============================================================================
+
+function AdminHealthReportDashboardView() {
+  const { user } = useAuth()
+  
+  // Component state
+  const [isLoading, setIsLoading] = useState(true)
+  const [statistics, setStatistics] = useState({
+    pending: 0,
+    reviewed: 0,
+    flagged: 0,
+    generated: 0
+  })
+  const [reports, setReports] = useState([])
+  const [selectedReport, setSelectedReport] = useState(null)
+  const [alerts, setAlerts] = useState([])
+  const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [searchKey, setSearchKey] = useState('')
+  const [filters, setFilters] = useState({
+    field: 'status',
+    value: 'Pending'
+  })
+  const [sortBy, setSortBy] = useState('newest')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [activeTab, setActiveTab] = useState('reports')
+  
+  // Modal states
+  const [showApprovalConfirm, setShowApprovalConfirm] = useState(false)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [showFlagModal, setShowFlagModal] = useState(false)
+  const [flagReason, setFlagReason] = useState('')
+  const [actionReport, setActionReport] = useState(null)
+
+  // Data fetching functions
+  const fetchStatistics = useCallback(async () => {
+    try {
+      const result = await getAdminStatistics()
+      if (result.success) {
+        setStatistics(result.data)
+      } else {
+        console.error('Failed to fetch statistics:', result.error)
+      }
+    } catch (err) {
+      console.error('Error fetching statistics:', err)
+    }
+  }, [])
+
+  const fetchReports = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      
+      const filterOptions = {
+        searchKey: searchKey || undefined,
+        uploadStatus: filters.field === 'status' ? filters.value : undefined,
+        reportType: filters.field === 'reportType' ? filters.value : undefined,
+        providerName: filters.field === 'provider' ? filters.value : undefined,
+        sortBy: sortBy === 'newest' ? 'created_at' : sortBy === 'oldest' ? 'created_at' : sortBy === 'name' ? 'report_type' : 'report_type',
+        sortOrder: sortBy === 'oldest' ? 'asc' : 'desc'
+      }
+      
+      const result = await getAllHealthReports(filterOptions)
+      if (result.success) {
+        setReports(result.data || [])
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to load health reports')
+      console.error('Error fetching reports:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [searchKey, filters, sortBy])
+
+  // Initialize data
+  useEffect(() => {
+    if (user) {
+      fetchStatistics()
+      fetchReports()
+    }
+  }, [user, fetchStatistics, fetchReports])
+
+  // Event handlers
+  const onSearchChange = useCallback((value) => {
+    setSearchKey(value)
+  }, [])
+
+  const onSearch = useCallback(() => {
+    // Trigger search by calling fetchReports which uses current searchKey
+    fetchReports()
+  }, [fetchReports])
+
+  const onClearSearch = useCallback(() => {
+    setSearchKey('')
+  }, [])
+
+  const onFilterChange = useCallback((field, value) => {
+    if (field === 'clear') {
+      setFilters({ field: 'status', value: 'pending' })
+      setSearchKey('')
+    } else {
+      setFilters(prev => ({ ...prev, [field]: value }))
+    }
+  }, [])
+
+  const onClearFilters = useCallback(() => {
+    setFilters({ field: 'status', value: 'Pending' })
+    setSearchKey('')
+  }, [])
+
+  const onSort = useCallback((sortType) => {
+    setSortBy(sortType)
+  }, [])
+
+  const onReportSelect = useCallback((report) => {
+    setSelectedReport(report)
+  }, [])
+
+  const onApproveClick = useCallback((report) => {
+    setActionReport(report)
+    setShowApprovalConfirm(true)
+  }, [])
+
+  const onApproveConfirm = useCallback(async () => {
+    if (!actionReport || !user) return
+    
+    try {
+      const result = await approveHealthReport(actionReport.id, user.id)
+      if (result.success) {
+        setSuccessMessage('Health report approved successfully')
+        await fetchReports()
+        await fetchStatistics()
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to approve health report')
+      console.error('Error approving report:', err)
+    } finally {
+      setShowApprovalConfirm(false)
+      setActionReport(null)
+    }
+  }, [actionReport, user, fetchReports, fetchStatistics])
+
+  const onFlagClick = useCallback((report) => {
+    setActionReport(report)
+    setShowFlagModal(true)
+  }, [])
+
+  const onFlagConfirm = useCallback(async () => {
+    if (!actionReport || !user || !flagReason.trim()) return
+    
+    try {
+      const result = await flagHealthReport(actionReport.id, user.id, flagReason)
+      if (result.success) {
+        setSuccessMessage('Health report flagged successfully')
+        await fetchReports()
+        await fetchStatistics()
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to flag health report')
+      console.error('Error flagging report:', err)
+    } finally {
+      setShowFlagModal(false)
+      setActionReport(null)
+      setFlagReason('')
+    }
+  }, [actionReport, user, flagReason, fetchReports, fetchStatistics])
+
+  const onArchiveClick = useCallback((report) => {
+    setActionReport(report)
+    setShowArchiveConfirm(true)
+  }, [])
+
+  const onArchiveConfirm = useCallback(async () => {
+    if (!actionReport || !user) return
+    
+    try {
+      const result = await archiveHealthReport(actionReport.id, user.id)
+      if (result.success) {
+        setSuccessMessage('Health report archived successfully')
+        await fetchReports()
+        await fetchStatistics()
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      setError('Failed to archive health report')
+      console.error('Error archiving report:', err)
+    } finally {
+      setShowArchiveConfirm(false)
+      setActionReport(null)
+    }
+  }, [actionReport, user, fetchReports, fetchStatistics])
+
+  const onCancelAdminAction = useCallback(() => {
+    setShowApprovalConfirm(false)
+    setShowArchiveConfirm(false)
+    setShowFlagModal(false)
+    setActionReport(null)
+    setFlagReason('')
+  }, [])
+
+  const onFlagReasonChange = useCallback((reason) => {
+    setFlagReason(reason)
+  }, [])
+
+  const onViewReport = useCallback((reportId) => {
+    // Implementation for viewing report - could open in new tab or modal
+    console.log('View report:', reportId)
+  }, [])
+
+  const onTabChange = useCallback((tab) => {
+    setActiveTab(tab)
+  }, [])
+
+  const onGenerateReport = useCallback(() => {
+    // Implementation for generating PDF report
+    console.log('Generate report')
+  }, [])
+
+  // Clear messages after a delay
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 8000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="admin-dashboard-container">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading health reports...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="admin-dashboard-container">
+      {/* Success Overlay */}
+      <SuccessOverlay show={showSuccessOverlay} message={successMessage} />
+      
+      {/* Alerts and Messages */}
+      {alerts && alerts.length > 0 && <AlertMessage alerts={alerts} />}
+      {successMessage && (
+        <div className="alert alert-success">
+          <span>✓</span> {successMessage}
+        </div>
+      )}
+      {error && (
+        <div className="alert alert-error">
+          <span>⚠</span> {error}
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="dashboard-content">
+        {/* Heading Section */}
+        <div className="section-heading">
+          <h1>Health Report Dashboard</h1>
+        </div>
+
+        {/* Statistics Cards Section */}
+        <div className="statistics-section">
+          <div className="statistics-cards">
+            <div className="stat-card">
+              <div className="stat-label">Pending Reports</div>
+              <div className="stat-value">{statistics?.pending || 0}</div>
+              <div className="stat-sublabel">Awaiting review</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Reviewed</div>
+              <div className="stat-value">{statistics?.reviewed || 0}</div>
+              <div className="stat-sublabel">Active health records</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Flagged</div>
+              <div className="stat-value">{statistics?.flagged || 0}</div>
+              <div className="stat-sublabel">Requires attention</div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-label">Reports Generated</div>
+              <div className="stat-value">{statistics?.generated || 0}</div>
+              <div className="stat-sublabel">This month</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search Health Report Section */}
+        <div className="search-section">
+          <div className="search-header">
+            <h2>Health report search</h2>
+            <button 
+              className="btn-clear-filters"
+              onClick={onClearFilters}
+            >
+              Clear all filters
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="search-bar-container">
+            <div className="search-input-group">
+              <div className="search-input">
+                <img src={searchIcon} alt="Search" className="search-icon" style={{filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)', marginLeft: '12px'}} />
+                <input 
+                  type="text" 
+                  placeholder="Search health reports, providers, titles"
+                  value={searchKey || ''}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    safeOnSearchChange(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      safeOnSearch();
+                    }
+                  }}
+                  onBlur={() => {
+                    // Trigger search when user leaves the input field
+                    safeOnSearch();
+                  }}
+                />
+                <button 
+                  className="clear-search"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    safeOnClearSearch();
+                  }}
+                  type="button"
+                  aria-label="Clear search"
+                  style={{ 
+                    display: searchKey && searchKey.length > 0 ? 'block' : 'none' 
+                  }}
+                >
+                  ×
+                </button>
               </div>
               
               <button 
@@ -5329,13 +2483,6 @@ function UserHealthReportView({
               </div>
             </div>
 
-            <div className="filter-row two-columns">
-              <div className="filter-group">
-                <label>Hospital / Clinic name</label>
-                <input type="text" placeholder="Type to search hospitals or clinics" />
-              </div>
-            </div>
-
             <div className="filter-actions">
               <button 
                 className="btn-reset"
@@ -5430,13 +2577,13 @@ function UserHealthReportView({
                     <div className="table-data-col">{report.health_report_status || report.due_status || 'Up to Date'}</div>
                     <div className="table-data-col table-actions">
                       <button 
-                        className="btn-action"
+                        className="btn-secondary btn-action"
                         onClick={() => onDownload?.(report.id)}
                       >
                         View
                       </button>
                       <button 
-                        className="btn-action"
+                        className="btn-primary btn-action"
                         onClick={() => onShareClick?.(report)}
                       >
                         Share
@@ -5464,82 +2611,274 @@ function UserHealthReportView({
           </div>
         </div>
 
-        {/* Upload Modal */}
-        {showUploadModal && (
-          <UploadModal
-            uploadForm={uploadForm}
-            onCancel={onCancelUploadModal}
-            onFormChange={onUploadFormChange}
-            onSubmit={onUploadSubmit}
-            applicationId={applicationId}
-          />
-        )}
+        {/* Report Details Section */}
+        <div className="health-monitoring-section">
+          <div className="report-details-card">
+            <div className="details-header">
+              <h3>Report Details</h3>
+            </div>
 
-        {/* Share Modal */}
-        {showShareModal && (
-          <ShareModal
-            show={showShareModal}
-            shareForm={shareForm}
-            errors={errors}
-            onCancel={onCancelShareModal}
-            onShareFormChange={onShareFormChange}
-            onShareFormSubmit={onShareFormSubmit}
-          />
-        )}
+            <div className="details-tabs">
+              <button className="details-tab active">Overview</button>
+              <button className="details-tab">Documents</button>
+              <button className="details-tab">History</button>
+            </div>
 
-        {/* Reminder Modal */}
-        {showReminderModal && (
-          <ReminderModal
-            show={showReminderModal}
-            reminderForm={reminderForm}
-            editingReminder={editingReminder}
-            errors={errors}
-            onCancel={onCancelReminderModal}
-            onFormChange={onReminderFormChange}
-            onSubmit={onSubmitReminder}
-          />
-        )}
+            {selectedReport ? (
+              <>
+                {/* Applicant and Report Info */}
+                <div className="info-section">
+                  <div className="info-group">
+                    <div className="info-item">
+                      <div className="info-label">Applicant</div>
+                      <div className="info-value primary">
+                        {selectedReport.applications?.users?.full_name || 
+                         selectedReport.users?.full_name || 
+                         'N/A'}
+                      </div>
+                      <div className="info-sublabel">
+                        IC: {selectedReport.applications?.users?.ic_number || 
+                             selectedReport.users?.ic_number || 
+                             'N/A'}
+                      </div>
+                    </div>
+                  </div>
 
-        {/* PDF Viewer Modal */}
-        {showPDFViewer && viewingReportUrl && (
-          <div className="modal-overlay pdf-viewer-overlay" onClick={onClosePDFViewer}>
-            <div className="modal-content pdf-viewer-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Health Report</h3>
-                <button className="close-button" onClick={onClosePDFViewer}>×</button>
+                  <div className="info-group">
+                    <div className="info-item text-right">
+                      <div className="info-label">Report Type</div>
+                      <div className="info-value primary">{selectedReport.report_type || 'General'}</div>
+                      <div className="info-sublabel">
+                        Date: {selectedReport.report_date ? 
+                               new Date(selectedReport.report_date).toLocaleDateString('en-GB') : 
+                               'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Healthcare Provider */}
+                <div className="info-section">
+                  <div className="info-label">Healthcare Provider</div>
+                  <div className="info-value large">{selectedReport.provider_name || 'N/A'}</div>
+                  <div className="info-sublabel">{selectedReport.provider_address || 'Address not provided'}</div>
+                </div>
+
+                {/* Report Notes */}
+                <div className="info-section">
+                  <div className="info-label">Notes</div>
+                  <div className="info-value">{selectedReport.notes || 'No additional notes'}</div>
+                </div>
+
+                {/* Key Findings */}
+                <div className="findings-section">
+                  <div className="info-label">Status Information</div>
+                  <ul className="findings-list">
+                    <li>Report uploaded and verified</li>
+                    <li>Medical history reviewed</li>
+                    <li>{(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' ? 'Awaiting review' : 'Review completed'}</li>
+                  </ul>
+                </div>
+
+                {/* Action Buttons */}
+                {(selectedReport.health_report_status || 'pending').toLowerCase() === 'pending' && (
+                  <div className="action-buttons">
+                    <button 
+                      className="btn-primary-action approve"
+                      onClick={() => onApproveClick(selectedReport)}
+                    >
+                      Approve Report
+                    </button>
+                    <button 
+                      className="btn-primary-action flag"
+                      onClick={() => onFlagClick(selectedReport)}
+                    >
+                      Flag Report
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="empty-selection">
+                <p>Select a report from the table to view details</p>
               </div>
-              
-              <div className="modal-body pdf-viewer-body">
-                <iframe
-                  src={viewingReportUrl}
-                  style={{
-                    width: '100%',
-                    height: '80vh',
-                    border: 'none',
-                    borderRadius: '8px'
-                  }}
-                  title="Health Report PDF"
-                />
-              </div>
-              
-              <div className="modal-footer">
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={onClosePDFViewer}
-                >
-                  Close
-                </button>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => window.open(viewingReportUrl, '_blank')}
-                >
-                  Open in New Tab
-                </button>
-              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reports Generation Section */}
+        <div className="reports-section">
+          <div className="reports-header">
+            <h3>Generated Reports</h3>
+            <div className="filter-group">
+              <label className="filter-label">Filter:</label>
+              <select className="filter-select">
+                <option>This month</option>
+                <option>Last month</option>
+                <option>This year</option>
+                <option>All time</option>
+              </select>
             </div>
           </div>
-        )}
+
+          {/* Reports Table */}
+          <div className="archived-reports-card">
+            <div className="archived-table">
+              <div className="table-header">
+                <div className="table-col">Report name</div>
+                <div className="table-col">Generated on</div>
+                <div className="table-col">Type</div>
+                <div className="table-col">Actions</div>
+              </div>
+
+              <div className="table-body">
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Nov 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">01 Dec 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-secondary btn-action" onClick={() => onViewReport('report-1')}>View</button>
+                    <button className="btn-primary btn-action" onClick={() => onShareReport('report-1')}>Share</button>
+                    <button className="btn-primary btn-action" onClick={() => onArchiveReport('report-1')}>Archive</button>
+                  </div>
+                </div>
+
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Oct 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">28 Nov 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-secondary btn-action" onClick={() => onViewReport('report-2')}>View</button>
+                    <button className="btn-primary btn-action" onClick={() => onShareReport('report-2')}>Share</button>
+                    <button className="btn-primary btn-action" onClick={() => onArchiveReport('report-2')}>Archive</button>
+                  </div>
+                </div>
+
+                <div className="table-row">
+                  <div className="table-col">
+                    <span className="report-name">Health Report Analysis - Sep 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-date">30 Sep 2024</span>
+                  </div>
+                  <div className="table-col">
+                    <span className="report-type">Monthly Analysis</span>
+                  </div>
+                  <div className="table-col table-actions">
+                    <button className="btn-secondary btn-action" onClick={() => onViewReport('report-3')}>View</button>
+                    <button className="btn-primary btn-action" onClick={() => onShareReport('report-3')}>Share</button>
+                    <button className="btn-primary btn-action" onClick={() => onArchiveReport('report-3')}>Archive</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Generate Report Footer */}
+            <div className="reports-footer">
+              <p className="footer-note">Store and access reports securely for audit and compliance purposes.</p>
+              <button className="btn btn-primary btn-generate-report" onClick={onGenerateReport}>
+                Generate Health Analysis Report (PDF)
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Admin Modals */}
+      
+      {/* Approval Confirmation Modal */}
+      {showApprovalConfirm && actionReport && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Approve Health Report</h3>
+            <p>Are you sure you want to approve this health report?</p>
+            <div className="report-preview">
+              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
+              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Notes:</strong> {actionReport.notes || 'No notes'}</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={onApproveConfirm}>
+                Approve Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flag Modal */}
+      {showFlagModal && actionReport && (
+        <div className="modal-overlay">
+          <div className="modal flag-modal">
+            <h3>Flag Health Report</h3>
+            <p>Please provide a reason for flagging this report:</p>
+            <div className="report-preview">
+              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
+              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
+            </div>
+            <textarea
+              className="flag-reason-input"
+              placeholder="Enter reason for flagging (required)"
+              value={flagReason}
+              onChange={(e) => onFlagReasonChange(e.target.value)}
+              rows={4}
+              required
+            />
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={onFlagConfirm}
+                disabled={!flagReason.trim()}
+              >
+                Flag Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Confirmation Modal */}
+      {showArchiveConfirm && actionReport && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Archive Health Report</h3>
+            <p>Are you sure you want to archive this health report?</p>
+            <div className="report-preview">
+              <p><strong>Report Type:</strong> {actionReport.report_type}</p>
+              <p><strong>Date:</strong> {new Date(actionReport.report_date).toLocaleDateString('en-GB')}</p>
+              <p><strong>Provider:</strong> {actionReport.provider_name || 'N/A'}</p>
+              <p><strong>Notes:</strong> {actionReport.notes || 'No notes'}</p>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={onCancelAdminAction}>
+                Cancel
+              </button>
+              <button className="btn btn-warning" onClick={onArchiveConfirm}>
+                Archive Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -5575,6 +2914,8 @@ export default function HealthMonitoringView({
   reports,
   uploadForm,
   shareForm,
+  shareLinks,
+  isShareLinksLoading,
   multiUploadForm,
   searchKey,
   filters,
@@ -5589,6 +2930,7 @@ export default function HealthMonitoringView({
   isDragging,
   errors,
   successMessage,
+  showSuccessOverlay,
   applicationId, // Add applicationId prop
 
   // Reminder props
@@ -5599,6 +2941,7 @@ export default function HealthMonitoringView({
   showReminderModal,
   reminderForm,
   editingReminder,
+  selectedReminderCategory,
 
   // User handlers
   onUploadClick,
@@ -5614,7 +2957,10 @@ export default function HealthMonitoringView({
   onFileSelect,
   onUploadSubmit,
   onCancelShareModal,
+  onCopyShareLink,
+  onRevokeShareLink,
   onShareFormChange,
+  onReminderCategoryFilter,
   onShareFormSubmit,
   onSearchChange,
   onSearch,
@@ -5641,49 +2987,19 @@ export default function HealthMonitoringView({
   onTabFilter,
   onReportSelect,
   onViewReport,
+  onClearSearch,
   
   // Aliases
   onAdminSort
 }) {
+  // Provide default handlers if not passed as props
+  const safeOnSearchChange = onSearchChange || (() => {});
+  const safeOnSearch = onSearch || (() => {});
+  const safeOnClearSearch = onClearSearch || (() => {});
+
   // Render Admin Dashboard if user is admin
   if (userRole === 'admin') {
-    return (
-      <AdminHealthReportDashboardView
-        isLoading={isLoading}
-        statistics={statistics}
-        reports={reports}
-        selectedReport={selectedReport}
-        alerts={alerts}
-        error={errorMessage}
-        successMessage={successMessage}
-        searchKey={searchKey}
-        filters={filters}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        activeTab={activeTab}
-        showApprovalConfirm={showApprovalConfirm}
-        showArchiveConfirm={showArchiveConfirm}
-        showFlagModal={showFlagModal}
-        flagReason={flagReason}
-        actionReport={actionReport}
-        onSearchChange={onSearchChange}
-        onFilterChange={onFilterChange}
-        onClearFilters={onClearFilters}
-        onTabFilter={onTabFilter}
-        onSort={onAdminSort || onSort}
-        onReportSelect={onReportSelect}
-        onApproveClick={onApproveClick}
-        onApproveConfirm={onApproveConfirm}
-        onFlagClick={onFlagClick}
-        onFlagConfirm={onFlagConfirm}
-        onArchiveClick={onArchiveClick}
-        onArchiveConfirm={onArchiveConfirm}
-        onCancelAdminAction={onCancelAdminAction}
-        onFlagReasonChange={onFlagReasonChange}
-        onViewReport={onViewReport}
-        onTabChange={onTabChange}
-      />
-    )
+    return <AdminHealthReportDashboardView />
   }
 
   // Render User Health Monitoring View otherwise
@@ -5691,10 +3007,13 @@ export default function HealthMonitoringView({
     <UserHealthReportView
       alerts={alerts}
       successMessage={successMessage}
+      showSuccessOverlay={showSuccessOverlay}
       errorMessage={errorMessage}
       reports={reports}
       uploadForm={uploadForm}
       shareForm={shareForm}
+      shareLinks={shareLinks}
+      isShareLinksLoading={isShareLinksLoading}
       multiUploadForm={multiUploadForm}
       searchKey={searchKey}
       filters={filters}
@@ -5719,6 +3038,7 @@ export default function HealthMonitoringView({
       showReminderModal={showReminderModal}
       reminderForm={reminderForm}
       editingReminder={editingReminder}
+      selectedReminderCategory={selectedReminderCategory}
       onUploadClick={onUploadClick}
       onCancelUploadModal={onCancelUploadModal}
       onClosePDFViewer={onClosePDFViewer}
@@ -5734,8 +3054,11 @@ export default function HealthMonitoringView({
       onCancelShareModal={onCancelShareModal}
       onShareFormChange={onShareFormChange}
       onShareFormSubmit={onShareFormSubmit}
-      onSearchChange={onSearchChange}
-      onSearch={onSearch}
+      onCopyShareLink={onCopyShareLink}
+      onRevokeShareLink={onRevokeShareLink}
+      onSearchChange={safeOnSearchChange}
+      onSearch={safeOnSearch}
+      onClearSearch={safeOnClearSearch}
       onFilterChange={onFilterChange}
       onClearFilters={onClearFilters}
       onTabFilter={onTabFilter}
@@ -5755,6 +3078,10 @@ export default function HealthMonitoringView({
       onReminderFormChange={onReminderFormChange}
       onSubmitReminder={onSubmitReminder}
       onCancelReminderModal={onCancelReminderModal}
+      onReminderCategoryFilter={onReminderCategoryFilter}
     />
   )
 }
+
+// Export AdminHealthReportDashboardView as a named export for standalone use
+export { AdminHealthReportDashboardView }

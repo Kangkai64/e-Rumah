@@ -4,14 +4,16 @@ create table public.health_report_shares (
   shared_by_user_id uuid not null,
   shared_with_type text not null,
   shared_with_id uuid null,
-  shared_with_email text not null,
+  shared_with_email text null,
   expires_at timestamp with time zone null,
   is_revoked boolean not null default false,
   access_count integer not null default 0,
   last_accessed_at timestamp with time zone null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null default now(),
+  share_token text not null,
   constraint health_report_shares_pkey primary key (id),
+  constraint health_report_shares_share_token_key unique (share_token),
   constraint health_report_shares_report_id_fkey foreign KEY (report_id) references health_reports (id) on delete CASCADE,
   constraint health_report_shares_shared_by_fkey foreign KEY (shared_by_user_id) references users (id) on delete CASCADE,
   constraint health_report_shares_type_check check (
@@ -20,7 +22,9 @@ create table public.health_report_shares (
         array[
           'caregiver'::text,
           'family'::text,
-          'healthcare_provider'::text
+          'healthcare_provider'::text,
+          'link'::text,
+          'email'::text
         ]
       )
     )
@@ -40,6 +44,10 @@ create index IF not exists idx_health_report_shares_expires_at on public.health_
 create index IF not exists idx_health_report_shares_type on public.health_report_shares using btree (shared_with_type) TABLESPACE pg_default;
 
 create index IF not exists idx_health_report_shares_composite on public.health_report_shares using btree (report_id, shared_with_type, shared_with_id) TABLESPACE pg_default;
+
+create unique INDEX IF not exists uniq_health_report_shares_share_token on public.health_report_shares using btree (share_token) TABLESPACE pg_default
+where
+  (share_token is not null);
 
 create trigger update_health_report_shares_updated_at BEFORE
 update on health_report_shares for EACH row

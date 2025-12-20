@@ -4,6 +4,7 @@
 
 import { supabase } from '../config/supabase'
 import { uploadDocument, deleteDocument } from '../services/fileUploadService'
+import { sendHealthReportShareEmail } from '../services/emailService'
 
 const HealthReport = {
   /**
@@ -120,7 +121,7 @@ const HealthReport = {
         .from('health_reports')
         .select('*')
         .eq('user_id', userId)
-        .or(`report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%`)
+        .or(`report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%,report_title.ilike.%${searchKey}%,provider_name.ilike.%${searchKey}%`)
         .order('report_date', { ascending: false })
 
       if (error) throw error
@@ -598,21 +599,90 @@ async function downloadHealthReportFile(report) {
   }
 }
 
-async function shareWithCaregiver(report, shareData) {
+/**
+ * Helper function to send share notification email
+ * @param {Object} report - The health report being shared
+ * @param {string} recipientEmail - Recipient's email address
+ * @param {string} shareToken - The share token for generating URL
+ * @param {Date} expiryDate - When the share expires
+ * @param {string} shareType - Type of share (caregiver, family, etc.)
+ * @param {string} recipientId - Optional recipient user ID for getting name
+ */
+async function sendShareNotificationEmail(report, recipientEmail, shareToken, expiryDate, shareType, recipientId = null) {
   try {
-    // Validate that the caregiver exists and get their user info
-    const { data: caregiverData, error: caregiverError } = await supabase
-      .from('caregivers')
-      .select('id, user_id, users(email)')
-      .eq('id', shareData.caregiverId)
+    // Get sender information
+    const { data: senderData } = await supabase
+      .from('users')
+      .select('full_name')
+      .eq('id', report.user_id)
       .single()
 
+    // Get recipient name if recipientId provided
+    let recipientName = null
+    if (recipientId) {
+      const { data: recipientData } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', recipientId)
+        .single()
+      recipientName = recipientData?.full_name
+    }
+
+    // Send email notification
+    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
+    const emailResult = await sendHealthReportShareEmail({
+      recipientEmail: recipientEmail,
+      recipientName: recipientName,
+      senderName: senderData?.full_name || 'A user',
+      reportTitle: report.report_title || 'Health Report',
+      reportType: report.report_type || 'Health Report',
+      shareUrl: shareUrl,
+      expiryDate: expiryDate.toISOString(),
+      shareType: shareType
+    })
+
+    if (!emailResult.success) {
+      console.warn('Share successful but email notification failed:', emailResult.error)
+    }
+  } catch (error) {
+    console.warn('Failed to send share notification email:', error)
+  }
+}
+
+async function shareWithCaregiver(report, shareData) {
+  try {
+    // Validate required fields
+    if (!shareData || !shareData.email || shareData.email.trim() === '') {
+      return { success: false, error: 'Email address is required for sharing with caregiver' }
+    }
+
+    // First, find the user by email
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', shareData.email.trim())
+      .maybeSingle()
+
+    if (userError || !userData) {
+      return { success: false, error: 'No user found with the provided email address' }
+    }
+
+    // Then, check if this user is a caregiver
+    const { data: caregiverData, error: caregiverError } = await supabase
+      .from('caregivers')
+      .select('id, user_id')
+      .eq('user_id', userData.id)
+      .maybeSingle()
+
     if (caregiverError || !caregiverData) {
-      return { success: false, error: 'Caregiver not found or invalid' }
+      return { success: false, error: 'User found but they are not registered as a caregiver' }
     }
 
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
+    // Generate share token (required by DB)
+    const shareToken = generateToken()
 
     const { data, error } = await supabase
       .from('health_report_shares')
@@ -621,12 +691,23 @@ async function shareWithCaregiver(report, shareData) {
         shared_by_user_id: report.user_id,
         shared_with_type: 'caregiver',
         shared_with_id: caregiverData.user_id,
-        shared_with_email: shareData.email || caregiverData.users.email,
+        shared_with_email: shareData.email.trim(),
+        share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
       .select()
 
     if (error) throw error
+
+    // Send email notification
+    await sendShareNotificationEmail(
+      report,
+      shareData.email.trim(),
+      shareToken,
+      expiryDate,
+      'caregiver',
+      caregiverData.user_id
+    )
 
     return { success: true, data, message: 'Report shared with caregiver successfully' }
   } catch (error) {
@@ -637,17 +718,33 @@ async function shareWithCaregiver(report, shareData) {
 
 async function shareWithFamily(report, shareData) {
   try {
-    // Validate that the family member relationship exists and is verified
+    // Validate required fields
+    if (!shareData || !shareData.email || shareData.email.trim() === '') {
+      return { success: false, error: 'Email address is required for sharing with family member' }
+    }
+
+    // First, find the user by email
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', shareData.email.trim())
+      .maybeSingle()
+
+    if (userError || !userData) {
+      return { success: false, error: 'No user found with the provided email address' }
+    }
+
+    // Then, check if there's a verified family relationship
     const { data: familyData, error: familyError } = await supabase
       .from('family_members')
-      .select('id, family_member_user_id, permissions_level, is_verified, users(email)')
+      .select('id, family_member_user_id, permissions_level, is_verified')
       .eq('user_id', report.user_id)
-      .eq('family_member_user_id', shareData.familyMemberId)
+      .eq('family_member_user_id', userData.id)
       .eq('is_verified', true)
-      .single()
+      .maybeSingle()
 
     if (familyError || !familyData) {
-      return { success: false, error: 'Family member relationship not found or not verified' }
+      return { success: false, error: 'No verified family member relationship found with this user' }
     }
 
     // Check permissions
@@ -658,6 +755,9 @@ async function shareWithFamily(report, shareData) {
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
 
+    // Generate share token (required by DB)
+    const shareToken = generateToken()
+
     const { data, error } = await supabase
       .from('health_report_shares')
       .insert([{
@@ -665,12 +765,23 @@ async function shareWithFamily(report, shareData) {
         shared_by_user_id: report.user_id,
         shared_with_type: 'family',
         shared_with_id: familyData.family_member_user_id,
-        shared_with_email: shareData.email || familyData.users.email,
+        shared_with_email: shareData.email.trim(),
+        share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
       .select()
 
     if (error) throw error
+
+    // Send email notification
+    await sendShareNotificationEmail(
+      report,
+      shareData.email.trim(),
+      shareToken,
+      expiryDate,
+      'family member',
+      familyData.family_member_user_id
+    )
 
     return { success: true, data, message: 'Report shared with family member successfully' }
   } catch (error) {
@@ -681,20 +792,39 @@ async function shareWithFamily(report, shareData) {
 
 async function shareWithHealthcare(report, shareData) {
   try {
-    // Validate that the healthcare provider exists and is verified
+    // Validate required fields
+    if (!shareData || !shareData.email || shareData.email.trim() === '') {
+      return { success: false, error: 'Email address is required for sharing with healthcare provider' }
+    }
+
+    // First, find the user by email
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', shareData.email.trim())
+      .maybeSingle()
+
+    if (userError || !userData) {
+      return { success: false, error: 'No user found with the provided email address' }
+    }
+
+    // Then, check if this user is a verified healthcare provider
     const { data: providerData, error: providerError } = await supabase
       .from('healthcare_providers')
-      .select('id, user_id, is_verified, users(email)')
-      .eq('id', shareData.providerId)
+      .select('id, user_id, is_verified')
+      .eq('user_id', userData.id)
       .eq('is_verified', true)
-      .single()
+      .maybeSingle()
 
     if (providerError || !providerData) {
-      return { success: false, error: 'Healthcare provider not found or not verified' }
+      return { success: false, error: 'User found but they are not a verified healthcare provider' }
     }
 
     const expiryDate = new Date()
     expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+
+    // Generate share token (required by DB)
+    const shareToken = generateToken()
 
     const { data, error } = await supabase
       .from('health_report_shares')
@@ -703,12 +833,23 @@ async function shareWithHealthcare(report, shareData) {
         shared_by_user_id: report.user_id,
         shared_with_type: 'healthcare_provider',
         shared_with_id: providerData.user_id,
-        shared_with_email: shareData.providerEmail || shareData.email || providerData.users.email,
+        shared_with_email: shareData.email.trim(),
+        share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
       .select()
 
     if (error) throw error
+
+    // Send email notification
+    await sendShareNotificationEmail(
+      report,
+      shareData.email.trim(),
+      shareToken,
+      expiryDate,
+      'healthcare provider',
+      providerData.user_id
+    )
 
     return { success: true, data, message: 'Report shared with healthcare provider successfully' }
   } catch (error) {
@@ -728,7 +869,8 @@ async function generateShareableLink(report, shareData) {
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
-        shared_with_type: 'public_link',
+        shared_by_user_id: report.user_id,
+        shared_with_type: 'link',
         share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
@@ -759,6 +901,7 @@ async function shareViaEmail(report, shareData) {
       .from('health_report_shares')
       .insert([{
         report_id: report.id,
+        shared_by_user_id: report.user_id,
         shared_with_type: 'email',
         shared_with_email: shareData.email,
         share_token: shareToken,
@@ -769,6 +912,16 @@ async function shareViaEmail(report, shareData) {
     if (error) throw error
 
     const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
+
+    // Send email notification
+    await sendShareNotificationEmail(
+      report,
+      shareData.email,
+      shareToken,
+      expiryDate,
+      'email'
+    )
+
     return {
       success: true,
       data: { ...data[0], shareUrl },
@@ -776,6 +929,55 @@ async function shareViaEmail(report, shareData) {
     }
   } catch (error) {
     console.error('Error sharing via email:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get all share links for a health report
+ * @param {string} reportId - Report ID
+ * @returns {Promise<Object>} Share records
+ */
+export const getHealthReportShares = async (reportId) => {
+  try {
+    const { data, error } = await supabase
+      .from('health_report_shares')
+      .select('*')
+      .eq('report_id', reportId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error fetching health report shares:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Revoke a shared health report link
+ * @param {string} shareId - Share record ID
+ * @returns {Promise<Object>} Updated share record
+ */
+export const revokeHealthReportShare = async (shareId) => {
+  try {
+    const timestamp = new Date().toISOString()
+
+    const { data, error } = await supabase
+      .from('health_report_shares')
+      .update({
+        is_revoked: true,
+        expires_at: timestamp,
+        updated_at: timestamp
+      })
+      .eq('id', shareId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error revoking health report share:', error)
     return { success: false, error: error.message }
   }
 }
@@ -796,9 +998,9 @@ export const approveHealthReport = async (reportId, adminId) => {
     const { data, error } = await supabase
       .from('health_reports')
       .update({
-        status: 'approved',
-        reviewed_by: adminId,
-        reviewed_at: new Date().toISOString()
+        health_report_status: 'Reviewed',
+        updated_at: new Date().toISOString(),
+        notes: `Reviewed by admin ${adminId} on ${new Date().toLocaleDateString()}`
       })
       .eq('id', reportId)
       .select()
@@ -828,10 +1030,9 @@ export const flagHealthReport = async (reportId, adminId, flagReason) => {
     const { data, error } = await supabase
       .from('health_reports')
       .update({
-        status: 'flagged',
-        flag_reason: flagReason.trim(),
-        reviewed_by: adminId,
-        reviewed_at: new Date().toISOString()
+        health_report_status: 'Flagged',
+        updated_at: new Date().toISOString(),
+        notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`
       })
       .eq('id', reportId)
       .select()
@@ -856,9 +1057,9 @@ export const archiveHealthReport = async (reportId, adminId) => {
     const { data, error } = await supabase
       .from('health_reports')
       .update({
-        archived: true,
-        archived_by: adminId,
-        archived_at: new Date().toISOString()
+        health_report_status: 'Archived',
+        updated_at: new Date().toISOString(),
+        notes: `Archived by admin ${adminId} on ${new Date().toLocaleDateString()}`
       })
       .eq('id', reportId)
       .select()
@@ -928,9 +1129,9 @@ export const getAllHealthReports = async (filters = {}) => {
       }
     }
 
-    // Apply archive filter
+    // Apply archive filter - show only non-archived reports unless specifically requested
     if (filters.showArchived === false) {
-      query = query.eq('archived', false)
+      query = query.neq('health_report_status', 'Archived')
     }
 
     // Apply sorting
@@ -1471,6 +1672,51 @@ export const updateHealthReportDueStatus = async (reportId, dueStatus) => {
     return await HealthReport.updateDueStatus(reportId, dueStatus)
   } catch (error) {
     console.error('Error in updateHealthReportDueStatus:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get admin dashboard statistics
+ * @returns {Promise<Object>} Statistics object with counts
+ */
+export const getAdminStatistics = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('health_reports')
+      .select('health_report_status, created_at')
+      .neq('health_report_status', 'Archived')
+
+    if (error) throw error
+
+    const stats = {
+      pending: 0,
+      reviewed: 0,
+      flagged: 0,
+      generated: 0
+    }
+
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
+
+    data.forEach(report => {
+      const status = (report.health_report_status || 'Pending').toLowerCase()
+      const reportDate = new Date(report.created_at)
+      
+      // Count by status (using actual schema values)
+      if (status === 'pending') stats.pending++
+      else if (status === 'reviewed') stats.reviewed++
+      else if (status === 'flagged') stats.flagged++
+      
+      // Count reports generated this month
+      if (reportDate.getMonth() === currentMonth && reportDate.getFullYear() === currentYear) {
+        stats.generated++
+      }
+    })
+
+    return { success: true, data: stats }
+  } catch (error) {
+    console.error('Error fetching admin statistics:', error)
     return { success: false, error: error.message }
   }
 }

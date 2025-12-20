@@ -13,6 +13,8 @@ import {
   uploadHealthReport,
   deleteHealthReport,
   shareHealthReport,
+  getHealthReportShares,
+  revokeHealthReportShare,
   checkHealthReportAlerts,
   getAllHealthReports,
   approveHealthReport,
@@ -34,9 +36,6 @@ function HealthReportController() {
   const { user, userRole } = useAuth()
   const [currentUser, setCurrentUser] = useState(null)
 
-  // Debug logging for applicationId
-  console.log('HealthReportController - applicationId from URL params:', applicationId)
-  console.log('HealthReportController - Current URL:', window.location.href)
   const [isLoading, setIsLoading] = useState(true)
   const [reports, setReports] = useState([])
   const [filteredReports, setFilteredReports] = useState([])
@@ -51,6 +50,7 @@ function HealthReportController() {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [activeTab, setActiveTab] = useState('archived')
   const [showFilters, setShowFilters] = useState(false)
   const [showSort, setShowSort] = useState(false)
@@ -110,6 +110,8 @@ function HealthReportController() {
     email: '',
     expiryDays: 7
   })
+  const [shareLinks, setShareLinks] = useState([])
+  const [isShareLinksLoading, setIsShareLinksLoading] = useState(false)
 
   // ============================================================================
   // REMINDERS STATE MANAGEMENT
@@ -147,6 +149,7 @@ function HealthReportController() {
   
   const [reminderSortBy, setReminderSortBy] = useState('reminder_date')
   const [reminderSortOrder, setReminderSortOrder] = useState('asc')
+  const [selectedReminderCategory, setSelectedReminderCategory] = useState('all')
 
   // ============================================================================
   // END REMINDERS STATE
@@ -188,8 +191,18 @@ function HealthReportController() {
     initialize()
   }, [navigate, user])
 
+  // Auto-dismiss success overlay after 3 seconds
+  useEffect(() => {
+    if (showSuccessOverlay) {
+      const timer = setTimeout(() => {
+        setShowSuccessOverlay(false)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccessOverlay])
+
   // Fetch reports
-  const fetchReports = async (userId) => {
+  const fetchReports = useCallback(async (userId) => {
     try {
       const options = {
         searchKey: searchKey || undefined,
@@ -224,7 +237,7 @@ function HealthReportController() {
       setReports([])
       setFilteredReports([])
     }
-  }
+  }, [searchKey, filters, sortBy, sortOrder, activeTab, userRole])
 
   // Get user's application ID when not provided in URL
   const getUserApplicationId = async (userId) => {
@@ -264,14 +277,14 @@ function HealthReportController() {
     if (currentUser) {
       fetchReports(currentUser.id)
     }
-  }, [currentUser, searchKey])
+  }, [currentUser, fetchReports])
 
   // Handle filter
   const handleFilter = useCallback(() => {
     if (currentUser) {
       fetchReports(currentUser.id)
     }
-  }, [currentUser, filters])
+  }, [currentUser, fetchReports])
 
   // Handle sort
   const handleSort = useCallback((field, order = null) => {
@@ -287,12 +300,12 @@ function HealthReportController() {
     }
   }, [sortBy, sortOrder])
 
-  // Apply sort and filter changes
+  // Apply sort, search, and filter changes
   useEffect(() => {
     if (currentUser) {
       fetchReports(currentUser.id)
     }
-  }, [sortBy, sortOrder])
+  }, [fetchReports, currentUser])
 
   // Client-side filtering for real-time search and filter functionality
   useEffect(() => {
@@ -303,12 +316,13 @@ function HealthReportController() {
 
     let filtered = reports.filter(report => {
       // Search filter - search across multiple fields
-      if (searchKey && searchKey.trim()) {
+      if (searchKey && typeof searchKey === 'string' && searchKey.trim()) {
         const searchTerm = searchKey.toLowerCase().trim()
         const matchesSearch = 
           (report.report_type && report.report_type.toLowerCase().includes(searchTerm)) ||
           (report.notes && report.notes.toLowerCase().includes(searchTerm)) ||
-          (report.id && report.id.toLowerCase().includes(searchTerm))
+          (report.report_title && report.report_title.toLowerCase().includes(searchTerm)) ||
+          (report.provider_name && report.provider_name.toLowerCase().includes(searchTerm))
         
         if (!matchesSearch) return false
       }
@@ -409,12 +423,9 @@ function HealthReportController() {
     try {
       setIsUploading(true)
       setError(null)
-
-      console.log('🔍 Single file upload - applicationId from URL:', applicationId)
       
       // Get user's application ID if not provided in URL
       const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
-      console.log('🔍 Single file upload - final applicationId to use:', finalApplicationId)
 
       // Validate form
       if (!uploadForm.file) {
@@ -484,11 +495,9 @@ function HealthReportController() {
   const handleMultipleFileUpload = async (files) => {
     try {
       console.log('🚀 Starting upload process for', files.length, 'files');
-      console.log('🔍 Multiple file upload - applicationId from URL:', applicationId);
       
       // Get user's application ID if not provided in URL
       const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
-      console.log('🔍 Multiple file upload - final applicationId to use:', finalApplicationId);
 
       const uploadResults = [];
       const healthReportRecords = [];
@@ -648,16 +657,77 @@ function HealthReportController() {
     setSelectedReport(report)
   }, [])
 
-  // Handle share click
-  const handleShareClick = useCallback((report) => {
-    setSelectedReport(report)
-    setShowShareModal(true)
-  }, [])
-
   // Handle share form change
   const handleShareFormChange = useCallback((field, value) => {
     setShareForm(prev => ({ ...prev, [field]: value }))
   }, [])
+
+  // Load existing share links for the selected report
+  const loadShareLinks = useCallback(async (reportId) => {
+    if (!reportId) return
+
+    try {
+      setIsShareLinksLoading(true)
+      const result = await getHealthReportShares(reportId)
+
+      if (result.success) {
+        const mappedShares = result.data.map((share) => ({
+          ...share,
+          shareUrl: `${window.location.origin}/shared-report/${share.share_token}`
+        }))
+        setShareLinks(mappedShares)
+      } else {
+        setShareLinks([])
+      }
+    } catch (err) {
+      console.error('Error loading share links:', err)
+      setShareLinks([])
+    } finally {
+      setIsShareLinksLoading(false)
+    }
+  }, [])
+
+  // Copy helper used for generated links and existing links
+  const copyShareLink = useCallback(async (shareUrl, successMsg = 'Shareable link copied to clipboard') => {
+    if (!shareUrl) return
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setSuccessMessage(successMsg)
+      setShowSuccessOverlay(true)
+    } catch (clipboardErr) {
+      const textArea = document.createElement('textarea')
+      textArea.value = shareUrl
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+
+      try {
+        document.execCommand('copy')
+        setSuccessMessage(successMsg)
+        setShowSuccessOverlay(true)
+      } catch (execErr) {
+        setSuccessMessage('Link: ' + shareUrl)
+        setShowSuccessOverlay(true)
+      }
+
+      document.body.removeChild(textArea)
+    }
+  }, [])
+
+  const handleCopyShareLink = useCallback(async (shareUrl) => {
+    await copyShareLink(shareUrl)
+  }, [copyShareLink])
+
+  // Handle share click
+  const handleShareClick = useCallback((report) => {
+    setSelectedReport(report)
+    setError(null)
+    setSuccessMessage(null)
+    setShowShareModal(true)
+    loadShareLinks(report?.id)
+  }, [loadShareLinks])
 
   // Handle share submit
   const handleShareSubmit = async () => {
@@ -686,18 +756,22 @@ function HealthReportController() {
           link.click()
           document.body.removeChild(link)
           setSuccessMessage('Report download started')
-        } else if (result.data?.shareUrl) {
-          await navigator.clipboard.writeText(result.data.shareUrl)
-          setSuccessMessage('Shareable link copied to clipboard')
+          setShowSuccessOverlay(true)
+        } else if (shareForm.shareOption === 'link' && result.data?.shareUrl) {
+          await copyShareLink(result.data.shareUrl)
         } else {
           setSuccessMessage(result.message || 'Report shared successfully')
+          setShowSuccessOverlay(true)
+        }
+
+        if (selectedReport?.id) {
+          await loadShareLinks(selectedReport.id)
         }
       } else {
         setError(result.error)
         return
       }
 
-      setShowShareModal(false)
       setShareForm({
         shareOption: '',
         caregiverId: '',
@@ -709,6 +783,29 @@ function HealthReportController() {
     } catch (err) {
       console.error('Error sharing report:', err)
       setError('Failed to share health report')
+    }
+  }
+
+  // Revoke an existing share link
+  const handleRevokeShareLink = async (shareId) => {
+    if (!shareId) return
+
+    try {
+      const result = await revokeHealthReportShare(shareId)
+
+      if (result.success) {
+        setSuccessMessage('Share link revoked')
+        setShowSuccessOverlay(true)
+
+        if (selectedReport?.id) {
+          await loadShareLinks(selectedReport.id)
+        }
+      } else {
+        setError(result.error || 'Failed to revoke share link')
+      }
+    } catch (err) {
+      console.error('Error revoking share link:', err)
+      setError('Failed to revoke share link')
     }
   }
 
@@ -740,6 +837,8 @@ function HealthReportController() {
     setShowPDFViewer(false)
     setViewingReportUrl(null)
     setSelectedReport(null)
+    setShareLinks([])
+    setIsShareLinksLoading(false)
     setUploadForm({
       reportType: '',
       reportDate: '',
@@ -884,6 +983,26 @@ function HealthReportController() {
       setReminderSortOrder(newOrder)
     }
   }, [reminderSortBy, reminderSortOrder])
+
+  // Handle reminder category filter
+  const handleReminderCategoryFilter = useCallback((category) => {
+    setSelectedReminderCategory(category)
+    
+    // Filter upcoming reminders based on selected category
+    if (category === 'all') {
+      // Show all reminders - reload from original data
+      loadUpcomingReminders(currentUser?.id)
+    } else {
+      // Filter by category
+      setUpcomingReminders(prev => {
+        // Get all reminders again and filter
+        return reminders.filter(reminder => 
+          reminder.category === category && 
+          new Date(reminder.reminder_date) >= new Date()
+        )
+      })
+    }
+  }, [currentUser?.id, reminders, loadUpcomingReminders])
 
   // Open reminder modal for creation
   const handleCreateReminder = useCallback(() => {
@@ -1227,6 +1346,7 @@ function HealthReportController() {
       alerts={alerts}
       errorMessage={error}
       successMessage={successMessage}
+      showSuccessOverlay={showSuccessOverlay}
       isDragging={isDragging}
       isUploading={isUploading}
       uploadProgress={uploadProgress}
@@ -1245,6 +1365,8 @@ function HealthReportController() {
       // Forms
       uploadForm={uploadForm}
       shareForm={shareForm}
+      shareLinks={shareLinks}
+      isShareLinksLoading={isShareLinksLoading}
       multiUploadForm={multiUploadForm}
 
       // Handlers
@@ -1269,6 +1391,8 @@ function HealthReportController() {
       onShareClick={handleShareClick}
       onShareFormChange={handleShareFormChange}
       onShareFormSubmit={handleShareSubmit}
+      onCopyShareLink={handleCopyShareLink}
+      onRevokeShareLink={handleRevokeShareLink}
       onDelete={handleDelete}
       onCancel={handleCancel}
       onExit={handleExit}
@@ -1301,6 +1425,7 @@ function HealthReportController() {
       reminderFilters={reminderFilters}
       reminderSortBy={reminderSortBy}
       reminderSortOrder={reminderSortOrder}
+      selectedReminderCategory={selectedReminderCategory}
 
       // Reminder handlers
       onCreateReminder={handleCreateReminder}
@@ -1313,6 +1438,7 @@ function HealthReportController() {
       onReminderFormChange={handleReminderFormChange}
       onReminderFilterChange={handleReminderFilterChange}
       onReminderSort={handleReminderSort}
+      onReminderCategoryFilter={handleReminderCategoryFilter}
 
       // Reminder methods
       loadReminders={loadReminders}

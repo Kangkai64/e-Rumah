@@ -51,9 +51,7 @@ function AdminView({
   if (authLoading) {
     return (
       <div className="admin-view">
-        <Header />
         <div className="admin-loading">Checking authentication...</div>
-        <Footer />
       </div>
     )
   }
@@ -61,23 +59,19 @@ function AdminView({
   if (!user || userRole !== 'admin') {
     return (
       <div className="admin-view">
-        <Header />
         <div className="admin-error">
           <h2>Access Denied</h2>
           <p>You must be an administrator to access this page.</p>
           <p>Current user: {user?.email || 'Not logged in'}</p>
           <p>Current role: {userRole || 'Not determined'}</p>
         </div>
-        <Footer />
       </div>
     )
   }
   if (loading) {
     return (
       <div className="admin-view">
-        <Header />
         <div className="admin-loading">Loading dashboard...</div>
-        <Footer />
       </div>
     )
   }
@@ -85,9 +79,7 @@ function AdminView({
   if (error) {
     return (
       <div className="admin-view">
-        <Header />
         <div className="admin-error">Error: {error}</div>
-        <Footer />
       </div>
     )
   }
