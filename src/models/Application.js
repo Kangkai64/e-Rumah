@@ -335,10 +335,11 @@ const Application = {
    * Flag an application for admin review
    * @param {string} userId - User ID to get their application
    * @param {string} reason - Reason for flagging
+   * @param {string} flaggedCode - Code indicating which nominee is affected
    * @param {string} staffUserId - Staff user ID who flagged it
    * @returns {Promise<Object>} Updated application
    */
-  async flagByUserId(userId, reason, staffUserId) {
+  async flagByUserId(userId, reason, flaggedCode, staffUserId) {
     try {
       // Get user's application
       const { data: applications, error: appError } = await supabase
@@ -360,6 +361,7 @@ const Application = {
         .update({
           is_flagged: true,
           flagged_reason: reason,
+          flagged_code: flaggedCode,
           flagged_at: new Date().toISOString(),
           flagged_by: staffUserId
         })

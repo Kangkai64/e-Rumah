@@ -2,11 +2,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import './CustomerSupport.css'
-import Header from '../layouts/Header'
-import Footer from '../layouts/Footer'
-import logoSrc from '../assets/images/logo.png'
-import vectorSrc from '../assets/images/Vector.svg'
-import { signOut } from '../services/authService'
+import PDFViewer from '../components/common/PDFViewer'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)
@@ -135,16 +131,18 @@ function NomineeDetailModal({ nominees, inquiry, onClose }) {
 // Flag Application Modal Component
 function FlagApplicationModal({ onClose, onFlag }) {
   const [reason, setReason] = useState('')
+  const [flaggedCode, setFlaggedCode] = useState('')
   const [isFlagging, setIsFlagging] = useState(false)
 
   const handleFlag = async () => {
-    if (!reason.trim() || isFlagging) return
+    if (!reason.trim() || !flaggedCode || isFlagging) return
     
     setIsFlagging(true)
-    const result = await onFlag(reason)
+    const result = await onFlag(reason, flaggedCode)
     
     if (result?.success) {
       setReason('')
+      setFlaggedCode('')
       onClose()
     } else {
       alert('Failed to flag application: ' + (result?.error || 'Unknown error'))
@@ -161,6 +159,25 @@ function FlagApplicationModal({ onClose, onFlag }) {
           </div>
 
           <div className="inquiry-details">
+            <div className="detail-field" style={{marginBottom: '16px'}}>
+              <label>Select affected nominee</label>
+              <p style={{fontSize: '0.875rem', color: '#6b7280', marginBottom: '8px'}}>
+                Choose which nominee requires admin attention
+              </p>
+              <select
+                className="filter-select"
+                value={flaggedCode}
+                onChange={(e) => setFlaggedCode(e.target.value)}
+                disabled={isFlagging}
+                style={{width: '100%', padding: '12px', fontSize: '0.875rem'}}
+              >
+                <option value="">Select...</option>
+                <option value="nominee1_inactive">Nominee 1</option>
+                <option value="nominee2_inactive">Nominee 2</option>
+                <option value="both_nominees_inactive">Both</option>
+              </select>
+            </div>
+
             <div className="detail-field">
               <label>Reason for Flagging</label>
               <p style={{fontSize: '0.875rem', color: '#6b7280', marginBottom: '8px'}}>
@@ -185,7 +202,7 @@ function FlagApplicationModal({ onClose, onFlag }) {
             <button 
               className="btn-primary"
               onClick={handleFlag}
-              disabled={isFlagging || !reason.trim()}
+              disabled={isFlagging || !reason.trim() || !flaggedCode}
               style={{backgroundColor: '#dc2626'}}
             >
               {isFlagging ? 'Flagging...' : 'Flag Application'}
@@ -318,8 +335,8 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
               <p className="context-text">{inquiry.message}</p>
             </div>
 
-            {/* Current Nominees (for Nominee and Health Report tabs) */}
-            {(activeTab === 'nominees' || activeTab === 'healthReports') && nominees && nominees.length > 0 && (
+            {/* Current Nominees (for Nominee tab only) */}
+            {activeTab === 'nominees' && nominees && nominees.length > 0 && (
               <div className="detail-field" style={{marginTop: '16px'}}>
                 <label>Current Nominees</label>
                 <div style={{background: '#f9fafb', padding: '12px', borderRadius: '8px', marginTop: '8px'}}>
@@ -407,7 +424,7 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
             <button className="btn-secondary" onClick={onClose}>
               <span>←</span> Back
             </button>
-            {(activeTab === 'nominees' || activeTab === 'healthReports') ? (
+            {activeTab === 'nominees' ? (
               <button 
                 className="btn-resolve"
                 onClick={onFlag}
@@ -477,6 +494,9 @@ export default function CustomerSupportView({
   const [showModal, setShowModal] = useState(false)
   const [showNomineeModal, setShowNomineeModal] = useState(false)
   const [showFlagModal, setShowFlagModal] = useState(false)
+  const [showPDFViewer, setShowPDFViewer] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [pdfFileName, setPdfFileName] = useState('')
   const [internalNote, setInternalNote] = useState('')
   const navigate = useNavigate()
 
@@ -534,8 +554,21 @@ export default function CustomerSupportView({
     setShowFlagModal(false)
   }
 
-  const handleFlagApplication = async (reason) => {
-    return await onFlagApplication(reason)
+  const handleFlagApplication = async (reason, flaggedCode) => {
+    return await onFlagApplication(reason, flaggedCode)
+  }
+
+  // Handle PDF viewer
+  const handleViewDocument = (fileUrl, fileName) => {
+    setPdfUrl(fileUrl)
+    setPdfFileName(fileName)
+    setShowPDFViewer(true)
+  }
+
+  const handleClosePDFViewer = () => {
+    setShowPDFViewer(false)
+    setPdfUrl('')
+    setPdfFileName('')
   }
 
   // Handle internal note auto-save
@@ -638,8 +671,8 @@ export default function CustomerSupportView({
         >
           <div className="item-header">
             <span className="item-name">{item.user?.full_name || 'Unknown User'}</span>
-            <span className="item-subject">{item.message || item.subject}</span>
-            <span className="item-date">{formatDate(item.created_at)}</span>
+            <span className="item-subject">{item.displayText || item.message || item.subject || item.report_title}</span>
+            <span className="item-date">{formatDate(item.created_at || item.report_date)}</span>
           </div>
         </div>
       )
@@ -777,24 +810,27 @@ export default function CustomerSupportView({
     }
 
     // Nominees and Health Reports detail panel (same structure as inquiries)
-    const tabLabel = activeTab === 'nominees' ? 'Nominee Inquiry' : 'Health Report Inquiry'
+    const tabLabel = activeTab === 'nominees' ? 'Nominee Inquiry' : 'Health Report'
     const replyPlaceholder = activeTab === 'nominees' 
       ? 'Type your response to answer the nominee inquiry...'
       : 'Type your response to answer the health report inquiry...'
+    
+    // Check if this is a flagged report (not an inquiry)
+    const isFlaggedReport = selectedItem.type === 'flagged_report'
 
     return (
       <div className="detail-content">
         <div className="detail-header">
-          <h3>{tabLabel}</h3>
+          <h3>{isFlaggedReport ? 'Flagged Health Report' : tabLabel}</h3>
           <div className="detail-meta">
-            <span>{selectedItem.user?.full_name || selectedItem.elder?.full_name || 'Unknown User'} • {formatDate(selectedItem.created_at)}</span>
+            <span>{selectedItem.user?.full_name || selectedItem.elder?.full_name || 'Unknown User'} • {formatDate(selectedItem.created_at || selectedItem.report_date)}</span>
           </div>
         </div>
 
         <div className="detail-section">
           <p className="detail-label">STATUS</p>
-          <div className={`status-badge ${getStatusColor(selectedItem.status)}`}>
-            {formatStatus(selectedItem.status)}
+          <div className={`status-badge ${getStatusColor(selectedItem.status || selectedItem.health_report_status)}`}>
+            {formatStatus(selectedItem.status || selectedItem.health_report_status)}
           </div>
         </div>
 
@@ -808,13 +844,73 @@ export default function CustomerSupportView({
           <p className="detail-value">{selectedItem.user?.phone || selectedItem.elder?.phone || 'N/A'}</p>
         </div>
 
-        <div className="detail-section">
-          <p className="detail-label">CONTENT</p>
-          <p className="detail-value">{selectedItem.message}</p>
-        </div>
+        {/* View Document Button - Only for flagged reports */}
+        {isFlaggedReport && selectedItem.report_file_url && (
+          <div className="detail-section">
+            <button
+              className="btn-primary"
+              onClick={() => handleViewDocument(selectedItem.report_file_url, selectedItem.report_title || 'Health Report')}
+              style={{
+                backgroundColor: '#3b82f6',
+                padding: '10px 20px',
+                borderRadius: '6px',
+                border: 'none',
+                color: 'white',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>📄</span>
+              View Document
+            </button>
+          </div>
+        )}
 
-        {/* Current Nominees Section */}
-        {selectedNominees && selectedNominees.length > 0 && (
+        {/* Report Details - Only for flagged reports */}
+        {isFlaggedReport && (
+          <>
+            <div className="detail-section">
+              <p className="detail-label">REPORT TITLE</p>
+              <p className="detail-value">{selectedItem.report_title || 'N/A'}</p>
+            </div>
+
+            <div className="detail-section">
+              <p className="detail-label">REPORT DATE</p>
+              <p className="detail-value">{selectedItem.report_date ? new Date(selectedItem.report_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : 'N/A'}</p>
+            </div>
+
+            <div className="detail-section">
+              <p className="detail-label">REPORT TYPE</p>
+              <p className="detail-value">{selectedItem.report_type || 'N/A'}</p>
+            </div>
+
+            <div className="detail-section">
+              <p className="detail-label">PROVIDER NAME</p>
+              <p className="detail-value">{selectedItem.provider_name || 'N/A'}</p>
+            </div>
+
+            {selectedItem.notes && (
+              <div className="detail-section">
+                <p className="detail-label">SUBMISSION NOTES</p>
+                <p className="detail-value">{selectedItem.notes}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Content - Only for inquiries */}
+        {!isFlaggedReport && (
+          <div className="detail-section">
+            <p className="detail-label">CONTENT</p>
+            <p className="detail-value">{selectedItem.message}</p>
+          </div>
+        )}
+
+        {/* Current Nominees Section (Nominees tab only) */}
+        {activeTab === 'nominees' && selectedNominees && selectedNominees.length > 0 && (
           <div className="detail-section">
             <p className="detail-label">CURRENT NOMINEES</p>
             <div style={{background: '#f9fafb', padding: '16px', borderRadius: '8px', marginTop: '8px'}}>
@@ -849,7 +945,7 @@ export default function CustomerSupportView({
           </div>
         )}
 
-        {selectedNominees && selectedNominees.length === 0 && (
+        {activeTab === 'nominees' && selectedNominees && selectedNominees.length === 0 && (
           <div className="detail-section">
             <p className="detail-label">CURRENT NOMINEES</p>
             <p className="detail-value" style={{color: '#9ca3af', fontStyle: 'italic'}}>
@@ -888,80 +984,96 @@ export default function CustomerSupportView({
           </div>
         )}
 
-        {/* 回复表单 */}
-        <div className="detail-section">
-          <p className="detail-label">REPLY TO ELDER</p>
-          <div className="reply-form">
-            <textarea
-              className="reply-textarea"
-              placeholder={replyPlaceholder}
-              value={replyMessage}
-              onChange={(e) => setReplyMessage(e.target.value)}
-              disabled={isSending}
-            />
-            <div className="reply-actions">
-              <div className="template-buttons">
-                <button 
-                  className="template-btn"
-                  onClick={() => insertTemplate('critical_deadline')}
-                  disabled={isSending}
-                >
-                  Critical deadline
-                </button>
-                <button 
-                  className="template-btn"
-                  onClick={() => insertTemplate('incorrect_document')}
-                  disabled={isSending}
-                >
-                  Incorrect document
-                </button>
-                <button 
-                  className="template-btn"
-                  onClick={() => insertTemplate('reminder_needed')}
-                  disabled={isSending}
-                >
-                  Reminder needed
-                </button>
-              </div>
-              <div className="action-buttons">
-                {activeTab === 'nominees' && (
+        {/* 回复表单 - Hide if resolved */}
+        {selectedItem.status === 'resolved' ? (
+          <div className="detail-section">
+            <div style={{
+              padding: '1rem',
+              background: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '6px',
+              textAlign: 'center'
+            }}>
+              <p style={{color: '#166534', margin: 0, fontWeight: 500}}>
+                ✓ This inquiry has been resolved and is now closed.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="detail-section">
+            <p className="detail-label">REPLY TO ELDER</p>
+            <div className="reply-form">
+              <textarea
+                className="reply-textarea"
+                placeholder={replyPlaceholder}
+                value={replyMessage}
+                onChange={(e) => setReplyMessage(e.target.value)}
+                disabled={isSending}
+              />
+              <div className="reply-actions">
+                <div className="template-buttons">
                   <button 
-                    className="btn-flag"
-                    onClick={handleOpenFlagModal}
-                    disabled={!selectedItem}
-                    style={{
-                      backgroundColor: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 20px',
-                      borderRadius: '6px',
-                      cursor: selectedItem ? 'pointer' : 'not-allowed',
-                      fontWeight: 500,
-                      marginRight: 'auto'
-                    }}
+                    className="template-btn"
+                    onClick={() => insertTemplate('critical_deadline')}
+                    disabled={isSending}
                   >
-                    Flag Application
+                    Critical deadline
                   </button>
-                )}
-                <button 
-                  className="btn-secondary"
-                  onClick={handleViewDetails}
-                  disabled={!selectedItem}
-                  style={{marginLeft: activeTab === 'nominees' ? '0' : 'auto'}}
-                >
-                  View details
-                </button>
-                <button 
-                  className="btn-primary"
-                  onClick={() => handleSendClick('reply')}
-                  disabled={isSending || !replyMessage.trim()}
-                >
-                  {isSending ? 'Sending...' : 'Send reply'}
-                </button>
+                  <button 
+                    className="template-btn"
+                    onClick={() => insertTemplate('incorrect_document')}
+                    disabled={isSending}
+                  >
+                    Incorrect document
+                  </button>
+                  <button 
+                    className="template-btn"
+                    onClick={() => insertTemplate('reminder_needed')}
+                    disabled={isSending}
+                  >
+                    Reminder needed
+                  </button>
+                </div>
+                <div className="action-buttons">
+                  {activeTab === 'nominees' && (
+                    <button 
+                      className="btn-flag"
+                      onClick={handleOpenFlagModal}
+                      disabled={!selectedItem}
+                      style={{
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: selectedItem ? 'pointer' : 'not-allowed',
+                        fontWeight: 500,
+                        marginRight: 'auto'
+                      }}
+                    >
+                      Flag Application
+                    </button>
+                  )}
+                  <button 
+                    className="btn-secondary"
+                    onClick={handleViewDetails}
+                    disabled={!selectedItem}
+                    style={{marginLeft: activeTab === 'nominees' ? '0' : 'auto'}}
+                  >
+                    View details
+                  </button>
+                  <button 
+                    className="btn-primary"
+                    onClick={() => handleSendClick('reply')}
+                    disabled={isSending || !replyMessage.trim()}
+                  >
+                    {isSending ? 'Sending...' : 'Send reply'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     )
   }
@@ -969,9 +1081,6 @@ export default function CustomerSupportView({
   return (
     <div className="customer-support-wrapper">
       <div className="customer-support-container">
-        {/* Support Header */}
-        <Header />
-
         {/* 主标题 */}
         <div className="page-title">
           <h1>Support Workspace</h1>
@@ -987,28 +1096,35 @@ export default function CustomerSupportView({
             onChange={(e) => onSearch(e.target.value)}
           />
           <div className="filter-group">
-            <label className="filter-label">Filter field:</label>
-            <select 
-              className="filter-select"
-              value={filterField}
-              onChange={(e) => onFilterFieldChange(e.target.value)}
-            >
-              <option value="status">Status</option>
-            </select>
+            <label className="filter-label">Status:</label>
+            <div style={{display: 'flex', gap: '0.5rem'}}>
+              <button
+                className={`filter-button ${filterValue === '' ? 'active' : ''}`}
+                onClick={() => onFilterValueChange('')}
+              >
+                All
+              </button>
+              <button
+                className={`filter-button ${filterValue === 'open' ? 'active' : ''}`}
+                onClick={() => onFilterValueChange('open')}
+              >
+                Open
+              </button>
+              <button
+                className={`filter-button ${filterValue === 'in_progress' ? 'active' : ''}`}
+                onClick={() => onFilterValueChange('in_progress')}
+              >
+                In Progress
+              </button>
+              <button
+                className={`filter-button ${filterValue === 'resolved' ? 'active' : ''}`}
+                onClick={() => onFilterValueChange('resolved')}
+              >
+                Resolved
+              </button>
+            </div>
 
-            <label className="filter-label">Value:</label>
-            <select 
-              className="filter-select" 
-              value={filterValue} 
-              onChange={(e) => onFilterValueChange(e.target.value)}
-            >
-              <option value="">Any</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-            </select>
-
-            <label className="filter-label">Sort:</label>
+            <label className="filter-label" style={{marginLeft: '1.5rem'}}>Sort:</label>
             <select 
               className="filter-select"
               value={sortBy}
@@ -1153,8 +1269,14 @@ export default function CustomerSupportView({
         />
       )}
 
-      {/* Footer */}
-      <Footer />
+      {/* PDF Viewer Modal */}
+      {showPDFViewer && pdfUrl && (
+        <PDFViewer
+          fileUrl={pdfUrl}
+          fileName={pdfFileName}
+          onClose={handleClosePDFViewer}
+        />
+      )}
     </div>
   )
 }

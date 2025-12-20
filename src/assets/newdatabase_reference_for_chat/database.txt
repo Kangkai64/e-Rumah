@@ -40,6 +40,7 @@ create table applications (
   flagged_reason text null,
   flagged_at timestamp with time zone null,
   flagged_by uuid null,
+  flagged_code public.flagged_code null,
   constraint applications_pkey primary key (id),
   constraint applications_flagged_by_fkey foreign KEY (flagged_by) references users (id),
   constraint applications_joint_user_id_fkey foreign KEY (joint_user_id) references users (id) on delete set null,

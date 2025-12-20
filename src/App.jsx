@@ -9,7 +9,6 @@ import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import CustomerSupportController from './controllers/CustomerSupportController.jsx'
-import CustomerSupportUpdateView from './views/CustomerSupportUpdateView.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -124,8 +123,15 @@ function App() {
           } />
 
           {/* Customer Support Routes */}
-          <Route path="/support/dashboard" element={<CustomerSupportController />} />
-          <Route path="/support/updateContact" element={<CustomerSupportUpdateView />} />
+          <Route path="/support/dashboard" element={
+            <ProtectedRoute requireRole="support">
+              <>
+                <Header />
+                <CustomerSupportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
         </Routes>
       </div>
     </AuthProvider>

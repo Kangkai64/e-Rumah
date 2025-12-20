@@ -85,6 +85,9 @@ export function AuthProvider({ children }) {
         const isComplete = appData ? 'complete' : 'incomplete'
         console.log('📊 Application status:', isComplete, '- App data:', appData)
         setApplicationStatus(isComplete)
+      } else {
+        // Non-user roles (admin, support) don't need application status
+        setApplicationStatus(null)
       }
 
       setUser(authUser)

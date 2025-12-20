@@ -4,32 +4,33 @@ import Inquiry from '../models/Inquiry'
 import Nominee from '../models/Nominee'
 import Application from '../models/Application'
 import SupportConversation from '../models/SupportConversation'
+import HealthReport from '../models/HealthReport'
 import CustomerSupportView from '../views/customerSupportView'
 import { supabase } from '../config/supabase'
 
 export default function CustomerSupportController() {
-  // 1. 状态管理
+  // 1. State Management
   const [activeTab, setActiveTab] = useState('inquiries') // inquiries | nominees | healthReports
   const [inquiries, setInquiries] = useState([])
   const [nominees, setNominees] = useState([])
   const [healthReports, setHealthReports] = useState([])
-  const [selectedItem, setSelectedItem] = useState(null) // 当前选中的项目
-  const [selectedNominees, setSelectedNominees] = useState([]) // 当前选中项目的nominees
-  const [conversations, setConversations] = useState([]) // 对话记录（所有tabs）
+  const [selectedItem, setSelectedItem] = useState(null) // Currently selected item
+  const [selectedNominees, setSelectedNominees] = useState([]) // Nominees of the currently selected item
+  const [conversations, setConversations] = useState([]) // Conversation records (all tabs)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterField, setFilterField] = useState('status') // 过滤字段: status | priority
-  const [filterValue, setFilterValue] = useState('') // 过滤值
-  const [sortBy, setSortBy] = useState('latest') // 排序方式
+  const [filterField, setFilterField] = useState('status') // Filter Field: status | priority
+  const [filterValue, setFilterValue] = useState('') // Filter Value
+  const [sortBy, setSortBy] = useState('latest') // Sort Method
 
-  // 联系设置状态
+  // Contact Settings State
   const [contactEmail, setContactEmail] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [contactLoading, setContactLoading] = useState(false)
   const [contactError, setContactError] = useState('')
   const [contactSuccess, setContactSuccess] = useState('')
 
-  // 3. 加载联系设置
+  // 3. Load Contact Settings
   useEffect(() => {
     fetchContactSettings()
   }, [])
@@ -54,9 +55,9 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 4. 保存联系设置
+  // 4. Save Contact Settings
   const handleSaveContactSettings = async () => {
-    // 验证
+    // Validate
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(contactEmail)) {
       setContactError('Please enter a valid email address')
@@ -117,7 +118,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 5. 获取数据
+  // 5. Get Data
   useEffect(() => {
     let mounted = true
     fetchData(mounted)
@@ -148,15 +149,53 @@ export default function CustomerSupportController() {
         console.log('Fetched nominees:', data) // Debug log
         if (success && mounted) setNominees(data || [])
       } else if (activeTab === 'healthReports') {
-        // Filter by subject = 'health_report'
+        // Fetch both health report inquiries AND flagged health reports
         const filters = { subject: 'health_report' }
         if (filterValue) {
           filters[filterField] = filterValue
         }
         
-        const { data, success } = await Inquiry.getAll(filters)
-        console.log('Fetched health reports:', data) // Debug log
-        if (success && mounted) setHealthReports(data || [])
+        // Fetch inquiries
+        const { data: inquiryData, success: inquirySuccess } = await Inquiry.getAll(filters)
+        
+        // Fetch flagged health reports
+        const { data: flaggedData, success: flaggedSuccess } = await HealthReport.getFlagged()
+        
+        // Merge both types
+        let combinedData = []
+        
+        if (inquirySuccess && inquiryData) {
+          // Add type field to inquiries
+          combinedData = inquiryData.map(item => ({
+            ...item,
+            type: 'inquiry',
+            // Use subject as the "inquiry" column text
+            displayText: item.subject || item.message
+          }))
+        }
+        
+        if (flaggedSuccess && flaggedData) {
+          // Add type field to flagged reports
+          const flaggedItems = flaggedData.map(item => ({
+            ...item,
+            type: 'flagged_report',
+            // Use report_title as the "inquiry" column text
+            displayText: item.report_title || 'Health Report',
+            // Map status to match inquiry status format for filtering
+            status: 'open' // Flagged reports are always "open" until resolved
+          }))
+          combinedData = [...combinedData, ...flaggedItems]
+        }
+        
+        // Sort by date (most recent first)
+        combinedData.sort((a, b) => {
+          const dateA = new Date(a.created_at || a.report_date)
+          const dateB = new Date(b.created_at || b.report_date)
+          return dateB - dateA
+        })
+        
+        console.log('Fetched health reports (combined):', combinedData) // Debug log
+        if (mounted) setHealthReports(combinedData)
       }
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -165,18 +204,18 @@ export default function CustomerSupportController() {
     }
   }, [activeTab, filterField, filterValue])
 
-  // 3. 切换标签
+  // 3. Switch Tab
   const handleTabChange = (tab) => {
     setActiveTab(tab)
-    setSelectedItem(null) // 清空选中项
-    setSelectedNominees([]) // 清空nominees
+    setSelectedItem(null) // Clear selected item
+    setSelectedNominees([]) // Clear selected nominees
     setConversations([])
     setSearchTerm('')
     setFilterField('status')
     setFilterValue('')
   }
 
-  // 4. 选择项目（显示详情）
+  // 4. Select Item (Show Details)
   const handleSelectItem = async (item) => {
     setSelectedItem(item)
     setConversations([]) // Clear previous conversations
@@ -192,7 +231,7 @@ export default function CustomerSupportController() {
       }
     }
     
-    // 加载对话记录 - 统一使用 SupportConversation
+    // Load conversations - unified use of SupportConversation
     let entityType = ''
     if (activeTab === 'inquiries') entityType = 'inquiry'
     else if (activeTab === 'nominees') entityType = 'nominee'
@@ -204,7 +243,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 5. 发送回复
+  // 5. Send Reply
   const getCurrentUserId = async () => {
     try {
       if (supabase?.auth?.getUser) {
@@ -226,7 +265,7 @@ export default function CustomerSupportController() {
     try {
       const currentUserId = await getCurrentUserId()
       
-      // 确定实体类型
+
       let entityType = ''
       if (activeTab === 'inquiries') entityType = 'inquiry'
       else if (activeTab === 'nominees') entityType = 'nominee'
@@ -243,11 +282,11 @@ export default function CustomerSupportController() {
       )
 
       if (success) {
-        // 刷新对话列表
+        // update conversations
         const { data: updatedConversations } = await SupportConversation.getByEntity(entityType, selectedItem.id)
         setConversations(updatedConversations || [])
         
-        // 更新询问状态为进行中
+        // update inquiry status to in_progress
         if (activeTab === 'inquiries') {
           setInquiries(prev => prev.map(inq => 
             inq.id === selectedItem.id 
@@ -265,7 +304,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 6. 搜索功能
+  // 6. Search Functionality
   const searchTimerRef = useRef(null)
   const handleSearch = (term) => {
     setSearchTerm(term)
@@ -296,7 +335,7 @@ export default function CustomerSupportController() {
     }, 350)
   }
 
-  // 7. 过滤功能
+  // 7. Filter Functionality
   const handleFilterFieldChange = (field) => {
     setFilterField(field)
     setFilterValue('') // Reset value when field changes
@@ -306,12 +345,12 @@ export default function CustomerSupportController() {
     setFilterValue(value)
   }
 
-  // 8. 排序功能
+  // 8. Sort Functionality
   const handleSortChange = (sort) => {
     setSortBy(sort)
   }
 
-  // 9. 更新状态（审核/解决）
+  // 9. Update Status (Review/Resolve)
   const handleUpdateStatus = async (id, status, internalNote = null) => {
     try {
       if (activeTab === 'inquiries') {
@@ -349,9 +388,9 @@ export default function CustomerSupportController() {
   }
 
   // 9.5 Flag application (for nominees/health reports)
-  const handleFlagApplication = async (reason) => {
-    if (!selectedItem?.user_id || !reason.trim()) {
-      return { success: false, error: 'Missing user ID or reason' }
+  const handleFlagApplication = async (reason, flaggedCode) => {
+    if (!selectedItem?.user_id || !reason.trim() || !flaggedCode) {
+      return { success: false, error: 'Missing user ID, reason, or flagged code' }
     }
 
     try {
@@ -359,6 +398,7 @@ export default function CustomerSupportController() {
       const result = await Application.flagByUserId(
         selectedItem.user_id,
         reason,
+        flaggedCode,
         currentUserId
       )
 
@@ -375,7 +415,7 @@ export default function CustomerSupportController() {
     }
   }
 
-  // 10. 获取当前列表数据（含排序）
+  // 10. Get Current List Data (with Sorting)
   const getCurrentData = () => {
     let data = []
     switch (activeTab) {
@@ -413,7 +453,7 @@ export default function CustomerSupportController() {
     return sorted
   }
 
-  // 11. 渲染 View
+  // 11. Render View
   return (
     <CustomerSupportView
       activeTab={activeTab}

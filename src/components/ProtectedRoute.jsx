@@ -39,9 +39,11 @@ export default function ProtectedRoute({ children, requireRole = null }) {
         ? <Navigate to="/application" replace />
         : <Navigate to="/user/dashboard" replace />
     }
+    // If no matching role redirect, deny access
+    return <Navigate to="/" replace />
   }
 
-  // For regular users with incomplete application
+  // For regular users with incomplete application (only check for 'user' role)
   if (userRole === 'user' && applicationStatus === 'incomplete') {
     // Only allow access to /application route and landing pages
     if (!location.pathname.startsWith('/application') && 
