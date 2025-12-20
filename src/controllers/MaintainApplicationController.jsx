@@ -214,9 +214,17 @@ function MaintainApplicationController() {
       })
     }
     
-    if (appData.updated_at && appData.status === 'approved') {
+    if (appData.reviewed_at) {
       events.push({
-        date: appData.updated_at,
+        date: appData.reviewed_at,
+        title: 'Application Reviewed',
+        status: 'completed'
+      })
+    }
+    
+    if (appData.approved_at) {
+      events.push({
+        date: appData.approved_at,
         title: 'Application Approved',
         status: 'completed'
       })
@@ -226,6 +234,24 @@ function MaintainApplicationController() {
       events.push({
         date: new Date().toISOString(),
         title: 'Payment Started',
+        status: 'completed'
+      })
+    }
+
+    // Add termination request event if exists
+    if (appData.termination_submitted_at) {
+      events.push({
+        date: appData.termination_submitted_at,
+        title: 'Termination Requested',
+        status: 'completed'
+      })
+    }
+
+    // Add termination approved event if exists
+    if (appData.termination_update_at && appData.status === 'terminated') {
+      events.push({
+        date: appData.termination_update_at,
+        title: 'Termination Approved',
         status: 'completed'
       })
     }
@@ -239,21 +265,21 @@ function MaintainApplicationController() {
   }
   
   // Handle terminate application
-  const handleTerminateApplication = async () => {
-    if (window.confirm('Are you sure you want to terminate this application?')) {
-      try {
-        const result = await Application.updateStatus(applicationId, 'terminated')
-        
-        if (result.success) {
-          setApplicationStatus('terminated')
-          setError(null)
-        } else {
-          setError('Failed to terminate application')
-        }
-      } catch (err) {
-        console.error('Error terminating application:', err)
-        setError('Failed to terminate application')
+  const handleTerminateApplication = async (terminationReason) => {
+    try {
+      const result = await Application.terminate(application.id, terminationReason)
+      
+      if (result.success) {
+        setApplicationStatus('underReviewed')
+        setError(null)
+        // Redirect to user applications page after successful submission
+        navigate('/user/application')
+      } else {
+        setError('Failed to submit termination request')
       }
+    } catch (err) {
+      console.error('Error submitting termination request:', err)
+      setError('Failed to submit termination request')
     }
   }
 

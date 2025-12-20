@@ -40,11 +40,30 @@ function MaintainApplicationView({
     nric: '',
     relationship: ''
   })
+  const [showTerminateModal, setShowTerminateModal] = useState(false)
+  const [terminationReason, setTerminationReason] = useState('')
+  const [terminatingApp, setTerminatingApp] = useState(false)
 
   const handleMissingDocClick = (doc) => {
     setSelectedMissingDoc(doc)
     setUploadError(null)
     setUploadProgress(0)
+  }
+
+  const handleTerminateClick = () => {
+    setShowTerminateModal(true)
+    setTerminationReason('')
+  }
+
+  const handleTerminateConfirm = async () => {
+    if (!terminationReason.trim()) {
+      alert('Please provide a reason for terminating the application.')
+      return
+    }
+    setTerminatingApp(true)
+    await onTerminateApplication(terminationReason)
+    setTerminatingApp(false)
+    setShowTerminateModal(false)
   }
 
   const handleFileUpload = async (event) => {
@@ -235,6 +254,18 @@ function MaintainApplicationView({
             {applicationStatus?.toUpperCase()}
           </div>
         </div>
+
+        {/* Termination Status Message */}
+        {applicationStatus === 'underReviewed' && application?.termination_submitted_at && (
+          <div className="termination-status-banner">
+            <div className="termination-icon">⏳</div>
+            <div className="termination-message">
+              <h3>Application Termination Under Review</h3>
+              <p>Your request to terminate this application is currently being reviewed by our admin team. You will be notified once a decision has been made.</p>
+              <p className="termination-date">Submitted on: {new Date(application.termination_submitted_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          </div>
+        )}
 
         <div className="maintain-application-content">
           {/* Left Column - Application Information */}
@@ -473,7 +504,14 @@ function MaintainApplicationView({
                 </div>
               ) : documents.length > 0 ? (
                 <div className="documents-gallery">
-                  {documents.map((doc, index) => (
+                  {documents.map((doc, index) => {
+                    // Filter out Marriage Certificate if user is single
+                    const maritalStatus = application?.submitted_form_data?.maritalStatus
+                    if (doc.displayName === 'Marriage Certificate' && maritalStatus === 'Single') {
+                      return null
+                    }
+                    
+                    return (
                     <div key={index} className={`document-item ${doc.status === 'MISSING' ? 'document-missing' : ''}`}>
                       {doc.status === 'MISSING' ? (
                         // Missing Document Display with Upload Button
@@ -534,7 +572,8 @@ function MaintainApplicationView({
                         </p>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="documents-empty">
@@ -547,7 +586,7 @@ function MaintainApplicationView({
           {/* Right Column - Approved Amount & Actions */}
           <div className="maintain-application-right">
             {/* Approved Amount Section */}
-            {applicationStatus === 'approved' && (
+            {(applicationStatus === 'approved' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
               <>
                 <section className="maintain-application-section approved-section">
                   <h2>APPROVED AMOUNT</h2>
@@ -593,8 +632,10 @@ function MaintainApplicationView({
                       </div>
                     )}
                     <button
-                      onClick={onTerminateApplication}
+                      onClick={handleTerminateClick}
                       className="btn-outline-danger"
+                      disabled={application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined}
+                      title={application?.termination_submitted_at ? 'Termination request already submitted' : 'Request to terminate this application'}
                     >
                       ✕ Terminate Application
                     </button>
@@ -680,6 +721,40 @@ function MaintainApplicationView({
           <div className="info-message">
             <span className="info-icon">ℹ️</span>
             <span>File will be uploaded to your application documents</span>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Terminate Application Modal */}
+    {showTerminateModal && (
+      <div className="modal-overlay">
+        <div className="modal terminate-modal">
+          <h3>Request Application Termination</h3>
+          <p>Please provide a reason for terminating your application. Your request will be reviewed by our admin team:</p>
+          <textarea
+            className="terminate-reason-input"
+            placeholder="Enter reason for termination (required)"
+            value={terminationReason}
+            onChange={(e) => setTerminationReason(e.target.value)}
+            rows={5}
+            required
+          />
+          <div className="modal-actions">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowTerminateModal(false)}
+              disabled={terminatingApp}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleTerminateConfirm}
+              disabled={terminatingApp}
+            >
+              {terminatingApp ? 'Submitting...' : 'Submit Request'}
+            </button>
           </div>
         </div>
       </div>
