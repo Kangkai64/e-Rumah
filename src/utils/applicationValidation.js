@@ -49,11 +49,11 @@ export const validateIC = (ic) => {
   return null
 }
 
-// Phone number validation: 10-11 digits
+// Phone number validation: xxx-xxxxxxx format (10-11 digits with dash after first 3)
 export const validatePhone = (phone) => {
   if (!phone) return null // Individual phone fields are optional
-  const phonePattern = /^\d{10,11}$/
-  if (!phonePattern.test(phone.replace(/[\s-]/g, ''))) return 'Phone must be 10-11 digits'
+  const phonePattern = /^\d{3}-\d{7,8}$/
+  if (!phonePattern.test(phone)) return 'Phone must be in format xxx-xxxxxxx (10-11 digits)'
   return null
 }
 

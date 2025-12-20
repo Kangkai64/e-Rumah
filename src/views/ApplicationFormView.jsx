@@ -452,8 +452,9 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
             name="residencePhone" 
             value={formData.residencePhone} 
             onChange={handleChange} 
-            className={errors.residencePhone || errors.phone ? 'error' : ''}
-            placeholder="10-11 digits"
+            className={errors.residencePhone ? 'error' : ''}
+            placeholder="xxx-xxxxxxx"
+            required
           />
           <ErrorMessage error={errors.residencePhone} />
         </div>
@@ -464,8 +465,9 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
             name="telephone" 
             value={formData.telephone} 
             onChange={handleChange} 
-            className={errors.telephone || errors.phone ? 'error' : ''}
-            placeholder="10-11 digits"
+            className={errors.telephone ? 'error' : ''}
+            placeholder="xxx-xxxxxxx"
+            required
           />
           <ErrorMessage error={errors.telephone} />
         </div>
@@ -899,7 +901,9 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
                 name="jResidencePhone" 
                 value={formData.jResidencePhone} 
                 onChange={handleChange} 
-                placeholder="10-11 digits"
+                className={errors.jResidencePhone ? 'error' : ''}
+                placeholder="xxx-xxxxxxx"
+                required
               />
             </div>
             <div className="form-group">
@@ -909,7 +913,9 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
                 name="jTelephone" 
                 value={formData.jTelephone} 
                 onChange={handleChange} 
-                placeholder="10-11 digits"
+                className={errors.jTelephone ? 'error' : ''}
+                placeholder="xxx-xxxxxxx"
+                required
               />
             </div>
           </div>
@@ -1622,7 +1628,9 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
               name="nominee1ResidencePhone" 
               value={formData.nominee1ResidencePhone} 
               onChange={handleChange} 
-              placeholder="10-11 digits"
+              className={errors.nominee1ResidencePhone ? 'error' : ''}
+              placeholder="xxx-xxxxxxx"
+              required
             />
           </div>
           <div className="form-group">
@@ -1633,7 +1641,7 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
               value={formData.nominee1Telephone} 
               onChange={handleChange} 
               className={errors.nominee1Telephone ? 'error' : ''}
-              placeholder="10-11 digits"
+              placeholder="xxx-xxxxxxx"
               required 
             />
             <ErrorMessage error={errors.nominee1Telephone} />
@@ -1846,7 +1854,9 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
                 name="nominee2ResidencePhone" 
                 value={formData.nominee2ResidencePhone} 
                 onChange={handleChange} 
-                placeholder="10-11 digits"
+                className={errors.nominee2ResidencePhone ? 'error' : ''}
+                placeholder="xxx-xxxxxxx"
+                required
               />
             </div>
             <div className="form-group">
@@ -1857,7 +1867,7 @@ function Step4Nominees({ formData, handleChange, errors = {} }) {
                 value={formData.nominee2Telephone} 
                 onChange={handleChange} 
                 className={errors.nominee2Telephone ? 'error' : ''}
-                placeholder="10-11 digits"
+                placeholder="xxx-xxxxxxx"
                 required 
               />
               <ErrorMessage error={errors.nominee2Telephone} />
