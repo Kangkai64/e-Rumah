@@ -309,6 +309,7 @@ const EligibilityCheck = () => {
           <div className="eligibility-hero-content">
             <h1 className="hero-title">Eligibility Criteria</h1>
             <p className="hero-subtitle">
+              Complete the form below to Register your account! <br/><br/>
               If you have already done eligibility criteria check, please proceed to Login.
             </p>
             <Link to="/login" className="hero-login-btn">LOGIN</Link>

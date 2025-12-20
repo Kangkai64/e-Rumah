@@ -1,134 +1,469 @@
-/* StepByStep page styling - matches Figma layout */
-.step-by-step-wrapper {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
+/* StepByStep Component - Reverse Mortgage Scheme Information Page */
 
-.step-hero {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 1.5rem;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.hero-content {
-  background: white;
-  padding: 1.5rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-}
-
-.hero-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.75rem;
-  color: #111827;
-}
-
-.hero-subtitle {
-  margin: 0 0 1rem 0;
-  color: #6b7280;
-}
-
-.hero-cta {
-  display: inline-block;
-  background: #A8202D;
-  color: #fff;
-  padding: 0.6rem 1rem;
-  border-radius: 20px;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.hero-image img {
-  width: 100%;
-  border-radius: 8px;
-  display: block;
-  border: 1px solid #e5e7eb;
-}
-
-.steps-list {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.step-card {
-  display: flex;
-  gap: 1rem;
-  background: white;
-  border: 1px solid #e5e7eb;
-  padding: 1rem;
-  border-radius: 8px;
-  align-items: center;
-}
-
-.step-icon img {
-  width: 56px;
-  height: 56px;
-}
-
-.step-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.05rem;
-}
-
-.step-desc {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-.additional-resources {
-  margin-top: 1rem;
-}
-
-.resources-grid {
+.sbs-hero-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  margin-bottom: 4rem;
+  padding: 2rem 0;
+}
+
+.sbs-hero-content {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
 }
 
-.resource-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  padding: 0.75rem;
-  display: flex;
-  gap: 0.75rem;
-  border-radius: 8px;
-  align-items: center;
+.sbs-hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #A8202D;
+  margin: 0;
 }
 
-.resource-card img {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 6px;
+.sbs-hero-desc {
+  font-size: 1rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
 }
 
-.resource-meta h4 {
-  margin: 0 0 0.25rem 0;
+.sbs-scroll-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #A8202D;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sbs-hero-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+/* About Section */
+.sbs-about-section {
+  margin-bottom: 4rem;
+}
+
+.sbs-about-section h2,
+.sbs-what-section h2,
+.sbs-how-section h2,
+.sbs-peace-section h2,
+.sbs-apply-section h2,
+.sbs-more-info-section h2,
+.sbs-faq-section h2,
+.sbs-contact-section h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #A8202D;
+  margin: 0 0 0.5rem 0;
+}
+
+.sbs-section-subtitle {
+  text-align: center;
+  color: #6b7280;
+  margin: 0 0 2rem 0;
   font-size: 0.95rem;
 }
 
-.resource-link {
-  color: #A8202D;
-  font-weight: 600;
-  text-decoration: none;
+.sbs-about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
 }
 
-@media (max-width: 900px) {
-  .step-hero {
+.sbs-about-card {
+  background: #f9fafb;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.sbs-card-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.sbs-about-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.sbs-about-card p {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* What is Section */
+.sbs-what-section {
+  margin-bottom: 4rem;
+  background: #f9fafb;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+}
+
+.sbs-section-desc {
+  text-align: center;
+  color: #6b7280;
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+}
+
+.sbs-benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sbs-benefits-list li {
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* How Does It Work Section */
+.sbs-how-section {
+  margin-bottom: 4rem;
+}
+
+.sbs-eligibility-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+}
+
+.sbs-eligibility-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.sbs-eligibility-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #A8202D;
+  margin: 0 0 1rem 0;
+}
+
+.sbs-eligibility-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sbs-eligibility-card li {
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Peace of Mind Section */
+.sbs-peace-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  margin-bottom: 4rem;
+  padding: 2rem 0;
+}
+
+.sbs-peace-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.sbs-peace-content h2 {
+  text-align: left;
+  color: #A8202D;
+}
+
+.sbs-peace-content p {
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 1rem 0;
+}
+
+/* How To Apply Section */
+.sbs-apply-section {
+  margin-bottom: 4rem;
+}
+
+.sbs-apply-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.sbs-apply-step {
+  display: flex;
+  gap: 1.5rem;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.sbs-step-icon {
+  font-size: 2rem;
+  min-width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sbs-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.sbs-step-text {
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.sbs-branches-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.sbs-branch-item {
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: block;
+}
+
+.sbs-view-more-btn-container {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.sbs-view-more-btn {
+  background: #A8202D;
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.sbs-view-more-btn:hover {
+  background: #8a1824;
+}
+
+/* More Information Section */
+.sbs-more-info-section {
+  margin-bottom: 4rem;
+}
+
+.sbs-info-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.sbs-info-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: #A8202D;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.sbs-info-card:hover {
+  background: #f9fafb;
+  border-color: #A8202D;
+}
+
+/* FAQ Section */
+.sbs-faq-section {
+  margin-bottom: 4rem;
+}
+
+.sbs-faq-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.sbs-faq-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sbs-faq-item:hover {
+  border-color: #A8202D;
+  background: #fafbfc;
+}
+
+.sbs-faq-question {
+  color: #111827;
+  margin: 0;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.sbs-faq-toggle {
+  color: #A8202D;
+  font-size: 1.2rem;
+  margin-left: 1rem;
+}
+
+/* Contact Section */
+.sbs-contact-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  background: #f9fafb;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 4rem;
+}
+
+.sbs-contact-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sbs-contact-content h2 {
+  text-align: left;
+  color: #A8202D;
+}
+
+.sbs-contact-content p {
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.sbs-contact-btn {
+  align-self: flex-start;
+  background: #A8202D;
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.sbs-contact-btn:hover {
+  background: #8a1824;
+}
+
+.sbs-contact-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .sbs-hero-section,
+  .sbs-peace-section,
+  .sbs-contact-section {
     grid-template-columns: 1fr;
   }
 
-  .steps-list {
+  .sbs-about-grid,
+  .sbs-eligibility-grid,
+  .sbs-info-cards {
     grid-template-columns: 1fr;
   }
 
-  .resources-grid {
+  .sbs-branches-list {
     grid-template-columns: 1fr;
+  }
+
+  .sbs-peace-content h2,
+  .sbs-contact-content h2 {
+    text-align: center;
+  }
+
+  .sbs-peace-section,
+  .sbs-contact-section {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .sbs-hero-title {
+    font-size: 2rem;
+  }
+
+  .sbs-apply-step {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sbs-step-icon {
+    align-self: flex-start;
+  }
+
+  .sbs-branches-list {
+    grid-template-columns: 1fr;
+  }
+
+  .sbs-faq-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sbs-faq-toggle {
+    margin-left: 0;
+    margin-top: 1rem;
   }
 }

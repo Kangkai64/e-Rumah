@@ -4,9 +4,11 @@
 // NO business logic - only UI rendering
 // NO imports from other views allowed!
 
+import { useState } from 'react'
 import '../components/application/maintainApplication.css'
 import Button from '../components/common/Button'
 import Container from '../components/common/Container'
+import { supabase } from '../config/supabase'
 
 function MaintainApplicationView({
   isLoading,
@@ -14,10 +16,137 @@ function MaintainApplicationView({
   application,
   applicationStatus,
   approvedAmount,
+  flaggedCode,
+  flaggedReason,
   timeline,
+  documents = [],
+  documentsLoading = false,
+  documentsError = null,
+  userId = null,
+  onDocumentUploaded = null,
+  downloadingPDF = false,
+  pdfError = null,
+  onDownloadPDF = null,
   onEditApplication,
   onTerminateApplication
 }) {
+  const [selectedMissingDoc, setSelectedMissingDoc] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [editingNominee, setEditingNominee] = useState(null)
+  const [nomineeForm, setNomineeForm] = useState({
+    name: '',
+    nric: '',
+    relationship: ''
+  })
+
+  const handleMissingDocClick = (doc) => {
+    setSelectedMissingDoc(doc)
+    setUploadError(null)
+    setUploadProgress(0)
+  }
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file || !selectedMissingDoc) return
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    if (file.size > maxSize) {
+      setUploadError('File size must be less than 10MB')
+      return
+    }
+
+    setUploading(true)
+    setUploadError(null)
+    setUploadProgress(0)
+
+    try {
+      // Generate file name with prefix and timestamp ID (to match original upload naming)
+      const randomId = Date.now() + Math.floor(Math.random() * 1000)
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `${selectedMissingDoc.prefix}${randomId}.${fileExtension}`
+      const filePath = `${userId}/${fileName}`
+      console.log(`Uploading: ${fileName}`)
+
+      // Upload file to Supabase storage
+      const { data, error: uploadFileError } = await supabase
+        .storage
+        .from('application-documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadFileError) throw uploadFileError
+
+      console.log('Upload successful:', data)
+
+      // Get signed URL for the uploaded file
+      const { data: signedUrlData, error: signedError } = await supabase
+        .storage
+        .from('application-documents')
+        .createSignedUrl(filePath, 3600)
+
+      if (signedError) throw signedError
+
+      // Success - close modal and refresh
+      setSelectedMissingDoc(null)
+      setUploading(false)
+      
+      if (onDocumentUploaded) {
+        onDocumentUploaded()
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+      setUploadError(err.message || 'Failed to upload file')
+      setUploading(false)
+    }
+  }
+
+  const handleUploadClose = () => {
+    if (!uploading) {
+      setSelectedMissingDoc(null)
+      setUploadError(null)
+    }
+  }
+
+  // Handle nominee edit
+  const handleEditNominee = (nomineeIndex) => {
+    const nominee = nominees[nomineeIndex]
+    setEditingNominee(nomineeIndex)
+    setNomineeForm({
+      name: nominee.name || '',
+      nric: nominee.nric || '',
+      relationship: nominee.relationship || ''
+    })
+  }
+
+  // Handle navigate to edit nominees in form
+  const handleUpdateNomineeInForm = () => {
+    // Navigate to application form with editNomineeOnly mode
+    const url = `/application/edit-nominees/${application?.id}`
+    window.location.href = url
+  }
+
+  // Handle nominee save
+  const handleSaveNominee = async () => {
+    // TODO: Save nominee changes to database
+    // For now, just close the edit mode
+    console.log('Saving nominee:', nomineeForm)
+    setEditingNominee(null)
+  }
+
+  // Handle nominee cancel edit
+  const handleCancelEditNominee = () => {
+    setEditingNominee(null)
+    setNomineeForm({
+      name: '',
+      nric: '',
+      relationship: ''
+    })
+  }
   if (isLoading) {
     return (
       <Container>
@@ -96,7 +225,8 @@ function MaintainApplicationView({
   const propertyOwnershipDuration = calculateOwnershipDuration(formData.purchaseYear)
 
   return (
-    <Container>
+    <>
+      <Container>
       <div className="maintain-application-wrapper">
         {/* Header Section */}
         <div className="maintain-application-header">
@@ -206,25 +336,107 @@ function MaintainApplicationView({
               <section className="maintain-application-section">
                 <h3>Nominees</h3>
                 <div className="nominees-grid">
-                  {nominees.map((nominee, index) => (
-                    <div key={index} className="nominee-item">
-                      <div className="nominee-header">NOMINEE {index + 1}</div>
-                      <div className="nominee-content">
-                        <div className="nominee-row">
-                          <span className="label">NAME:</span>
-                          <span className="value">{nominee.name || '-'}</span>
-                        </div>
-                        <div className="nominee-row">
-                          <span className="label">NRIC:</span>
-                          <span className="value">{nominee.nric || '-'}</span>
-                        </div>
-                        <div className="nominee-row">
-                          <span className="label">RELATIONSHIP:</span>
-                          <span className="value">{nominee.relationship || '-'}</span>
-                        </div>
+                  {nominees.map((nominee, index) => {
+                    // Determine if this nominee is inactive
+                    const isNominee1 = index === 0
+                    const isNominee2 = index === 1
+                    const isInactive = 
+                      (isNominee1 && (flaggedCode === 'nominee1_inactive' || flaggedCode === 'both_nominees_inactive')) ||
+                      (isNominee2 && (flaggedCode === 'nominee2_inactive' || flaggedCode === 'both_nominees_inactive'))
+                    
+                    // Check if currently editing this nominee
+                    const isEditing = editingNominee === index
+
+                    return (
+                      <div 
+                        key={index} 
+                        className={`nominee-item ${isInactive ? 'nominee-inactive' : ''}`}
+                      >
+                        {isInactive && (
+                          <div className="nominee-inactive-badge">INACTIVE - REQUIRES ACTION</div>
+                        )}
+                        {isInactive && flaggedReason && (
+                          <div className="nominee-flagged-reason">
+                            <strong>Reason:</strong> {flaggedReason}
+                          </div>
+                        )}
+                        <div className="nominee-header">NOMINEE {index + 1}</div>
+                        
+                        {isEditing ? (
+                          // Edit form
+                          <div className="nominee-edit-form">
+                            <div className="form-group">
+                              <label>Name</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.name}
+                                onChange={(e) => setNomineeForm({...nomineeForm, name: e.target.value})}
+                                placeholder="Enter nominee name"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>NRIC</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.nric}
+                                onChange={(e) => setNomineeForm({...nomineeForm, nric: e.target.value})}
+                                placeholder="Enter NRIC number"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Relationship</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.relationship}
+                                onChange={(e) => setNomineeForm({...nomineeForm, relationship: e.target.value})}
+                                placeholder="Enter relationship"
+                              />
+                            </div>
+                            <div className="form-actions">
+                              <button 
+                                className="btn btn-primary"
+                                onClick={handleSaveNominee}
+                              >
+                                Save
+                              </button>
+                              <button 
+                                className="btn btn-secondary"
+                                onClick={handleCancelEditNominee}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // Display form
+                          <div className="nominee-content">
+                            <div className="nominee-row">
+                              <span className="label">NAME:</span>
+                              <span className="value">{nominee.name || '-'}</span>
+                            </div>
+                            <div className="nominee-row">
+                              <span className="label">NRIC:</span>
+                              <span className="value">{nominee.nric || '-'}</span>
+                            </div>
+                            <div className="nominee-row">
+                              <span className="label">RELATIONSHIP:</span>
+                              <span className="value">{nominee.relationship || '-'}</span>
+                            </div>
+                            {isInactive && (
+                              <div className="nominee-actions">
+                                <button 
+                                  className="btn btn-nominate-new"
+                                  onClick={handleUpdateNomineeInForm}
+                                >
+                                  Nominate New Nominee
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             )}
@@ -246,6 +458,90 @@ function MaintainApplicationView({
                 </div>
               </section>
             )}
+
+            {/* Application Documents Section */}
+            <section className="maintain-application-section documents-section">
+              <h3>Application Documents</h3>
+              {documentsError && (
+                <div className="documents-error">
+                  <p>{documentsError}</p>
+                </div>
+              )}
+              {documentsLoading ? (
+                <div className="documents-loading">
+                  <p>Loading documents...</p>
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="documents-gallery">
+                  {documents.map((doc, index) => (
+                    <div key={index} className={`document-item ${doc.status === 'MISSING' ? 'document-missing' : ''}`}>
+                      {doc.status === 'MISSING' ? (
+                        // Missing Document Display with Upload Button
+                        <div 
+                          className="document-missing-content"
+                          onClick={() => handleMissingDocClick(doc)}
+                        >
+                          <div className="missing-icon">❌</div>
+                          <div className="missing-text">MISSING</div>
+                          <button className="upload-btn">
+                            📤 Upload
+                          </button>
+                        </div>
+                      ) : doc.isImage ? (
+                        // Image Document Display
+                        <div className="document-image-wrapper">
+                          <img 
+                            src={doc.url} 
+                            alt={doc.fileName}
+                            className="document-image"
+                            title={doc.fileName}
+                          />
+                          <div className="document-overlay">
+                            <a 
+                              href={doc.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="document-link"
+                            >
+                              View Full Size
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        // File Document Display
+                        <div className="document-file">
+                          <div className="file-icon">📄</div>
+                          <a 
+                            href={doc.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="file-link"
+                          >
+                            {doc.fileName}
+                          </a>
+                        </div>
+                      )}
+                      <div className="document-info">
+                        <p className="file-name">{doc.displayName}</p>
+                        {doc.status !== 'MISSING' && (
+                          <>
+                            <p className="file-size">{(doc.size / 1024).toFixed(2)} KB</p>
+                            <p className="file-date">{formatDate(doc.createdAt)}</p>
+                          </>
+                        )}
+                        <p className={`document-status ${doc.status.toLowerCase()}`}>
+                          {doc.status}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="documents-empty">
+                  <p>No documents found</p>
+                </div>
+              )}
+            </section>
           </div>
 
           {/* Right Column - Approved Amount & Actions */}
@@ -277,11 +573,25 @@ function MaintainApplicationView({
                   <h3 className="actions-title">Actions</h3>
                   <div className="actions-section">
                     <button
-                      onClick={onEditApplication}
+                      onClick={onDownloadPDF}
+                      disabled={downloadingPDF}
                       className="btn-download-pdf"
+                      title="Download application PDF"
                     >
-                      ↓ Download PDF
+                      {downloadingPDF ? (
+                        <>
+                          <span className="spinner-small"></span> Downloading...
+                        </>
+                      ) : (
+                        <>↓ Download PDF</>
+                      )}
                     </button>
+                    {pdfError && (
+                      <div className="pdf-error-message">
+                        <span className="error-icon">❌</span>
+                        {pdfError}
+                      </div>
+                    )}
                     <button
                       onClick={onTerminateApplication}
                       className="btn-outline-danger"
@@ -303,6 +613,78 @@ function MaintainApplicationView({
         </div>
       </div>
     </Container>
+
+    {/* Upload Modal for Missing Documents - Inline */}
+    {selectedMissingDoc && userId && (
+      <div className="missing-document-overlay">
+        <div className="missing-document-box">
+          {/* Close Button */}
+          <button 
+            className="close-button"
+            onClick={handleUploadClose}
+            disabled={uploading}
+          >
+            ✕
+          </button>
+
+          {/* Header */}
+          <div className="upload-header">
+            <div className="icon-warning">⚠️</div>
+            <h3>Upload Missing Document</h3>
+          </div>
+
+          {/* Document Name */}
+          <div className="document-name-section">
+            <p className="label">Document Required:</p>
+            <p className="name">{selectedMissingDoc.displayName}</p>
+          </div>
+
+          {/* Upload Area */}
+          <div className="upload-area-overlay">
+            <input
+              type="file"
+              id={`upload-missing-${selectedMissingDoc.displayName.replace(/\s+/g, '-')}`}
+              className="file-input-hidden"
+              onChange={handleFileUpload}
+              disabled={uploading}
+              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+            />
+            <label 
+              htmlFor={`upload-missing-${selectedMissingDoc.displayName.replace(/\s+/g, '-')}`}
+              className={`upload-button-overlay ${uploading ? 'uploading' : ''}`}
+            >
+              {uploading ? (
+                <>
+                  <span className="spinner"></span>
+                  <span>Uploading... {uploadProgress}%</span>
+                </>
+              ) : (
+                <>
+                  <span className="upload-icon">📤</span>
+                  <span>Click to Upload or Drag File</span>
+                </>
+              )}
+            </label>
+            <p className="upload-hint">PDF, JPG, PNG, GIF, WebP (Max 10MB)</p>
+          </div>
+
+          {/* Error Message */}
+          {uploadError && (
+            <div className="error-alert">
+              <span className="error-icon">❌</span>
+              <span className="error-text">{uploadError}</span>
+            </div>
+          )}
+
+          {/* Info Message */}
+          <div className="info-message">
+            <span className="info-icon">ℹ️</span>
+            <span>File will be uploaded to your application documents</span>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   )
 }
 

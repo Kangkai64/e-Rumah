@@ -1,6 +1,6 @@
 - view layer -
 ApplicationFormView ✅
-ManageApplicationView
+MaintainApplicationView
 HealthMonitoringView
 CustomerSupportView
 AnswerInquiryView
@@ -15,10 +15,10 @@ AdminReportView
 LoanController
 ApplicationController ✅
 AdminController
-UserDashboardController
+UserProfileController
 HealthReportController
 CustomerSupportController
-ManageApplicationController
+MaintainApplicationController
 AdminReportController
 PropertyCalculatorController ✅
 

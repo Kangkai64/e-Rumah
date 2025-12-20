@@ -19,7 +19,14 @@ function MaintainApplicationController() {
   const [application, setApplication] = useState(null)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [approvedAmount, setApprovedAmount] = useState(null)
+  const [flaggedCode, setFlaggedCode] = useState(null)
+  const [flaggedReason, setFlaggedReason] = useState(null)
   const [timeline, setTimeline] = useState([])
+  const [documents, setDocuments] = useState([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [documentsError, setDocumentsError] = useState(null)
+  const [downloadingPDF, setDownloadingPDF] = useState(false)
+  const [pdfError, setPdfError] = useState(null)
   
   // Fetch current user
   useEffect(() => {
@@ -68,6 +75,8 @@ function MaintainApplicationController() {
         
         setApplication(enrichedApplication)
         setApplicationStatus(appData.status)
+        setFlaggedCode(appData.flagged_code)
+        setFlaggedReason(appData.flagged_reason)
         
         // Extract approved amount from form_data
         if (applicationData?.form_data?.approvedAmount) {
@@ -164,6 +173,34 @@ function MaintainApplicationController() {
     
     fetchApplicationData()
   }, [currentUser])
+
+  // Fetch documents for the application
+  useEffect(() => {
+    if (!currentUser || !application) return
+
+    const fetchDocuments = async () => {
+      setDocumentsLoading(true)
+      setDocumentsError(null)
+      try {
+        // Use the required documents method to get all 17 documents
+        const result = await Application.getRequiredDocuments(currentUser.id)
+
+        if (result.success) {
+          console.log('Required documents loaded:', result.data)
+          setDocuments(result.data)
+        } else {
+          setDocumentsError('Failed to load documents')
+        }
+      } catch (err) {
+        console.error('Error fetching documents:', err)
+        setDocumentsError('Error loading documents')
+      } finally {
+        setDocumentsLoading(false)
+      }
+    }
+
+    fetchDocuments()
+  }, [currentUser, application])
   
   // Build timeline from application data
   const buildTimeline = (appData) => {
@@ -219,6 +256,52 @@ function MaintainApplicationController() {
       }
     }
   }
+
+  // Handle download PDF
+  const handleDownloadPDF = async () => {
+    if (!application?.id) {
+      setPdfError('Application ID not found')
+      return
+    }
+    
+    if (!currentUser?.id) {
+      setPdfError('User ID not found')
+      return
+    }
+
+    setDownloadingPDF(true)
+    setPdfError(null)
+
+    try {
+      console.log('Starting PDF download for application:', application.id, 'user:', currentUser.id)
+      const result = await Application.downloadApplicationPDFDirect(application.id, currentUser.id)
+      
+      if (!result.success) {
+        setPdfError(result.error || 'Failed to download PDF')
+      }
+    } catch (err) {
+      console.error('Error downloading PDF:', err)
+      setPdfError(err.message || 'Failed to download PDF')
+    } finally {
+      setDownloadingPDF(false)
+    }
+  }
+  
+  // Handle document upload success - refresh documents
+  const handleDocumentUploaded = async () => {
+    console.log('Document uploaded, refreshing...')
+    if (!currentUser) return
+    
+    try {
+      // Refetch documents after upload
+      const result = await Application.getRequiredDocuments(currentUser.id)
+      if (result.success) {
+        setDocuments(result.data)
+      }
+    } catch (err) {
+      console.error('Error refreshing documents:', err)
+    }
+  }
   
   return (
     <MaintainApplicationView
@@ -227,7 +310,17 @@ function MaintainApplicationController() {
       application={application}
       applicationStatus={applicationStatus}
       approvedAmount={approvedAmount}
+      flaggedCode={flaggedCode}
+      flaggedReason={flaggedReason}
       timeline={timeline}
+      documents={documents}
+      documentsLoading={documentsLoading}
+      documentsError={documentsError}
+      userId={currentUser?.id}
+      onDocumentUploaded={handleDocumentUploaded}
+      downloadingPDF={downloadingPDF}
+      pdfError={pdfError}
+      onDownloadPDF={handleDownloadPDF}
       onEditApplication={handleEditApplication}
       onTerminateApplication={handleTerminateApplication}
     />

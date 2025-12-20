@@ -469,6 +469,16 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/application/edit-nominees/:applicationId" element={
+            <ProtectedRoute requireRole="user">
+              <>
+                <Header />
+                <ApplicationController editNomineeOnly={true} />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           {/* User Dashboard Routes */}
           <Route path="/user/dashboard" element={
             <ProtectedRoute requireRole="user">

@@ -4,7 +4,7 @@
 // NO imports from other controllers allowed!
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
 import { validateStep } from '../utils/applicationValidation'
@@ -20,15 +20,17 @@ import {
 import { uploadDocument, deleteDocument } from '../services/fileUploadService'
 import { supabase } from '../config/supabase'
 
-function ApplicationController() {
+function ApplicationController({ editNomineeOnly = false }) {
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(1)
+  const { applicationId: urlApplicationId } = useParams()
+  const [currentStep, setCurrentStep] = useState(editNomineeOnly ? 4 : 1)
   const totalSteps = 7
   const [errors, setErrors] = useState({})
   const [currentUser, setCurrentUser] = useState(null)
   const [applicationId, setApplicationId] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState({})
   const saveTimeoutRef = useRef(null)
   const isInitialized = useRef(false)
@@ -768,7 +770,43 @@ function ApplicationController() {
   /**
    * Validate and move to next step
    */
-  const handleNext = () => {
+  const handleNext = async () => {
+    // For editNomineeOnly mode, skip validation and go straight to redirect
+    if (editNomineeOnly && currentStep === 4) {
+      try {
+        // Save the form data first
+        if (currentUser && applicationId) {
+          console.log('💾 Saving nominee updates...')
+          const { error } = await saveApplicationData(applicationId, formData, currentStep)
+          if (error) {
+            console.error('❌ Error saving nominee data:', error)
+            alert('Error saving nominee data. Please try again.')
+            return
+          }
+          console.log('✅ Nominee data saved to Supabase')
+        }
+
+        // Clear flagged status when nominee is updated
+        if (applicationId) {
+          const result = await Application.clearFlaggedStatus(applicationId)
+          if (!result.success) {
+            console.error('Error clearing flagged status:', result.error)
+          } else {
+            console.log('✅ Cleared flagged status for application')
+          }
+        }
+        
+        // Redirect back to user application page
+        console.log('Redirecting to user application page...')
+        navigate('/user/application')
+      } catch (error) {
+        console.error('Error during nominee update completion:', error)
+        alert('Error updating nominee. Please try again.')
+      }
+      return
+    }
+
+    // Normal validation for other steps
     const stepErrors = validateStep(currentStep, formData)
     
     if (Object.keys(stepErrors).length > 0) {
@@ -799,6 +837,8 @@ function ApplicationController() {
    */
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    setIsSubmitting(true)
     
     try {
       console.log('📋 Starting application submission...')
@@ -853,6 +893,7 @@ function ApplicationController() {
     } catch (error) {
       console.error('Error during submission:', error)
       alert('Error submitting application. Please try again.')
+      setIsSubmitting(false)
     }
   }
 
@@ -935,7 +976,7 @@ function ApplicationController() {
     fillTextField(form, 'applicant_dob_yyyy', data.dobYear)
     fillTextField(form, 'applicant_race', cleanOther(data.race))
     if (data.malaysian) fillCheckBox(form, 'applicant_malaysian', true)
-    fillRadio(form, 'applicant_sex', data.sex)
+    fillRadio(form, 'applicant_sex', data.sex?.toLowerCase())
     fillTextField(form, 'applicant_maritalStatus', cleanOther(data.maritalStatus))
     fillTextField(form, 'applicant_numOfDepend', data.numOfDependents)
     fillTextField(form, 'applicant_numOfDepend_1', data.dependentAge1)
@@ -969,7 +1010,7 @@ function ApplicationController() {
       fillTextField(form, 'jApplicant_dob_dd', data.jDobDay)
       fillTextField(form, 'jApplicant_dob_mm', data.jDobMonth)
       fillTextField(form, 'jApplicant_dob_yyyy', data.jDobYear)
-      fillRadio(form, 'jApplicant_sex', data.jSex)
+      fillRadio(form, 'jApplicant_sex', data.jSex?.toLowerCase())
       fillTextField(form, 'jApplicant_race', cleanOther(data.jRace))
       if (data.jMalaysian) fillCheckBox(form, 'jApplicant_malaysian', true)
       fillTextField(form, 'jApplicant_marital', cleanOther(data.jMarital))
@@ -1009,12 +1050,21 @@ function ApplicationController() {
     fillTextField(form, 'property_buildUpArea', data.buildUpArea)
     fillTextField(form, 'property_landArea', data.landArea)
     fillRadio(form, 'property_encumbered', data.propertyEncumbered)
-    fillTextField(form, 'property_bankName', data.propertyBankName)
-    fillTextField(form, 'property_estOutstandingBalance', data.estOutstandingBalance)
+    // Only fill bank name and balance if property is encumbered
+    if (data.propertyEncumbered === 'yes') {
+      fillTextField(form, 'property_bankName', data.propertyBankName)
+      fillTextField(form, 'property_estOutstandingBalance', data.estOutstandingBalance)
+    }
     fillRadio(form, 'property_fireInsurance', data.fireInsurance)
-    fillTextField(form, 'property_fireInsurance_inForce_insurCompany', data.insuranceCompany)
-    fillTextField(form, 'property_fireInsurance_inForce_periodValidity', data.periodValidity)
-    fillRadio(form, 'property_fireInsurance_notAvailable', data.fireInsuranceNotAvailable)
+    // Only fill insurance company and validity if insurance is in force
+    if (data.fireInsurance === 'inForce') {
+      fillTextField(form, 'property_fireInsurance_inForce_insurCompany', data.insuranceCompany)
+      fillTextField(form, 'property_fireInsurance_inForce_periodValidity', data.periodValidity)
+    }
+    // Auto-select YES when fire insurance is not available (Cagamas will purchase)
+    if (data.fireInsurance === 'notAvailable') {
+      fillRadio(form, 'property_fireInsurance_notAvailable', 'yes')
+    }
     fillRadio(form, 'property_renewalFireInsurance', data.renewalFireInsurance)
     
     // Step 4: Nominee 1
@@ -1029,7 +1079,7 @@ function ApplicationController() {
     fillTextField(form, 'nominee1_dob_dd', data.nominee1DobDay)
     fillTextField(form, 'nominee1_dob_mm', data.nominee1DobMonth)
     fillTextField(form, 'nominee1_dob_yyyy', data.nominee1DobYear)
-    fillRadio(form, 'nominee_sex', data.nominee1Sex)
+    fillRadio(form, 'nominee_sex', data.nominee1Sex?.toLowerCase())
     fillTextField(form, 'nominee1_race', cleanOther(data.nominee1Race))
     if (data.nominee1Malaysian) fillCheckBox(form, 'nominee1_malaysian', true)
     fillTextField(form, 'nominee1_marital', cleanOther(data.nominee1Marital))
@@ -1048,7 +1098,7 @@ function ApplicationController() {
       fillTextField(form, 'nominee2_dob_dd', data.nominee2DobDay)
       fillTextField(form, 'nominee2_dob_mm', data.nominee2DobMonth)
       fillTextField(form, 'nominee2_dob_yyyy', data.nominee2DobYear)
-      fillRadio(form, 'nominee2_sex', data.nominee2Sex)
+      fillRadio(form, 'nominee2_sex', data.nominee2Sex?.toLowerCase())
       fillTextField(form, 'nominee2_race', cleanOther(data.nominee2Race))
       if (data.nominee2Malaysian) fillCheckBox(form, 'nominee2_malaysian', true)
       fillTextField(form, 'nominee2_marital', cleanOther(data.nominee2Marital))
@@ -1199,6 +1249,9 @@ function ApplicationController() {
       uploadProgress={uploadProgress}
       isLoading={isLoading}
       isSaving={isSaving}
+      isSubmitting={isSubmitting}
+      editNomineeOnly={editNomineeOnly}
+      nomineeCount={formData.nominee1Name ? (formData.nominee2Name ? 2 : 1) : 0}
     />
   )
 }
