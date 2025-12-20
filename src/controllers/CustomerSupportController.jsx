@@ -173,7 +173,7 @@ export default function CustomerSupportController() {
         const { data: inquiryData, success: inquirySuccess } = await Inquiry.getAll(filters)
         
         // Fetch flagged health reports
-        const { data: flaggedData, success: flaggedSuccess } = await HealthReport.getFlagged()
+        const { data: flaggedData, success: flaggedSuccess } = await HealthReport.flagHealthReport()
         
         // Merge both types
         let combinedData = []
