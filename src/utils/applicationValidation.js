@@ -73,6 +73,13 @@ export const validatePostcode = (postcode) => {
   return null
 }
 
+// Address validation: maximum 60 characters
+export const validateAddress = (address) => {
+  if (!address) return null
+  if (address.length > 60) return 'Address must not exceed 60 characters'
+  return null
+}
+
 // Email validation
 export const validateEmail = (email) => {
   if (!email) return 'Email is required'
@@ -134,11 +141,17 @@ export const validateStep1 = (formData) => {
   errors.nameAsPerNRIC = validateRequired(formData.nameAsPerNRIC, 'Name')
   errors.nricNo = validateIC(formData.nricNo)
   errors.address = validateRequired(formData.address, 'Address')
+  if (formData.address && !errors.address) {
+    errors.address = validateAddress(formData.address)
+  }
   errors.postcode = validatePostcode(formData.postcode)
   errors.email = validateEmail(formData.email)
   errors.occupation = validateRequired(formData.occupation, 'Occupation')
   errors.employerName = validateRequired(formData.employerName, 'Employer Name')
   errors.employerAddress = validateRequired(formData.employerAddress, 'Employer Address')
+  if (formData.employerAddress && !errors.employerAddress) {
+    errors.employerAddress = validateAddress(formData.employerAddress)
+  }
   errors.employerPostcode = validatePostcode(formData.employerPostcode)
   errors.purposeOfApplication = validateRequired(formData.purposeOfApplication, 'Purpose of Loan')
   
@@ -218,11 +231,17 @@ export const validateStep2 = (formData) => {
     errors.jName = validateRequired(formData.jName, 'Joint Applicant Name')
     errors.jIc = validateIC(formData.jIc)
     errors.jAddress = validateRequired(formData.jAddress, 'Joint Applicant Address')
+    if (formData.jAddress && !errors.jAddress) {
+      errors.jAddress = validateAddress(formData.jAddress)
+    }
     errors.jPostcode = validatePostcode(formData.jPostcode)
     errors.jEmail = validateEmail(formData.jEmail)
     errors.jOccupation = validateRequired(formData.jOccupation, 'Joint Applicant Occupation')
     errors.jEmployerName = validateRequired(formData.jEmployerName, 'Joint Applicant Employer Name')
     errors.jEmployerAddress = validateRequired(formData.jEmployerAddress, 'Joint Applicant Employer Address')
+    if (formData.jEmployerAddress && !errors.jEmployerAddress) {
+      errors.jEmployerAddress = validateAddress(formData.jEmployerAddress)
+    }
     errors.jEmployerPostcode = validatePostcode(formData.jEmployerPostcode)
     
     // Phone validation (both required)
@@ -277,6 +296,9 @@ export const validateStep3 = (formData) => {
   // Required fields
   errors.propertyType = validateRequired(formData.propertyType, 'Property Type')
   errors.propertyAddress = validateRequired(formData.propertyAddress, 'Property Address')
+  if (formData.propertyAddress && !errors.propertyAddress) {
+    errors.propertyAddress = validateAddress(formData.propertyAddress)
+  }
   errors.propertyPostcode = validatePostcode(formData.propertyPostcode)
   
   // SSB Requirement 1: Property must be located in Malaysia (Kuala Lumpur only for SSB)
@@ -357,6 +379,9 @@ export const validateStep4 = (formData) => {
   errors.nominee1Name = validateRequired(formData.nominee1Name, 'Nominee 1 Name')
   errors.nominee1Ic = validateIC(formData.nominee1Ic)
   errors.nominee1Address = validateRequired(formData.nominee1Address, 'Nominee 1 Address')
+  if (formData.nominee1Address && !errors.nominee1Address) {
+    errors.nominee1Address = validateAddress(formData.nominee1Address)
+  }
   errors.nominee1Postcode = validatePostcode(formData.nominee1Postcode)
   errors.nominee1Email = validateEmail(formData.nominee1Email)
   errors.nominee1Relationship = validateRequired(formData.nominee1Relationship, 'Nominee 1 Relationship')
@@ -389,6 +414,9 @@ export const validateStep4 = (formData) => {
     errors.nominee2Name = validateRequired(formData.nominee2Name, 'Nominee 2 Name')
     errors.nominee2Ic = validateIC(formData.nominee2Ic)
     errors.nominee2Address = validateRequired(formData.nominee2Address, 'Nominee 2 Address')
+    if (formData.nominee2Address && !errors.nominee2Address) {
+      errors.nominee2Address = validateAddress(formData.nominee2Address)
+    }
     errors.nominee2Postcode = validatePostcode(formData.nominee2Postcode)
     errors.nominee2Email = validateEmail(formData.nominee2Email)
     errors.nominee2Relationship = validateRequired(formData.nominee2Relationship, 'Nominee 2 Relationship')

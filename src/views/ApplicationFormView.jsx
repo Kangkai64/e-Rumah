@@ -616,10 +616,9 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           error={errors.birthCertificate}
         />
 
-        {formData.maritalStatus === 'Married' && (
+        {(formData.maritalStatus === 'Married' && formData.isJointApplicant) && (
           <DocumentUpload
-            label="Marriage Certificate"
-            required
+            label="Marriage Certificate (Optional)"
             documentData={formData.documents?.marriageCertificate}
             onUpload={(e) => handleFileUpload(e, 'marriageCertificate')}
             onDelete={() => handleFileDelete('marriageCertificate')}
