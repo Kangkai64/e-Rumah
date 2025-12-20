@@ -98,6 +98,21 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+/* Edit Nominee Notice */
+.edit-nominee-notice {
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.edit-nominee-notice .notice-text {
+  color: #92400e;
+  font-weight: 500;
+  margin: 0;
+}
+
 .error-summary h3 {
   color: #A8202D;
   margin-bottom: 0.5rem;
@@ -311,6 +326,30 @@ h1 {
 }
 
 .wizard-btn-submit:hover {
+  background-color: #8a1a24;
+  transform: scale(1.05);
+}
+
+.wizard-btn-primary {
+  background-color: #0066cc;
+  color: white;
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.wizard-btn-primary:hover {
+  background-color: #0052a3;
+  transform: scale(1.05);
+}
+
+.wizard-btn-danger {
+  background-color: #A8202D;
+  color: white;
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.wizard-btn-danger:hover {
   background-color: #8a1a24;
   transform: scale(1.05);
 }

@@ -19,6 +19,8 @@ function MaintainApplicationController() {
   const [application, setApplication] = useState(null)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [approvedAmount, setApprovedAmount] = useState(null)
+  const [flaggedCode, setFlaggedCode] = useState(null)
+  const [flaggedReason, setFlaggedReason] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [documents, setDocuments] = useState([])
   const [documentsLoading, setDocumentsLoading] = useState(false)
@@ -73,6 +75,8 @@ function MaintainApplicationController() {
         
         setApplication(enrichedApplication)
         setApplicationStatus(appData.status)
+        setFlaggedCode(appData.flagged_code)
+        setFlaggedReason(appData.flagged_reason)
         
         // Extract approved amount from form_data
         if (applicationData?.form_data?.approvedAmount) {
@@ -306,6 +310,8 @@ function MaintainApplicationController() {
       application={application}
       applicationStatus={applicationStatus}
       approvedAmount={approvedAmount}
+      flaggedCode={flaggedCode}
+      flaggedReason={flaggedReason}
       timeline={timeline}
       documents={documents}
       documentsLoading={documentsLoading}

@@ -151,6 +151,35 @@ const Application = {
   },
 
   /**
+   * Clear flagged status and fields (called after nominee update)
+   * @param {string} applicationId - The application ID
+   * @returns {Promise<Object>} Updated application
+   */
+  async clearFlaggedStatus(applicationId) {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .update({
+          is_flagged: false,
+          flagged_code: null,
+          flagged_reason: null,
+          flagged_at: null,
+          flagged_by: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error clearing flagged status:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
    * Delete application
    * @param {string} applicationId - The application ID
    * @returns {Promise<Object>} Deletion result

@@ -16,6 +16,8 @@ function MaintainApplicationView({
   application,
   applicationStatus,
   approvedAmount,
+  flaggedCode,
+  flaggedReason,
   timeline,
   documents = [],
   documentsLoading = false,
@@ -32,6 +34,12 @@ function MaintainApplicationView({
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [editingNominee, setEditingNominee] = useState(null)
+  const [nomineeForm, setNomineeForm] = useState({
+    name: '',
+    nric: '',
+    relationship: ''
+  })
 
   const handleMissingDocClick = (doc) => {
     setSelectedMissingDoc(doc)
@@ -102,6 +110,42 @@ function MaintainApplicationView({
       setSelectedMissingDoc(null)
       setUploadError(null)
     }
+  }
+
+  // Handle nominee edit
+  const handleEditNominee = (nomineeIndex) => {
+    const nominee = nominees[nomineeIndex]
+    setEditingNominee(nomineeIndex)
+    setNomineeForm({
+      name: nominee.name || '',
+      nric: nominee.nric || '',
+      relationship: nominee.relationship || ''
+    })
+  }
+
+  // Handle navigate to edit nominees in form
+  const handleUpdateNomineeInForm = () => {
+    // Navigate to application form with editNomineeOnly mode
+    const url = `/application/edit-nominees/${application?.id}`
+    window.location.href = url
+  }
+
+  // Handle nominee save
+  const handleSaveNominee = async () => {
+    // TODO: Save nominee changes to database
+    // For now, just close the edit mode
+    console.log('Saving nominee:', nomineeForm)
+    setEditingNominee(null)
+  }
+
+  // Handle nominee cancel edit
+  const handleCancelEditNominee = () => {
+    setEditingNominee(null)
+    setNomineeForm({
+      name: '',
+      nric: '',
+      relationship: ''
+    })
   }
   if (isLoading) {
     return (
@@ -292,25 +336,107 @@ function MaintainApplicationView({
               <section className="maintain-application-section">
                 <h3>Nominees</h3>
                 <div className="nominees-grid">
-                  {nominees.map((nominee, index) => (
-                    <div key={index} className="nominee-item">
-                      <div className="nominee-header">NOMINEE {index + 1}</div>
-                      <div className="nominee-content">
-                        <div className="nominee-row">
-                          <span className="label">NAME:</span>
-                          <span className="value">{nominee.name || '-'}</span>
-                        </div>
-                        <div className="nominee-row">
-                          <span className="label">NRIC:</span>
-                          <span className="value">{nominee.nric || '-'}</span>
-                        </div>
-                        <div className="nominee-row">
-                          <span className="label">RELATIONSHIP:</span>
-                          <span className="value">{nominee.relationship || '-'}</span>
-                        </div>
+                  {nominees.map((nominee, index) => {
+                    // Determine if this nominee is inactive
+                    const isNominee1 = index === 0
+                    const isNominee2 = index === 1
+                    const isInactive = 
+                      (isNominee1 && (flaggedCode === 'nominee1_inactive' || flaggedCode === 'both_nominees_inactive')) ||
+                      (isNominee2 && (flaggedCode === 'nominee2_inactive' || flaggedCode === 'both_nominees_inactive'))
+                    
+                    // Check if currently editing this nominee
+                    const isEditing = editingNominee === index
+
+                    return (
+                      <div 
+                        key={index} 
+                        className={`nominee-item ${isInactive ? 'nominee-inactive' : ''}`}
+                      >
+                        {isInactive && (
+                          <div className="nominee-inactive-badge">INACTIVE - REQUIRES ACTION</div>
+                        )}
+                        {isInactive && flaggedReason && (
+                          <div className="nominee-flagged-reason">
+                            <strong>Reason:</strong> {flaggedReason}
+                          </div>
+                        )}
+                        <div className="nominee-header">NOMINEE {index + 1}</div>
+                        
+                        {isEditing ? (
+                          // Edit form
+                          <div className="nominee-edit-form">
+                            <div className="form-group">
+                              <label>Name</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.name}
+                                onChange={(e) => setNomineeForm({...nomineeForm, name: e.target.value})}
+                                placeholder="Enter nominee name"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>NRIC</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.nric}
+                                onChange={(e) => setNomineeForm({...nomineeForm, nric: e.target.value})}
+                                placeholder="Enter NRIC number"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>Relationship</label>
+                              <input
+                                type="text"
+                                value={nomineeForm.relationship}
+                                onChange={(e) => setNomineeForm({...nomineeForm, relationship: e.target.value})}
+                                placeholder="Enter relationship"
+                              />
+                            </div>
+                            <div className="form-actions">
+                              <button 
+                                className="btn btn-primary"
+                                onClick={handleSaveNominee}
+                              >
+                                Save
+                              </button>
+                              <button 
+                                className="btn btn-secondary"
+                                onClick={handleCancelEditNominee}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // Display form
+                          <div className="nominee-content">
+                            <div className="nominee-row">
+                              <span className="label">NAME:</span>
+                              <span className="value">{nominee.name || '-'}</span>
+                            </div>
+                            <div className="nominee-row">
+                              <span className="label">NRIC:</span>
+                              <span className="value">{nominee.nric || '-'}</span>
+                            </div>
+                            <div className="nominee-row">
+                              <span className="label">RELATIONSHIP:</span>
+                              <span className="value">{nominee.relationship || '-'}</span>
+                            </div>
+                            {isInactive && (
+                              <div className="nominee-actions">
+                                <button 
+                                  className="btn btn-nominate-new"
+                                  onClick={handleUpdateNomineeInForm}
+                                >
+                                  Nominate New Nominee
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             )}

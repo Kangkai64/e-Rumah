@@ -123,7 +123,7 @@ function SignaturePad({ value, onChange, label = 'Signature' }) {
 }
 
 // Wizard Navigation Component
-function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep }) {
+function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep, editNomineeOnly = false, nomineeCount = 0 }) {
   const progress = (currentStep / totalSteps) * 100
 
   const stepTitles = [
@@ -136,32 +136,50 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
     "Review & Submit"
   ]
 
+  const handleNominateConfirm = () => {
+    if (window.confirm('Are you sure you want to nominate this person as your new nominee?')) {
+      onNext()
+    }
+  }
+
   return (
     <div className="wizard-navigation">
       <div className="wizard-header">
-        <div className="progress-container">
-          <div className="progress-bar" style={{ width: `${progress}%` }}></div>
-        </div>
-        <div className="step-indicator">
-          <span className="step-number">Step {currentStep} of {totalSteps}</span>
-          <span className="step-title">{stepTitles[currentStep - 1]}</span>
-        </div>
+        {!editNomineeOnly && (
+          <div className="progress-container">
+            <div className="progress-bar" style={{ width: `${progress}%` }}></div>
+          </div>
+        )}
+        {!editNomineeOnly && (
+          <div className="step-indicator">
+            <span className="step-number">Step {currentStep} of {totalSteps}</span>
+            <span className="step-title">{stepTitles[currentStep - 1]}</span>
+          </div>
+        )}
       </div>
       
       <div className="wizard-buttons">
-        {currentStep > 1 && (
-          <button type="button" className="wizard-btn wizard-btn-back" onClick={onBack}>
-            ← Back
-          </button>
-        )}
-        {!isLastStep ? (
-          <button type="button" className="wizard-btn wizard-btn-next" onClick={onNext}>
-            Next →
+        {editNomineeOnly ? (
+          <button type="button" className="wizard-btn wizard-btn-danger" onClick={handleNominateConfirm}>
+            Nominate New Nominee
           </button>
         ) : (
-          <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit}>
-            Submit
-          </button>
+          <>
+            {currentStep > 1 && (
+              <button type="button" className="wizard-btn wizard-btn-back" onClick={onBack}>
+                ← Back
+              </button>
+            )}
+            {!isLastStep ? (
+              <button type="button" className="wizard-btn wizard-btn-next" onClick={onNext}>
+                Next →
+              </button>
+            ) : (
+              <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit}>
+                Submit
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -1423,10 +1441,22 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 }
 
 // Step 4: Nominee(s) Details
-function Step4Nominees({ formData, handleChange, errors = {} }) {
+function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, nomineeCount = 0 }) {
+  const getNomineeMessage = () => {
+    if (!editNomineeOnly) return null
+    if (nomineeCount === 0) return '⚠️ You are adding your first nominee.'
+    if (nomineeCount === 1) return '⚠️ You are updating Nominee 1. You can add another nominee.'
+    if (nomineeCount === 2) return '⚠️ You are updating Nominee 1.'
+  }
+
   return (
     <div className="step-container">
       <h2>Nominee Information</h2>
+      {editNomineeOnly && (
+        <div className="edit-nominee-notice">
+          <p className="notice-text">{getNomineeMessage()}</p>
+        </div>
+      )}
       <p className="step-description">Provide details of your nominee(s) who will inherit the property</p>
       <ErrorSummary errors={errors} />
       
@@ -2585,22 +2615,28 @@ export default function ApplicationFormView({
   isSaving = false,
   handleFileUpload,
   handleFileDelete,
-  uploadProgress
+  uploadProgress,
+  readOnlyMode = false,
+  editNomineeOnly = false,
+  nomineeCount = 0
 }) {
+  // Force step 4 if in editNomineeOnly mode
+  const displayStep = editNomineeOnly ? 4 : currentStep
+  
   const renderStep = () => {
-    switch (currentStep) {
+    switch (displayStep) {
       case 1:
-        return <Step1PersonalInfo formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} />
+        return <Step1PersonalInfo formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 2:
-        return <Step2JointApplicant formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step2JointApplicant formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 3:
-        return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} />
+        return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 4:
-        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} nomineeCount={nomineeCount} />
       case 5:
-        return <Step5InfoDisplay formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step5InfoDisplay formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 6:
-        return <Step6Acknowledgement formData={formData} handleChange={handleChange} errors={errors} />
+        return <Step6Acknowledgement formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 7:
         return <Step7Review formData={formData} />
       default:
@@ -2624,7 +2660,7 @@ export default function ApplicationFormView({
   return (
     <div className="application-form">
       <div className="app-container">
-        <h1>SKIM SARAAN BERCAGAR (SSB) Application Form</h1>
+        <h1>{editNomineeOnly ? 'Nominate New Nominee' : 'SKIM SARAAN BERCAGAR (SSB) Application Form'}</h1>
         {isSaving && (
           <div style={{ 
             position: 'fixed', 
@@ -2648,6 +2684,8 @@ export default function ApplicationFormView({
             onBack={handleBack}
             onSubmit={handleSubmit}
             isLastStep={currentStep === totalSteps}
+            editNomineeOnly={editNomineeOnly}
+            nomineeCount={nomineeCount}
           />
           {renderStep()}
           <WizardNavigation
@@ -2657,6 +2695,8 @@ export default function ApplicationFormView({
             onBack={handleBack}
             onSubmit={handleSubmit}
             isLastStep={currentStep === totalSteps}
+            editNomineeOnly={editNomineeOnly}
+            nomineeCount={nomineeCount}
           />
         </div>
       </div>

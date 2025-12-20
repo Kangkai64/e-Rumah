@@ -4,7 +4,7 @@
 // NO imports from other controllers allowed!
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
 import { validateStep } from '../utils/applicationValidation'
@@ -20,9 +20,10 @@ import {
 import { uploadDocument, deleteDocument } from '../services/fileUploadService'
 import { supabase } from '../config/supabase'
 
-function ApplicationController() {
+function ApplicationController({ editNomineeOnly = false }) {
   const navigate = useNavigate()
-  const [currentStep, setCurrentStep] = useState(1)
+  const { applicationId: urlApplicationId } = useParams()
+  const [currentStep, setCurrentStep] = useState(editNomineeOnly ? 4 : 1)
   const totalSteps = 7
   const [errors, setErrors] = useState({})
   const [currentUser, setCurrentUser] = useState(null)
@@ -768,7 +769,43 @@ function ApplicationController() {
   /**
    * Validate and move to next step
    */
-  const handleNext = () => {
+  const handleNext = async () => {
+    // For editNomineeOnly mode, skip validation and go straight to redirect
+    if (editNomineeOnly && currentStep === 4) {
+      try {
+        // Save the form data first
+        if (currentUser && applicationId) {
+          console.log('💾 Saving nominee updates...')
+          const { error } = await saveApplicationData(applicationId, formData, currentStep)
+          if (error) {
+            console.error('❌ Error saving nominee data:', error)
+            alert('Error saving nominee data. Please try again.')
+            return
+          }
+          console.log('✅ Nominee data saved to Supabase')
+        }
+
+        // Clear flagged status when nominee is updated
+        if (applicationId) {
+          const result = await Application.clearFlaggedStatus(applicationId)
+          if (!result.success) {
+            console.error('Error clearing flagged status:', result.error)
+          } else {
+            console.log('✅ Cleared flagged status for application')
+          }
+        }
+        
+        // Redirect back to user application page
+        console.log('Redirecting to user application page...')
+        navigate('/user/application')
+      } catch (error) {
+        console.error('Error during nominee update completion:', error)
+        alert('Error updating nominee. Please try again.')
+      }
+      return
+    }
+
+    // Normal validation for other steps
     const stepErrors = validateStep(currentStep, formData)
     
     if (Object.keys(stepErrors).length > 0) {
@@ -1199,6 +1236,8 @@ function ApplicationController() {
       uploadProgress={uploadProgress}
       isLoading={isLoading}
       isSaving={isSaving}
+      editNomineeOnly={editNomineeOnly}
+      nomineeCount={formData.nominee1Name ? (formData.nominee2Name ? 2 : 1) : 0}
     />
   )
 }
