@@ -13,7 +13,7 @@ class CustomerSupportContact {
         .from('customer_support_contacts')
         .select(`
           *,
-          support_user:users!customer_support_contacts_support_user_id_fkey(id, name)
+          support_user:users!customer_support_contacts_support_user_id_fkey(id, full_name)
         `)
         .eq('inquiry_id', inquiryId)
         .order('created_at', { ascending: true })
@@ -80,7 +80,7 @@ class CustomerSupportContact {
 
       // 2. 更新询问状态为 in_progress
       const { error: updateError } = await supabase
-        .from('inquiries')
+        .from('customer_support_inquiries')
         .update({ 
           status: 'in_progress',
           updated_at: new Date().toISOString()

@@ -3,6 +3,42 @@ import { supabase } from '../config/supabase'
 
 class Nominee {
   /**
+   * Get nominees by user ID
+   * @param {string} userId - User ID
+   * @returns {Promise<{success: boolean, data: Array, error: any}>}
+   */
+  static async getByUserId(userId) {
+    try {
+      // Get user's application
+      const { data: application, error: appError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('user_id', userId)
+        .single()
+      
+      if (appError) {
+        // User might not have an application yet
+        console.log('No application found for user:', userId)
+        return { success: true, data: [], error: null }
+      }
+      
+      // Get nominees from that application
+      const { data, error } = await supabase
+        .from('nominees')
+        .select('*')
+        .eq('application_id', application.id)
+        .order('type', { ascending: true }) // nominee1, nominee2
+      
+      if (error) throw error
+      
+      return { success: true, data: data || [], error: null }
+    } catch (error) {
+      console.error('Error fetching nominees by user ID:', error)
+      return { success: false, data: null, error }
+    }
+  }
+
+  /**
    * 获取所有被提名人记录
    * @param {Object} filters - 过滤条件
    * @returns {Promise<{success: boolean, data: Array, error: any}>}

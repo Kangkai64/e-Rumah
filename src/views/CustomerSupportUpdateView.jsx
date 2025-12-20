@@ -136,7 +136,7 @@ const CustomerSupportUpdateView = () => {
   };
 
   const handleCancel = () => {
-    navigate('/customer-support');
+    navigate('/support/dashboard');
   };
 
   return (

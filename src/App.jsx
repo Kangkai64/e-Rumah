@@ -124,8 +124,8 @@ function App() {
           } />
 
           {/* Customer Support Routes */}
-          <Route path="/customer-support" element={<CustomerSupportController />} />
-          <Route path="/update-customer-support" element={<CustomerSupportUpdateView />} />
+          <Route path="/support/dashboard" element={<CustomerSupportController />} />
+          <Route path="/support/updateContact" element={<CustomerSupportUpdateView />} />
         </Routes>
       </div>
     </AuthProvider>

@@ -10,16 +10,25 @@ class Inquiry {
   static async getAll(filters = {}) {
     try {
       let query = supabase
-        .from('inquiries')
+        .from('customer_support_inquiries')
         .select(`
           *,
-          user:users(id, name, email),
-          application:applications(id, application_number)
+          user:users(id, full_name, email, phone)
         `)
       
       // 添加状态过滤
       if (filters.status) {
         query = query.eq('status', filters.status)
+      }
+
+      // 添加 subject 过滤（inquiries | application | nominee）
+      if (filters.subject) {
+        query = query.eq('subject', filters.subject)
+      }
+
+      // 添加优先级过滤
+      if (filters.priority) {
+        query = query.eq('priority', filters.priority)
       }
 
       // 排序
@@ -45,11 +54,10 @@ class Inquiry {
   static async getById(id) {
     try {
       const { data, error } = await supabase
-        .from('inquiries')
+        .from('customer_support_inquiries')
         .select(`
           *,
-          user:users(id, name, email, phone),
-          application:applications(id, application_number, status),
+          user:users(id, full_name, email, phone),
           replies:customer_support_contacts(*)
         `)
         .eq('id', id)
@@ -72,10 +80,13 @@ class Inquiry {
   static async create(inquiryData) {
     try {
       const { data, error } = await supabase
-        .from('inquiries')
+        .from('customer_support_inquiries')
         .insert([{
-          ...inquiryData,
+          user_id: inquiryData.user_id,
+          subject: inquiryData.subject,
+          message: inquiryData.message || inquiryData.content, // Map content to message
           status: inquiryData.status || 'pending',
+          priority: inquiryData.priority || 'medium',
           created_at: new Date().toISOString()
         }])
         .select()
@@ -94,23 +105,36 @@ class Inquiry {
    * 更新询问状态
    * @param {string} id - 询问 ID
    * @param {string} status - 新状态 (pending, in_progress, resolved)
+   * @param {string} internalNote - 内部备注 (optional)
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
-  static async updateStatus(id, status) {
+  static async updateStatus(id, status, internalNote = null) {
     try {
-      const { data, error } = await supabase
-        .from('inquiries')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
+      const updateData = { 
+        status,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Add internal note if provided
+      if (internalNote !== null) {
+        updateData.internal_note = internalNote
+      }
+      
+      // Set resolved_at when marking as resolved
+      if (status === 'resolved') {
+        updateData.resolved_at = new Date().toISOString()
+      }
+      
+      // Avoid selecting the row back to prevent 406 when SELECT is restricted by RLS
+      const { error } = await supabase
+        .from('customer_support_inquiries')
+        .update(updateData)
         .eq('id', id)
-        .select()
-        .single()
 
       if (error) throw error
 
-      return { success: true, data, error: null }
+      // We rely on a subsequent fetch to refresh state; return minimal data here
+      return { success: true, data: { id, ...updateData }, error: null }
     } catch (error) {
       console.error('Error updating inquiry status:', error)
       return { success: false, data: null, error }
@@ -125,12 +149,12 @@ class Inquiry {
   static async search(searchTerm) {
     try {
       const { data, error } = await supabase
-        .from('inquiries')
+        .from('customer_support_inquiries')
         .select(`
           *,
           user:users(id, name, email)
         `)
-        .or(`subject.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
+        .or(`subject.ilike.%${searchTerm}%,message.ilike.%${searchTerm}%`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
