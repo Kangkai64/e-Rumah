@@ -4,6 +4,31 @@
   position: relative;
 }
 
+.back-button {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  z-index: 10;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-button img {
+  width: 32px;
+  height: 32px;
+  transition: transform 0.3s;
+}
+
+.back-button:hover img {
+  transform: translateX(-4px);
+}
+
 .switch-login-btn {
   position: absolute;
   top: 30px;
@@ -28,6 +53,7 @@
 .auth-content {
   display: flex;
   height: 100vh;
+  min-height: 869.19px;
 }
 
 .auth-form-side {
@@ -79,7 +105,7 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1px;
 }
 
 .form-group {
@@ -206,17 +232,14 @@
 }
 
 .auth-bg-image {
-  width: 100%;
   height: 100%;
+  width: 100%;
   object-fit: cover;
 }
 
 .auth-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: linear-gradient(135deg, rgba(168, 32, 45, 0.85) 0%, rgba(168, 32, 45, 0.65) 100%);
   display: flex;
   flex-direction: column;

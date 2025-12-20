@@ -300,10 +300,12 @@ const EligibilityCheck = () => {
       {/* Header */}
       <Header role="guest" />
 
-      {/* Hero Section */}
-      <div className="eligibility-hero">
-        <img src={eligibilityBg} alt="Elderly couple" className="eligibility-bg-image" />
-        <div className="eligibility-hero-overlay">
+    {/* Hero Section */}
+    <div className="eligibility-hero">
+      <div className="eligibility-hero-container">
+
+        {/* Left Content */}
+        <div className="eligibility-hero-left">
           <div className="eligibility-hero-content">
             <h1 className="hero-title">Eligibility Criteria</h1>
             <p className="hero-subtitle">
@@ -312,7 +314,18 @@ const EligibilityCheck = () => {
             <Link to="/login" className="hero-login-btn">LOGIN</Link>
           </div>
         </div>
+
+        {/* Right Image with Slash */}
+        <div className="eligibility-hero-right">
+          <img
+            src={eligibilityBg}
+            alt="Elderly couple"
+            className="eligibility-bg-image"
+          />
+        </div>
+
       </div>
+    </div>
 
       {/* Form Section */}
       <div className="eligibility-form-section">

@@ -6,6 +6,7 @@ import { supabase } from '../../config/supabase'
 import './authLayout.css'
 import logo from '../../assets/images/logo.png'
 import bgImage from '../../assets/images/loginPageBg.jpg'
+import leftArrow from '../../assets/icons/icon_arrowLeft.svg'
 
 export default function StaffLoginPage() {
   const navigate = useNavigate()
@@ -80,6 +81,9 @@ export default function StaffLoginPage() {
 
   return (
     <div className="auth-layout">
+      <button onClick={() => navigate('/')} className="back-button">
+        <img src={leftArrow} alt="Back" />
+      </button>
       <Link to="/login" className="switch-login-btn">
         User Login →
       </Link>
