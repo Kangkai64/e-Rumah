@@ -142,18 +142,15 @@ export const validateStep1 = (formData) => {
   errors.employerPostcode = validatePostcode(formData.employerPostcode)
   errors.purposeOfApplication = validateRequired(formData.purposeOfApplication, 'Purpose of Loan')
   
-  // Phone validation (at least one required)
-  const phoneError = validateAtLeastOnePhone(formData.residencePhone, formData.telephone)
-  if (phoneError) {
-    errors.phone = phoneError
-  } else {
-    // Validate individual phone formats if provided
-    if (formData.residencePhone) {
-      errors.residencePhone = validatePhone(formData.residencePhone)
-    }
-    if (formData.telephone) {
-      errors.telephone = validatePhone(formData.telephone)
-    }
+  // Phone validation (both required)
+  errors.residencePhone = validateRequired(formData.residencePhone, 'Residence Phone')
+  if (formData.residencePhone && !errors.residencePhone) {
+    errors.residencePhone = validatePhone(formData.residencePhone)
+  }
+  
+  errors.telephone = validateRequired(formData.telephone, 'H/P Number')
+  if (formData.telephone && !errors.telephone) {
+    errors.telephone = validatePhone(formData.telephone)
   }
   
   // Date of birth and age validation
@@ -228,17 +225,15 @@ export const validateStep2 = (formData) => {
     errors.jEmployerAddress = validateRequired(formData.jEmployerAddress, 'Joint Applicant Employer Address')
     errors.jEmployerPostcode = validatePostcode(formData.jEmployerPostcode)
     
-    // Phone validation (at least one required)
-    const jPhoneError = validateAtLeastOnePhone(formData.jResidencePhone, formData.jTelephone)
-    if (jPhoneError) {
-      errors.jPhone = jPhoneError
-    } else {
-      if (formData.jResidencePhone) {
-        errors.jResidencePhone = validatePhone(formData.jResidencePhone)
-      }
-      if (formData.jTelephone) {
-        errors.jTelephone = validatePhone(formData.jTelephone)
-      }
+    // Phone validation (both required)
+    errors.jResidencePhone = validateRequired(formData.jResidencePhone, 'Joint Applicant Residence Phone')
+    if (formData.jResidencePhone && !errors.jResidencePhone) {
+      errors.jResidencePhone = validatePhone(formData.jResidencePhone)
+    }
+    
+    errors.jTelephone = validateRequired(formData.jTelephone, 'Joint Applicant H/P Number')
+    if (formData.jTelephone && !errors.jTelephone) {
+      errors.jTelephone = validatePhone(formData.jTelephone)
     }
     
     // Date of birth and age validation
@@ -267,7 +262,7 @@ export const validateStep2 = (formData) => {
   
   // If joint applicant, account type must be joint account
   if (formData.isJointApplicant) {
-    if (formData.accountType && formData.accountType !== 'joint_savings' && formData.accountType !== 'joint_current') {
+    if (formData.accountType && formData.accountType !== 'joinAccountSaving' && formData.accountType !== 'jointAccountCurrent') {
       errors.accountType = 'Account type must be Joint Account Saving or Joint Account Current when applying with a joint applicant'
     }
   }
@@ -368,17 +363,15 @@ export const validateStep4 = (formData) => {
   errors.nominee1Marital = validateRequired(formData.nominee1Marital, 'Nominee 1 Marital Status')
   errors.nominee1Sex = validateRequired(formData.nominee1Sex, 'Nominee 1 Sex')
   
-  // At least one phone required
-  const nom1PhoneError = validateAtLeastOnePhone(formData.nominee1ResidencePhone, formData.nominee1Telephone)
-  if (nom1PhoneError) {
-    errors.nominee1Phone = nom1PhoneError
-  } else {
-    if (formData.nominee1ResidencePhone) {
-      errors.nominee1ResidencePhone = validatePhone(formData.nominee1ResidencePhone)
-    }
-    if (formData.nominee1Telephone) {
-      errors.nominee1Telephone = validatePhone(formData.nominee1Telephone)
-    }
+  // Phone validation (both required)
+  errors.nominee1ResidencePhone = validateRequired(formData.nominee1ResidencePhone, 'Nominee 1 Residence Phone')
+  if (formData.nominee1ResidencePhone && !errors.nominee1ResidencePhone) {
+    errors.nominee1ResidencePhone = validatePhone(formData.nominee1ResidencePhone)
+  }
+  
+  errors.nominee1Telephone = validateRequired(formData.nominee1Telephone, 'Nominee 1 H/P Number')
+  if (formData.nominee1Telephone && !errors.nominee1Telephone) {
+    errors.nominee1Telephone = validatePhone(formData.nominee1Telephone)
   }
   
   // DOB required
@@ -402,17 +395,15 @@ export const validateStep4 = (formData) => {
     errors.nominee2Marital = validateRequired(formData.nominee2Marital, 'Nominee 2 Marital Status')
     errors.nominee2Sex = validateRequired(formData.nominee2Sex, 'Nominee 2 Sex')
     
-    // At least one phone required
-    const nom2PhoneError = validateAtLeastOnePhone(formData.nominee2ResidencePhone, formData.nominee2Telephone)
-    if (nom2PhoneError) {
-      errors.nominee2Phone = nom2PhoneError
-    } else {
-      if (formData.nominee2ResidencePhone) {
-        errors.nominee2ResidencePhone = validatePhone(formData.nominee2ResidencePhone)
-      }
-      if (formData.nominee2Telephone) {
-        errors.nominee2Telephone = validatePhone(formData.nominee2Telephone)
-      }
+    // Phone validation (both required)
+    errors.nominee2ResidencePhone = validateRequired(formData.nominee2ResidencePhone, 'Nominee 2 Residence Phone')
+    if (formData.nominee2ResidencePhone && !errors.nominee2ResidencePhone) {
+      errors.nominee2ResidencePhone = validatePhone(formData.nominee2ResidencePhone)
+    }
+    
+    errors.nominee2Telephone = validateRequired(formData.nominee2Telephone, 'Nominee 2 H/P Number')
+    if (formData.nominee2Telephone && !errors.nominee2Telephone) {
+      errors.nominee2Telephone = validatePhone(formData.nominee2Telephone)
     }
     
     // DOB required
