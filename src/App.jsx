@@ -14,6 +14,7 @@ import PropertyCalculatorController from './controllers/PropertyCalculatorContro
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import AdminController from './controllers/AdminController.jsx'
 import UserDashboardController from './controllers/UserDashboardController.jsx'
+import CustomerSupportController from './controllers/CustomerSupportController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -624,6 +625,17 @@ function App() {
 
           {/* Public Shared Report Route - No authentication required */}
           <Route path="/shared-report/:token" element={<SharedReportPage />} />
+
+          {/* Customer Support Routes */}
+          <Route path="/support/dashboard" element={
+            <ProtectedRoute requireRole="support">
+              <>
+                <Header />
+                <CustomerSupportController />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
         </Routes>
       </div>
     </AuthProvider>
