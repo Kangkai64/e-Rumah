@@ -196,9 +196,7 @@ export const validateStep1 = (formData) => {
   if (!formData.documents?.birthCertificate?.url) {
     errors.birthCertificate = 'Birth Certificate is required'
   }
-  if (formData.maritalStatus === 'Married' && !formData.documents?.marriageCertificate?.url) {
-    errors.marriageCertificate = 'Marriage Certificate is required'
-  }
+  // Marriage certificate is optional (only shown when married AND joint applicant)
   
   // Payslips (3 required)
   for (let i = 0; i < 3; i++) {

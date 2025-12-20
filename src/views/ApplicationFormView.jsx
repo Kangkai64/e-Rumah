@@ -1761,8 +1761,8 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           <div className="form-group">
             <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="male" checked={formData.nominee2Sex === 'male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="female" checked={formData.nominee2Sex === 'female'} onChange={handleChange} /> Female</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Male" checked={formData.nominee2Sex === 'Male'} onChange={handleChange} required /> Male</label>
+              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Female" checked={formData.nominee2Sex === 'Female'} onChange={handleChange} /> Female</label>
             </div>
           </div>
 
