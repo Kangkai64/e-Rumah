@@ -188,10 +188,6 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/support/dashboard" className="nav-link">Dashboard</Link>
-            <Link to="/support/inquiries" className="nav-link">Inquiries</Link>
-            <Link to="/support/applications" className="nav-link">Applications</Link>
-            <Link to="/support/knowledge-base" className="nav-link">Knowledge Base</Link>
           </nav>
 
           <div className="header-actions">

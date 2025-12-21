@@ -1,5 +1,6 @@
 import './AboutUs.css'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { getCompanyContactInfo } from '../../services/settingsService'
 import ReCAPTCHA from 'react-google-recaptcha'
 import Button from '../common/Button'
 import { validateEnquiryForm } from '../../utils/enquiryFormValidation'
@@ -177,6 +178,23 @@ const EnquiryForm = ({ onSubmit }) => {
 
 const AboutUs = () => {
   const [showSubmittedModal, setShowSubmittedModal] = useState(false)
+  const [contactInfo, setContactInfo] = useState(() => getCompanyContactInfo())
+
+  useEffect(() => {
+    // Listen for changes to localStorage (in case settings are updated elsewhere)
+    const handleStorage = (e) => {
+      if (e.key === 'companyContactEmail' || e.key === 'companyContactPhone') {
+        setContactInfo(getCompanyContactInfo())
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  // Also update on mount in case settings changed in this tab
+  useEffect(() => {
+    setContactInfo(getCompanyContactInfo())
+  }, [])
 
   const handleSubmitEnquiry = async (formData) => {
     try {
@@ -404,8 +422,8 @@ const AboutUs = () => {
               <p>
                 Need to get in touch with us to learn more about the Skim Saraan
                 Bercagar (SSB) Skim Saraan Bercagar Loan? Contact us via email
-                at <a href="mailto:ssb@erumah.com.my">ssb@erumah.com.my</a> or call{' '}
-                <a href="tel:03-2367 8888">03-2367 8888</a>.
+                at <a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a> or call{' '}
+                <a href={`tel:${contactInfo.phone}`}>{contactInfo.phone}</a>.
               </p>
               
               <div className="contact-cards">
@@ -413,14 +431,14 @@ const AboutUs = () => {
                   <img src={iconEmail} alt="Email" />
                   <div>
                     <h4>Email</h4>
-                    <a href="mailto:ssb@erumah.com.my">ssb@erumah.com.my</a>
+                    <a href={`mailto:${contactInfo.email}`}>{contactInfo.email}</a>
                   </div>
                 </div>
                 <div className="contact-card">
                   <img src={iconContact} alt="Phone" />
                   <div>
                     <h4>Phone Number</h4>
-                    <a href="tel:03-2367 8888">03-2367 8888</a>
+                    <a href={`tel:${contactInfo.phone}`}>{contactInfo.phone}</a>
                   </div>
                 </div>
               </div>

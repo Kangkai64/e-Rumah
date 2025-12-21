@@ -912,7 +912,7 @@ export default function CustomerSupportView({
                       onClick={handleViewDetails}
                       disabled={!selectedItem}
                     >
-                      View details
+                      Open Chat
                     </button>
                     <button 
                       className="btn-primary"
@@ -1181,7 +1181,7 @@ export default function CustomerSupportView({
                     disabled={!selectedItem}
                     style={{marginLeft: activeTab === 'nominees' ? '0' : 'auto'}}
                   >
-                    View details
+                    Open Chat
                   </button>
                   <button 
                     className="btn-primary"
