@@ -47,26 +47,32 @@ const Admin = {
           user:users!applications_user_id_fkey(full_name, ic_number, email),
           property:properties(property_type, address, indicative_market_value)
         `)
+        .neq('status', 'draft') // Exclude draft applications
 
       // Apply status filter
-      if (filters.status) {
+      if (filters.status && filters.status !== 'all') {
         if (filters.status === 'pending') {
+          // Pending includes both 'submitted' and 'underReviewed'
           query = query.in('status', ['submitted', 'underReviewed'])
         } else {
+          // For specific status: approved, rejected, terminated
           query = query.eq('status', filters.status)
         }
-      }
-
-      // Apply search filter (search in user name, property address, IC number)
-      if (filters.search) {
-        // Note: For complex searches, we'll filter on the client side
-        // as Supabase doesn't support nested field searches easily
       }
 
       // Apply sorting
       const sortField = filters.sortBy || 'submitted_at'
       const sortOrder = filters.sortOrder || 'desc'
-      query = query.order(sortField, { ascending: sortOrder === 'asc' })
+      
+      // For sorting by user name, we need to order by the joined table
+      if (sortField === 'user.full_name') {
+        query = query.order('full_name', { 
+          ascending: sortOrder === 'asc',
+          foreignTable: 'users'
+        })
+      } else {
+        query = query.order(sortField, { ascending: sortOrder === 'asc' })
+      }
 
       const { data, error } = await query
 
@@ -77,10 +83,24 @@ const Admin = {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()
         filteredData = data.filter(app => 
-          app.user?.full_name?.toLowerCase().includes(searchLower) ||
-          app.user?.ic_number?.toLowerCase().includes(searchLower) ||
-          app.property?.address?.toLowerCase().includes(searchLower)
+          app.users?.full_name?.toLowerCase().includes(searchLower) ||
+          app.users?.ic_number?.toLowerCase().includes(searchLower) ||
+          app.properties?.address?.toLowerCase().includes(searchLower)
         )
+      }
+
+      // If sorting by user name failed on server (Supabase limitation), sort client-side
+      if (sortField === 'user.full_name') {
+        filteredData.sort((a, b) => {
+          const nameA = (a.users?.full_name || '').toLowerCase()
+          const nameB = (b.users?.full_name || '').toLowerCase()
+          
+          if (sortOrder === 'asc') {
+            return nameA.localeCompare(nameB)
+          } else {
+            return nameB.localeCompare(nameA)
+          }
+        })
       }
 
       return { success: true, data: filteredData }
@@ -103,13 +123,23 @@ const Admin = {
           *,
           user:users!applications_user_id_fkey(full_name, ic_number, email, phone),
           property:properties(*),
-          nominees(*)
+          nominees(*),
+          application_data(*)
         `)
         .eq('id', applicationId)
         .single()
 
       if (error) throw error
-      return { success: true, data }
+
+      // Extract application_data (comes as array)
+      const processedData = {
+        ...data,
+        application_data: Array.isArray(data.application_data) 
+          ? data.application_data[0] 
+          : data.application_data
+      }
+
+      return { success: true, data: processedData }
     } catch (error) {
       console.error('Error fetching application details:', error)
       return { success: false, error: error.message }
@@ -125,11 +155,11 @@ const Admin = {
   async approveApplication(applicationId, approvalData = {}) {
     try {
       const result = await corsProxyUpdate('applications', applicationId, {
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        remarks: approvalData.remarks || null,
-        updated_at: new Date().toISOString()
-      })
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          remarks: approvalData.remarks || null,
+          updated_at: new Date().toISOString()
+        })
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
@@ -148,10 +178,10 @@ const Admin = {
   async rejectApplication(applicationId, remarks) {
     try {
       const result = await corsProxyUpdate('applications', applicationId, {
-        status: 'rejected',
-        remarks: remarks,
-        updated_at: new Date().toISOString()
-      })
+          status: 'rejected',
+          remarks: remarks,
+          updated_at: new Date().toISOString()
+        })
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
@@ -171,15 +201,55 @@ const Admin = {
   async updateApplicationStatus(applicationId, status, remarks = null) {
     try {
       const result = await corsProxyUpdate('applications', applicationId, {
-        status: status,
-        remarks: remarks,
-        updated_at: new Date().toISOString()
-      })
+          status: status,
+          remarks: remarks,
+          updated_at: new Date().toISOString()
+        })
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating application status:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Get application documents from form data
+   * @param {string} applicationId - Application ID
+   * @returns {Promise<Object>} Application documents
+   */
+  async getApplicationDocuments(applicationId) {
+    try {
+      const { data, error } = await supabase
+        .from('application_data')
+        .select('form_data')
+        .eq('application_id', applicationId)
+        .single()
+
+      if (error) throw error
+
+      // Extract document URLs from form_data JSON
+      const formData = data?.form_data || {}
+      const documents = {
+        applicantNRIC: formData.documents?.applicantNRIC || null,
+        jointApplicantNRIC: formData.documents?.jointApplicantNRIC || null,
+        birthCertificate: formData.documents?.birthCertificate || null,
+        marriageCertificate: formData.documents?.marriageCertificate || null,
+        payslips: formData.documents?.payslips || [],
+        bankStatements: formData.documents?.bankStatements || [],
+        epfStatement: formData.documents?.epfStatement || null,
+        grantTitle: formData.documents?.grantTitle || null,
+        saleAgreement: formData.documents?.saleAgreement || null,
+        valuationReport: formData.documents?.valuationReport || null,
+        fireInsurance: formData.documents?.fireInsurance || null,
+        propertyLoanStatement: formData.documents?.propertyLoanStatement || null,
+        additionalDocuments: formData.documents?.additionalDocuments || []
+      }
+
+      return { success: true, data: documents }
+    } catch (error) {
+      console.error('Error fetching application documents:', error)
       return { success: false, error: error.message }
     }
   },
@@ -222,7 +292,7 @@ const Admin = {
 
   /**
    * Generate new report (stub)
-   * @returns {Promise<Object>} Generated report
+   * @returns {Promise<Object} Generated report
    */
   async generateReport() {
     try {
