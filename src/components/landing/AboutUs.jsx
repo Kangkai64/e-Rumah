@@ -4,7 +4,6 @@ import { getCompanyContactInfo } from '../../services/settingsService'
 import ReCAPTCHA from 'react-google-recaptcha'
 import Button from '../common/Button'
 import { validateEnquiryForm } from '../../utils/enquiryFormValidation'
-import { sendEnquiryEmail } from '../../services/emailService'
 import heroBanner from '../../assets/images/about_us_page/hero_aboutUs.jpeg'
 import heroContactUs from '../../assets/images/about_us_page/hero_contactUs.jpg'
 import ourPurposeImage from '../../assets/images/about_us_page/image_ourPurpose.jpg'
@@ -198,14 +197,14 @@ const AboutUs = () => {
 
   const handleSubmitEnquiry = async (formData) => {
     try {
-      // Send enquiry email to user
-      const emailResult = await sendEnquiryEmail(formData)
+      // // Send enquiry email to user
+      // const emailResult = await sendEnquiryEmail(formData)
       
-      if (!emailResult.success) {
-        console.warn('Email sending failed:', emailResult.error)
-        // Continue to show success modal even if email fails
-        // Users should know their enquiry was submitted
-      }
+      // if (!emailResult.success) {
+      //   console.warn('Email sending failed:', emailResult.error)
+      //   // Continue to show success modal even if email fails
+      //   // Users should know their enquiry was submitted
+      // }
 
       // Show the success modal
       setShowSubmittedModal(true)

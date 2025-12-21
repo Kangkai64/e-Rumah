@@ -1,39 +1,39 @@
 - view layer -
 ApplicationFormView ✅
-MaintainApplicationView
-HealthMonitoringView
-CustomerSupportView
-AnswerInquiryView
-UserProfileView
+MaintainApplicationView✅
+HealthMonitoringView✅
+CustomerSupportView✅
+AnswerInquiryView⚠️
+UserSupportView✅
 PropertyCalculatorView ✅
-LoanStatementView
-AdminView
-AdminApplicationReviewView
-AdminReportView
+LoanStatementView✅
+AdminView✅
+AdminApplicationReviewView✅
+AdminReportView⚠️
 
 - controller layer - 
-LoanController
+LoanController (Currently UserDashboardController but ChernTak Changing)
 ApplicationController ✅
-AdminController
-UserProfileController
-HealthReportController
-CustomerSupportController
-MaintainApplicationController
-AdminReportController
+AdminController✅
+UserSupportController✅
+HealthReportController✅
+CustomerSupportController✅
+MaintainApplicationController✅
+AdminReportController✅
 PropertyCalculatorController ✅
 
 - model layer -
 Property ✅
-Nominee
-User
+Nominee✅
+User✅
 Application ✅
-LoanDisbursement
-HealthReport
-Inquiry
-CreditProfile
-EligibityRule
-CustomerSupportContact
-Loan
-ValuationReport
-Notification
-Admin
+LoanDisbursement⚠️
+HealthReport✅
+Inquiry✅
+UserSupport✅
+EligibityRule⚠️
+CustomerSupportContact✅
+Loan⚠️
+SupportConversation✅
+Notification⚠️
+Admin✅

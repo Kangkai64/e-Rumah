@@ -167,24 +167,7 @@ const Header = () => {
           </nav>
 
           <div className="header-actions">
-            <div 
-              className="user-icon-container"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
-              <button className="user-icon-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src={profileIcon} alt="Profile" className="profile-icon" />
-                <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                  {user?.full_name || user?.full_name || 'Admin'}
-                </span>
-              </button>
-              
-              {showProfileDropdown && (
-                <div className="profile-dropdown">
-                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
-                </div>
-              )}
-            </div>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         </div>
       </header>
