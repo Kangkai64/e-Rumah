@@ -486,6 +486,11 @@ export const validateStep6 = (formData) => {
   if (!formData.ack_applicationDay || !formData.ack_applicationMonth || !formData.ack_applicationYear) {
     errors.ack_applicationDate = 'Application Date is required'
   }
+
+  // Acknowledgement checkbox must be confirmed
+  if (!formData.ack_nomineeConsent) {
+    errors.ack_nomineeConsent = 'You must confirm that you have read and agree to the acknowledgement'
+  }
   
   return Object.fromEntries(Object.entries(errors).filter(([_, v]) => v !== null))
 }

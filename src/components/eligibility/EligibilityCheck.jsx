@@ -36,9 +36,7 @@ const EligibilityCheck = () => {
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: null }))
-    
     const isValid = validateField(field, value)
-    
     // Clear subsequent fields if not valid
     if (!isValid) {
       clearSubsequentFields(field)
@@ -61,12 +59,10 @@ const EligibilityCheck = () => {
         'isFreeFromEncumbrances': 9
       }
       setCurrentField(fieldNumbers[field])
+      return
     }
-    
-    // Advance to next field
-    setTimeout(() => {
-      advanceToNextField(field, value, isValid)
-    }, 100)
+    // Only advance if valid
+    advanceToNextField(field, value, isValid)
   }
 
   // Handle text input changes
@@ -78,14 +74,11 @@ const EligibilityCheck = () => {
   // Handle field blur for text inputs
   const handleFieldBlur = (field, value) => {
     const isValid = validateField(field, value)
-    
     if (!isValid) {
       clearSubsequentFields(field)
-    } else {
-      setTimeout(() => {
-        advanceToNextField(field, value, isValid)
-      }, 100)
+      return
     }
+    advanceToNextField(field, value, isValid)
   }
 
   // Clear subsequent fields when answer is ineligible
@@ -394,12 +387,7 @@ const EligibilityCheck = () => {
                   type="date"
                   className="date-input"
                   value={formData.dateOfBirth}
-                  onChange={(e) => {
-                    handleInputChange('dateOfBirth', e.target.value)
-                    if (e.target.value) {
-                      handleFieldBlur('dateOfBirth', e.target.value)
-                    }
-                  }}
+                  onChange={(e) => handleChange('dateOfBirth', e.target.value)}
                   disabled={!isFieldEnabled(3)}
                   max={new Date().toISOString().split('T')[0]}
                 />
