@@ -4,7 +4,7 @@
 // NO imports from other controllers allowed!
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import Application from '../models/Application'
 import { validateStep } from '../utils/applicationValidation'
@@ -23,6 +23,10 @@ import { supabase } from '../config/supabase'
 function ApplicationController({ editNomineeOnly = false }) {
   const navigate = useNavigate()
   const { applicationId: urlApplicationId } = useParams()
+  const location = useLocation()
+  const queryParams = new URLSearchParams(location.search)
+  const promoteNominee2 = queryParams.get('promote') === 'true'
+  
   const [currentStep, setCurrentStep] = useState(editNomineeOnly ? 4 : 1)
   const totalSteps = 7
   const [errors, setErrors] = useState({})
@@ -285,9 +289,61 @@ function ApplicationController({ editNomineeOnly = false }) {
           
           if (applicationData?.form_data && Object.keys(applicationData.form_data).length > 0) {
             // Has existing data - load it
-            setFormData(prev => ({ ...prev, ...applicationData.form_data }))
+            let loadedData = { ...applicationData.form_data }
+            
+            // If promoting nominee 2 to nominee 1
+            if (promoteNominee2 && loadedData.nominee2Name) {
+              loadedData = {
+                ...loadedData,
+                // Copy nominee 2 to nominee 1
+                nominee1Salutation: loadedData.nominee2Salutation || '',
+                nominee1Name: loadedData.nominee2Name,
+                nominee1Ic: loadedData.nominee2Ic,
+                nominee1DobDay: loadedData.nominee2DobDay,
+                nominee1DobMonth: loadedData.nominee2DobMonth,
+                nominee1DobYear: loadedData.nominee2DobYear,
+                nominee1Sex: loadedData.nominee2Sex,
+                nominee1Race: loadedData.nominee2Race,
+                nominee1Malaysian: loadedData.nominee2Malaysian,
+                nominee1Marital: loadedData.nominee2Marital,
+                nominee1Relationship: loadedData.nominee2Relationship,
+                nominee1Address: loadedData.nominee2Address,
+                nominee1Postcode: loadedData.nominee2Postcode,
+                nominee1Email: loadedData.nominee2Email,
+                nominee1Telephone: loadedData.nominee2Telephone,
+                nominee1ResidencePhone: loadedData.nominee2ResidencePhone,
+                nominee1Occupation: loadedData.nominee2Occupation,
+                nominee1EmployerName: loadedData.nominee2EmployerName || '',
+                // Note: nominee 2 signature NOT available, user must provide new one
+                // Clear nominee 2
+                nominee2Salutation: '',
+                nominee2Name: '',
+                nominee2Ic: '',
+                nominee2DobDay: '',
+                nominee2DobMonth: '',
+                nominee2DobYear: '',
+                nominee2Sex: '',
+                nominee2Race: '',
+                nominee2Malaysian: false,
+                nominee2Marital: '',
+                nominee2Relationship: '',
+                nominee2Address: '',
+                nominee2Postcode: '',
+                nominee2Email: '',
+                nominee2Telephone: '',
+                nominee2ResidencePhone: '',
+                nominee2Occupation: '',
+                nominee2EmployerName: '',
+                hasSecondNominee: false,
+                // Clear old nominee 1 signature - user must re-sign
+                ackNominee_signature: ''
+              }
+              console.log('✅ Promoting nominee 2 to nominee 1')
+            }
+            
+            setFormData(prev => ({ ...prev, ...loadedData }))
             setCurrentStep(applicationData.current_step || 1)
-            console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(applicationData.form_data).length)
+            console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(loadedData).length)
           } else {
             // New application - auto-populate with user profile data
             if (!profileError && userProfile) {
@@ -795,6 +851,56 @@ function ApplicationController({ editNomineeOnly = false }) {
             console.log('✅ Cleared flagged status for application')
           }
         }
+
+        // Regenerate and upload updated PDF with new nominee data and signature
+        if (currentUser) {
+          try {
+            console.log('📄 Regenerating PDF with updated nominee data...')
+            console.log('📋 Full nominee data for PDF:', {
+              nominee1Name: formData.nominee1Name,
+              nominee1Ic: formData.nominee1Ic,
+              nominee1Salutation: formData.nominee1Salutation,
+              nominee1Address: formData.nominee1Address,
+              nominee1Postcode: formData.nominee1Postcode,
+              nominee1Email: formData.nominee1Email,
+              nominee1Telephone: formData.nominee1Telephone,
+              nominee1DobDay: formData.nominee1DobDay,
+              nominee1DobMonth: formData.nominee1DobMonth,
+              nominee1DobYear: formData.nominee1DobYear,
+              nominee1Sex: formData.nominee1Sex,
+              nominee1Race: formData.nominee1Race,
+              ack_nomineeName: formData.ack_nomineeName,
+              ack_nomineeNRIC: formData.ack_nomineeNRIC,
+              ack_nomineeAddress: formData.ack_nomineeAddress,
+              ackNominee_signature: !!formData.ackNominee_signature
+            })
+            // Use the current formData which includes all updated nominee 1 data
+            const pdfBlob = await generatePDF(formData)
+            
+            console.log('☁️ Uploading updated PDF to storage...')
+            const fileName = `SSB_Application_${formData.nricNo?.replace(/[^0-9]/g, '')}.pdf`
+            const filePath = `${currentUser.id}/${fileName}`
+            
+            const { error: uploadError } = await supabase.storage
+              .from('application-forms')
+              .upload(filePath, pdfBlob, {
+                contentType: 'application/pdf',
+                cacheControl: '3600',
+                upsert: true
+              })
+            
+            if (uploadError) {
+              console.error('⚠️ PDF upload failed:', uploadError)
+              // Don't block the flow if PDF upload fails
+            } else {
+              console.log('✅ Updated PDF uploaded to storage')
+            }
+          } catch (pdfError) {
+            console.error('⚠️ PDF generation/upload failed:', pdfError)
+            console.error('pdfError details:', pdfError)
+            // Don't block the flow if PDF generation fails
+          }
+        }
         
         // Redirect back to user application page
         console.log('Redirecting to user application page...')
@@ -1251,6 +1357,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       isSaving={isSaving}
       isSubmitting={isSubmitting}
       editNomineeOnly={editNomineeOnly}
+      promoteNominee2={promoteNominee2}
       nomineeCount={formData.nominee1Name ? (formData.nominee2Name ? 2 : 1) : 0}
     />
   )

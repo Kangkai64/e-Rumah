@@ -27,24 +27,36 @@ function MaintainApplicationView({
   downloadingPDF = false,
   pdfError = null,
   onDownloadPDF = null,
-  onEditApplication,
   onTerminateApplication
 }) {
   const [selectedMissingDoc, setSelectedMissingDoc] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [editingNominee, setEditingNominee] = useState(null)
-  const [nomineeForm, setNomineeForm] = useState({
-    name: '',
-    nric: '',
-    relationship: ''
-  })
+  const [showTerminateModal, setShowTerminateModal] = useState(false)
+  const [terminationReason, setTerminationReason] = useState('')
+  const [terminatingApp, setTerminatingApp] = useState(false)
 
   const handleMissingDocClick = (doc) => {
     setSelectedMissingDoc(doc)
     setUploadError(null)
     setUploadProgress(0)
+  }
+
+  const handleTerminateClick = () => {
+    setShowTerminateModal(true)
+    setTerminationReason('')
+  }
+
+  const handleTerminateConfirm = async () => {
+    if (!terminationReason.trim()) {
+      alert('Please provide a reason for terminating the application.')
+      return
+    }
+    setTerminatingApp(true)
+    await onTerminateApplication(terminationReason)
+    setTerminatingApp(false)
+    setShowTerminateModal(false)
   }
 
   const handleFileUpload = async (event) => {
@@ -112,17 +124,6 @@ function MaintainApplicationView({
     }
   }
 
-  // Handle nominee edit
-  const handleEditNominee = (nomineeIndex) => {
-    const nominee = nominees[nomineeIndex]
-    setEditingNominee(nomineeIndex)
-    setNomineeForm({
-      name: nominee.name || '',
-      nric: nominee.nric || '',
-      relationship: nominee.relationship || ''
-    })
-  }
-
   // Handle navigate to edit nominees in form
   const handleUpdateNomineeInForm = () => {
     // Navigate to application form with editNomineeOnly mode
@@ -130,23 +131,14 @@ function MaintainApplicationView({
     window.location.href = url
   }
 
-  // Handle nominee save
-  const handleSaveNominee = async () => {
-    // TODO: Save nominee changes to database
-    // For now, just close the edit mode
-    console.log('Saving nominee:', nomineeForm)
-    setEditingNominee(null)
+  // Handle promote nominee 2 to nominee 1
+  const handlePromoteNominee2 = () => {
+    // Navigate to application form to promote nominee 2 with mode 'promoteNominee2'
+    const url = `/application/edit-nominees/${application?.id}?promote=true`
+    window.location.href = url
   }
 
-  // Handle nominee cancel edit
-  const handleCancelEditNominee = () => {
-    setEditingNominee(null)
-    setNomineeForm({
-      name: '',
-      nric: '',
-      relationship: ''
-    })
-  }
+
   if (isLoading) {
     return (
       <Container>
@@ -235,6 +227,18 @@ function MaintainApplicationView({
             {applicationStatus?.toUpperCase()}
           </div>
         </div>
+
+        {/* Termination Status Message */}
+        {applicationStatus === 'underReviewed' && application?.termination_submitted_at && (
+          <div className="termination-status-banner">
+            <div className="termination-icon">⏳</div>
+            <div className="termination-message">
+              <h3>Application Termination Under Review</h3>
+              <p>Your request to terminate this application is currently being reviewed by our admin team. You will be notified once a decision has been made.</p>
+              <p className="termination-date">Submitted on: {new Date(application.termination_submitted_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
+          </div>
+        )}
 
         <div className="maintain-application-content">
           {/* Left Column - Application Information */}
@@ -343,9 +347,6 @@ function MaintainApplicationView({
                     const isInactive = 
                       (isNominee1 && (flaggedCode === 'nominee1_inactive' || flaggedCode === 'both_nominees_inactive')) ||
                       (isNominee2 && (flaggedCode === 'nominee2_inactive' || flaggedCode === 'both_nominees_inactive'))
-                    
-                    // Check if currently editing this nominee
-                    const isEditing = editingNominee === index
 
                     return (
                       <div 
@@ -362,78 +363,38 @@ function MaintainApplicationView({
                         )}
                         <div className="nominee-header">NOMINEE {index + 1}</div>
                         
-                        {isEditing ? (
-                          // Edit form
-                          <div className="nominee-edit-form">
-                            <div className="form-group">
-                              <label>Name</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.name}
-                                onChange={(e) => setNomineeForm({...nomineeForm, name: e.target.value})}
-                                placeholder="Enter nominee name"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>NRIC</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.nric}
-                                onChange={(e) => setNomineeForm({...nomineeForm, nric: e.target.value})}
-                                placeholder="Enter NRIC number"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Relationship</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.relationship}
-                                onChange={(e) => setNomineeForm({...nomineeForm, relationship: e.target.value})}
-                                placeholder="Enter relationship"
-                              />
-                            </div>
-                            <div className="form-actions">
-                              <button 
-                                className="btn btn-primary"
-                                onClick={handleSaveNominee}
-                              >
-                                Save
-                              </button>
+                        <div className="nominee-content">
+                          <div className="nominee-row">
+                            <span className="label">NAME:</span>
+                            <span className="value">{nominee.name || '-'}</span>
+                          </div>
+                          <div className="nominee-row">
+                            <span className="label">NRIC:</span>
+                            <span className="value">{nominee.nric || '-'}</span>
+                          </div>
+                          <div className="nominee-row">
+                            <span className="label">RELATIONSHIP:</span>
+                            <span className="value">{nominee.relationship || '-'}</span>
+                          </div>
+                          {isInactive && (
+                            <div className="nominee-actions">
+                              {nominees.length === 2 && (
+                                <button 
+                                  className="btn btn-secondary"
+                                  onClick={handlePromoteNominee2}
+                                >
+                                  Promote Nominee 2 to Nominee 1
+                                </button>
+                              )}
                               <button 
                                 className="btn btn-secondary"
-                                onClick={handleCancelEditNominee}
+                                onClick={handleUpdateNomineeInForm}
                               >
-                                Cancel
+                                Nominate New Nominee
                               </button>
                             </div>
-                          </div>
-                        ) : (
-                          // Display form
-                          <div className="nominee-content">
-                            <div className="nominee-row">
-                              <span className="label">NAME:</span>
-                              <span className="value">{nominee.name || '-'}</span>
-                            </div>
-                            <div className="nominee-row">
-                              <span className="label">NRIC:</span>
-                              <span className="value">{nominee.nric || '-'}</span>
-                            </div>
-                            <div className="nominee-row">
-                              <span className="label">RELATIONSHIP:</span>
-                              <span className="value">{nominee.relationship || '-'}</span>
-                            </div>
-                            {isInactive && (
-                              <div className="nominee-actions">
-                                <button 
-                                  className="btn btn-nominate-new"
-                                  onClick={handleUpdateNomineeInForm}
-                                >
-                                  Nominate New Nominee
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )
                   })}
@@ -473,7 +434,14 @@ function MaintainApplicationView({
                 </div>
               ) : documents.length > 0 ? (
                 <div className="documents-gallery">
-                  {documents.map((doc, index) => (
+                  {documents.map((doc, index) => {
+                    // Filter out Marriage Certificate if user is single
+                    const maritalStatus = application?.submitted_form_data?.maritalStatus
+                    if (doc.displayName === 'Marriage Certificate' && maritalStatus === 'Single') {
+                      return null
+                    }
+                    
+                    return (
                     <div key={index} className={`document-item ${doc.status === 'MISSING' ? 'document-missing' : ''}`}>
                       {doc.status === 'MISSING' ? (
                         // Missing Document Display with Upload Button
@@ -534,7 +502,8 @@ function MaintainApplicationView({
                         </p>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="documents-empty">
@@ -547,7 +516,7 @@ function MaintainApplicationView({
           {/* Right Column - Approved Amount & Actions */}
           <div className="maintain-application-right">
             {/* Approved Amount Section */}
-            {applicationStatus === 'approved' && (
+            {(applicationStatus === 'approved' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
               <>
                 <section className="maintain-application-section approved-section">
                   <h2>APPROVED AMOUNT</h2>
@@ -593,8 +562,10 @@ function MaintainApplicationView({
                       </div>
                     )}
                     <button
-                      onClick={onTerminateApplication}
+                      onClick={handleTerminateClick}
                       className="btn-outline-danger"
+                      disabled={application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined}
+                      title={application?.termination_submitted_at ? 'Termination request already submitted' : 'Request to terminate this application'}
                     >
                       ✕ Terminate Application
                     </button>
@@ -680,6 +651,40 @@ function MaintainApplicationView({
           <div className="info-message">
             <span className="info-icon">ℹ️</span>
             <span>File will be uploaded to your application documents</span>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Terminate Application Modal */}
+    {showTerminateModal && (
+      <div className="modal-overlay">
+        <div className="modal terminate-modal">
+          <h3>Request Application Termination</h3>
+          <p>Please provide a reason for terminating your application. Your request will be reviewed by our admin team:</p>
+          <textarea
+            className="terminate-reason-input"
+            placeholder="Enter reason for termination (required)"
+            value={terminationReason}
+            onChange={(e) => setTerminationReason(e.target.value)}
+            rows={5}
+            required
+          />
+          <div className="modal-actions">
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowTerminateModal(false)}
+              disabled={terminatingApp}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleTerminateConfirm}
+              disabled={terminatingApp}
+            >
+              {terminatingApp ? 'Submitting...' : 'Submit Request'}
+            </button>
           </div>
         </div>
       </div>

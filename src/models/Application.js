@@ -180,6 +180,89 @@ const Application = {
   },
 
   /**
+   * Terminate application with user-provided reason
+   * Sets status to 'underReviewed' for admin approval of termination
+   * @param {string} applicationId - The application ID
+   * @param {string} terminationReason - Reason for termination
+   * @returns {Promise<Object>} Updated application
+   */
+  async terminate(applicationId, terminationReason) {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .update({
+          status: 'underReviewed',
+          termination_reason: terminationReason,
+          termination_submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error submitting termination request:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Approve termination request (admin only)
+   * @param {string} applicationId - The application ID
+   * @returns {Promise<Object>} Updated application
+   */
+  async approveTermination(applicationId) {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .update({
+          status: 'terminated',
+          termination_update_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error approving termination:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Reject termination request and revert to approved status (admin only)
+   * @param {string} applicationId - The application ID
+   * @returns {Promise<Object>} Updated application
+   */
+  async rejectTermination(applicationId) {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .update({
+          status: 'approved',
+          termination_reason: null,
+          termination_submitted_at: null,
+          termination_update_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return { success: true, data }
+    } catch (error) {
+      console.error('Error rejecting termination:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
    * Delete application
    * @param {string} applicationId - The application ID
    * @returns {Promise<Object>} Deletion result
