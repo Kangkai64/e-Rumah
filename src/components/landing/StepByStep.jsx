@@ -1,36 +1,39 @@
 // StepByStep Component - Step by step guide for applying to Reverse Mortgage Scheme
 // Displays scheme information, eligibility, application process, and FAQs
 
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import './StepByStep.css'
 import Container from '../common/Container'
 
 function StepByStep() {
+  const [expandedFaqId, setExpandedFaqId] = useState(null)
   // Application steps
   const applicationSteps = [
     {
       id: 1,
-      icon: '👥',
+      icon: '/src/assets/icons/step_by_step_page/step1.svg',
       title: 'Walk in to any of the EPF / AKPK Designated Branches below',
       branches: ['EPF Kuala Lumpur', 'EPF Petaling Jaya', 'EPF Johor Bahru', 'EPF Seremban Jaya', 'EPF Ipoh', 'EPF Seremban', 'EPF Melaka', 'AKPK Kuala Lumpur*', 'AKPK Johor Bahru', 'AKPK Penang', 'AKPK Ipoh', 'AKPK Melaka', '*For Selangor, Negeri Sembilan & Kuala Lumpur']
     },
     {
       id: 2,
-      icon: '📋',
+      icon: '/src/assets/icons/step_by_step_page/step2.svg',
       title: 'Take a pre-assessment test to determine your eligibility'
     },
     {
       id: 3,
-      icon: '📅',
+      icon: '/src/assets/icons/step_by_step_page/step3.svg',
       title: "Make an appointment with AKPK's Financial Advisor"
     },
     {
       id: 4,
-      icon: '📝',
+      icon: '/src/assets/icons/step_by_step_page/step4.svg',
       title: 'Complete the reverse mortgage financial advisory module with AKPK'
     },
     {
       id: 5,
-      icon: '✓',
+      icon: '/src/assets/icons/step_by_step_page/step5.svg',
       title: 'Submit your application to e-Rumah/AKPK, Online Application is now available'
     }
   ]
@@ -51,15 +54,18 @@ function StepByStep() {
   const faqs = [
     {
       id: 1,
-      question: 'What happens to the balance payed if a borrower passes away just a few years after signing up for the Reverse Mortgage Loan? Will it be passed on to the next-of-kin?'
+      question: 'What happens to the balance payed if a borrower passes away just a few years after signing up for the Reverse Mortgage Loan? Will it be passed on to the next-of-kin?',
+      answer: 'The outstanding loan balance becomes due upon the borrower\'s passing. The estate can choose to repay the loan to retain the property, or the property may be sold to settle the outstanding amount.'
     },
     {
       id: 2,
-      question: 'Can a borrower surrender or terminate the loan during his/her lifetime?'
+      question: 'Can a borrower surrender or terminate the loan during his/her lifetime?',
+      answer: 'Yes, a borrower can surrender or terminate the loan at any time during their lifetime by repaying the outstanding loan amount. Please contact us for details on the repayment and termination process.'
     },
     {
       id: 3,
-      question: 'For joint-borrowers, would the property be sold if one of the joint-borrowers passes away and the surviving joint-borrower has to move out as a result?'
+      question: 'For joint-borrowers, would the property be sold if one of the joint-borrowers passes away and the surviving joint-borrower has to move out as a result?',
+      answer: 'For joint-borrowers, the scheme continues for the surviving borrower if they remain in the property. The property would only need to be sold if the surviving borrower chooses to move out or passes away.'
     }
   ]
 
@@ -75,7 +81,10 @@ function StepByStep() {
           <p className="sbs-hero-desc">
             From 3 December 2025, Reverse Mortgage Scheme will be available in Klang Valley, Johor Bahru, Penang Island, Ipoh, Seremban and Malacca City. Customer can now submit application online.
           </p>
-          <a href="#sbs-how-to-apply" className="sbs-scroll-btn">⬇ SCROLL DOWN</a>
+          <a href="#sbs-how-to-apply" className="sbs-scroll-btn">
+            <img src="/src/assets/icons/step_by_step_page/down_arrow.svg" alt="Scroll down"/>
+            SCROLL DOWN
+          </a>
         </div>
         <div className="sbs-hero-image">
           <img src="/src/assets/images/step_by_step_page/banner1.png" alt="Reverse Mortgage Scheme" />
@@ -88,43 +97,42 @@ function StepByStep() {
           <p className="sbs-section-subtitle">Senior home owners can now generate cash during retirement by taking out a reverse mortgage</p>
 
           <div className="sbs-about-grid">
-            <div className="sbs-about-card">
-              <div className="sbs-card-icon">💳</div>
-              <h3>Lifetime tenure</h3>
-              <p>Fixed monthly payouts throughout the entire life of the borrower or joint borrower.</p>
+            <div className="sbs-about-left">
+              <h3>What is Reverse Mortgage Scheme?</h3>
+              <p>Reverse Mortgage Scheme is a type of loan that is targeted for the elderly or retired home owners. Since, and they convert their one-by-their residential property – into a fixed monthly income stream throughout their lifetime, without necessarily owning their home.</p>
+              
+              <ul className="sbs-about-benefits">
+                <li>To enable retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence.</li>
+                <li>Home owners can now draw on their home equity to supplement their retirement income, thus reducing dependency on their next-of-kin.</li>
+              </ul>
             </div>
 
-            <div className="sbs-about-card">
-              <div className="sbs-card-icon">🏠</div>
-              <h3>Residing in own home</h3>
-              <p>Borrower and joint borrower can continue to stay in their property throughout their life.</p>
-            </div>
+            <div className="sbs-about-right">
+              <div className="sbs-about-card">
+                <img src="/src/assets/icons/step_by_step_page/lifetime_tenure.svg" alt="Lifetime tenure" className="sbs-card-icon"/>
+                <h3>Lifetime tenure</h3>
+                <p>Fixed monthly payouts throughout the entire life of the borrower or joint borrower.</p>
+              </div>
 
-            <div className="sbs-about-card">
-              <div className="sbs-card-icon">❌</div>
-              <h3>No repayment during lifetime</h3>
-              <p>Repayment only due when borrower or joint borrower passes away, whichever later.</p>
-            </div>
+              <div className="sbs-about-card">
+                <img src="/src/assets/icons/step_by_step_page/residing_in_own_home.svg" alt="Residing in own home" className="sbs-card-icon"/>
+                <h3>Residing in own home</h3>
+                <p>Borrower and joint borrower can continue to stay in their property throughout their life.</p>
+              </div>
 
-            <div className="sbs-about-card">
-              <div className="sbs-card-icon">❤️</div>
-              <h3>Non-recourse</h3>
-              <p>Borrower's estate will not be responsible for any shortfall to settle the Reverse Mortgage Loan if the sale proceeds of the property is less than the outstanding loan amount.</p>
+              <div className="sbs-about-card">
+                <img src="/src/assets/icons/step_by_step_page/no_repayment.svg" alt="No repayment during lifetime" className="sbs-card-icon"/>
+                <h3>No repayment during lifetime</h3>
+                <p>Repayment only due when borrower or joint borrower passes away, whichever later.</p>
+              </div>
+
+              <div className="sbs-about-card">
+                <img src="/src/assets/icons/step_by_step_page/non_recourse.svg" alt="Non-recourse" className="sbs-card-icon"/>
+                <h3>Non-recourse</h3>
+                <p>Borrower's estate will not be responsible for any shortfall to settle the Reverse Mortgage Loan if the sale proceeds of the property is less than the outstanding loan amount.</p>
+              </div>
             </div>
           </div>
-        </section>
-
-        {/* What is Reverse Mortgage Scheme */}
-        <section className="sbs-what-section">
-          <h2>What is Reverse Mortgage Scheme?</h2>
-          <p className="sbs-section-desc">
-            Reverse Mortgage Scheme is a type of loan that is targeted for the elderly or retired home owners. Since, and they convert their one-by-their residential property – into a fixed monthly income stream throughout their lifetime, without necessarily owning their home.
-          </p>
-
-          <ul className="sbs-benefits-list">
-            <li>✓ To enable retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence.</li>
-            <li>✓ Home owners can now draw on their home equity to supplement their retirement income, thus reducing dependency on their next-of-kin.</li>
-          </ul>
         </section>
 
         {/* How Does It Work */}
@@ -134,16 +142,18 @@ function StepByStep() {
 
           <div className="sbs-eligibility-grid">
             <div className="sbs-eligibility-card">
-              <h3>👥 Eligibility Criteria for Borrower</h3>
+              <img src="/src/assets/icons/step_by_step_page/eligibility_borrower.svg" alt="Eligibility Borrower" className="sbs-card-icon"/> 
+              <h3>Eligibility Criteria for Borrower</h3>
               <ul>
                 {eligibilityCriteria.borrower.map((item, idx) => (
                   <li key={idx}>✓ {item}</li>
                 ))}
               </ul>
             </div>
-
+            
             <div className="sbs-eligibility-card">
-              <h3>🏠 Eligibility Criteria for Property</h3>
+              <img src="/src/assets/icons/step_by_step_page/eligibility_property.svg" alt="Eligibility Property" className="sbs-card-icon"/> 
+              <h3>Eligibility Criteria for Property</h3>
               <ul>
                 {eligibilityCriteria.property.map((item, idx) => (
                   <li key={idx}>✓ {item}</li>
@@ -152,6 +162,7 @@ function StepByStep() {
             </div>
           </div>
         </section>
+      </Container>
 
         {/* Get Peace of Mind Section */}
         <section className="sbs-peace-section">
@@ -169,52 +180,34 @@ function StepByStep() {
           </div>
         </section>
 
+      <Container>
+
+
         {/* How To Apply */}
         <section className="sbs-apply-section" id="sbs-how-to-apply">
-          <h2>How To Apply</h2>
-          <p className="sbs-section-subtitle">
-            We make the application process for Reverse Mortgage Scheme as simple as possible. Follow these steps below and you're on your way to a Reverse Mortgage Loan!
-          </p>
+          <div className="sbs-apply-header">
+            <h2>How To Apply</h2>
+            <p className="sbs-section-subtitle">
+              We make the application process for Reverse Mortgage Scheme as simple as possible. Follow these steps below and you're on your way to a Reverse Mortgage Loan!
+            </p>
+          </div>
 
           <div className="sbs-apply-steps">
             {applicationSteps.map((step) => (
-              <div key={step.id} className="sbs-apply-step">
-                <div className="sbs-step-icon">{step.icon}</div>
+              <div key={step.id} className={`sbs-apply-step ${step.id === 1 ? 'first-step' : ''}`}>
+                <div className="sbs-step-icon">{step.icon.includes('.svg') ? <img src={step.icon} alt="Step icon" /> : step.icon}</div>
                 <div className="sbs-step-content">
                   <p className="sbs-step-text">{step.title}</p>
                   {step.branches && (
                     <div className="sbs-branches-list">
                       {step.branches.map((branch, idx) => (
-                        <span key={idx} className="sbs-branch-item">✓ {branch}</span>
+                        <span key={idx} className="sbs-branch-item">{branch}</span>
                       ))}
                     </div>
                   )}
                 </div>
               </div>
             ))}
-          </div>
-
-          <div className="sbs-view-more-btn-container">
-            <button className="sbs-view-more-btn">View More</button>
-          </div>
-        </section>
-
-        {/* More Information */}
-        <section className="sbs-more-info-section">
-          <h2>More Information</h2>
-          <div className="sbs-info-cards">
-            <a href="#" className="sbs-info-card">
-              📄 Application Form
-            </a>
-            <a href="#" className="sbs-info-card">
-              📘 Brochure (BM)
-            </a>
-            <a href="#" className="sbs-info-card">
-              📗 Brochure (CN)
-            </a>
-            <a href="#" className="sbs-info-card">
-              📙 Brochure (EN)
-            </a>
           </div>
         </section>
 
@@ -227,15 +220,29 @@ function StepByStep() {
 
           <div className="sbs-faq-items">
             {faqs.map((faq) => (
-              <div key={faq.id} className="sbs-faq-item">
-                <p className="sbs-faq-question">{faq.question}</p>
-                <span className="sbs-faq-toggle">⌄</span>
+              <div
+                key={faq.id}
+                className={`sbs-faq-item ${expandedFaqId === faq.id ? 'expanded' : ''}`}
+              >
+                <button
+                  className="sbs-faq-button"
+                  onClick={() => setExpandedFaqId(expandedFaqId === faq.id ? null : faq.id)}
+                  aria-expanded={expandedFaqId === faq.id}
+                >
+                  <p className="sbs-faq-question">{faq.question}</p>
+                  <span className="sbs-faq-toggle">{expandedFaqId === faq.id ? '−' : '+'}</span>
+                </button>
+                {expandedFaqId === faq.id && (
+                  <div className="sbs-faq-answer">
+                    <p>{faq.answer}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
           <div className="sbs-view-more-btn-container">
-            <button className="sbs-view-more-btn">View More</button>
+            <Link to="/faqs" className="sbs-view-more-btn">View More</Link>
           </div>
         </section>
       </Container>
@@ -245,10 +252,10 @@ function StepByStep() {
         <div className="sbs-contact-content">
           <h2>Want to talk to us about Reverse Mortgage?</h2>
           <p>We're here to answer your questions and guide you through the Reverse Mortgage Scheme process</p>
-          <button className="sbs-contact-btn">Contact Us</button>
+          <Link to="/about" className="sbs-contact-btn">Contact Us</Link>
         </div>
         <div className="sbs-contact-image">
-          <img src="/src/assets/images/step_by_step_page/Image.png" alt="Contact us" />
+          <img src="/src/assets/images/step_by_step_page/ContactUs.png" alt="Contact us" />
         </div>
       </section>
     </div>

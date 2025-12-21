@@ -114,11 +114,11 @@ function AdminController() {
   /**
    * Handle search input change (just updates state, doesn't trigger search)
    */
-  const handleSearchChange = (e) => {
-    setFilters({
-      ...filters,
-      search: e.target.value
-    })
+  const handleSearchChange = (value) => {
+    setFilters(prev => ({
+      ...prev,
+      search: value
+    }))
   }
 
   /**

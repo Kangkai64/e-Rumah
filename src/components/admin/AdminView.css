@@ -348,6 +348,20 @@
   color: #9ca3af;
 }
 
+/* No Selection State */
+.admin-no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 350px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: transparent; /* Hide any text */
+  padding: 20px;
+  text-align: center;
+}
+
 /* Status Badge */
 .admin-status-badge {
   display: inline-block;
@@ -394,6 +408,23 @@
   color: #1f2937;
   cursor: pointer;
   white-space: nowrap;
+  transition: none;
+}
+
+.admin-action-btn:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.admin-action-btn:active {
+  background: #e5e7eb;
+  color: #1f2937;
+  transform: none;
+}
+
+.admin-action-btn:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 /* Application Details Card */
@@ -551,68 +582,31 @@
   transform: translateY(0);
 }
 
-/* Nominees Section */
-.admin-nominees-section {
+/* Nominees Content */
+.admin-nominees-content {
   padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  max-height: 380px;
+  overflow-y: auto;
 }
 
-.admin-nominees-info {
-  margin-bottom: 8px;
-}
-
-.admin-nominees-actions {
+.admin-nominees-list {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.admin-view-nominees-btn,
-.admin-approve-nominees-btn {
-  flex: 1;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.admin-nominee-card {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 16px;
 }
 
-.admin-view-nominees-btn {
-  background: #e5e7eb;
-  border: none;
-  color: #1f2937;
-}
-
-.admin-view-nominees-btn:hover {
-  background: #d1d5db;
-}
-
-.admin-approve-nominees-btn {
-  background: #b91c1c;
-  border: none;
-  color: white;
-}
-
-.admin-approve-nominees-btn:hover {
-  background: #991b1b;
-}
-
-/* No Selection State */
-.admin-no-selection {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  font-family: 'Poppins', sans-serif;
-  font-size: 13px;
-  color: #9ca3af;
-  padding: 20px;
+.admin-no-nominees {
   text-align: center;
+  color: #9CA3AF;
+  padding: 40px 0;
+  font-size: 13px;
 }
 
 /* Reports Section */

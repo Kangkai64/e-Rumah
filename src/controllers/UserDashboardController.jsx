@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../components/context/AuthContext'
 import User from '../models/User'
-import UserProfileView from '../views/UserProfileView'
+import LoanStatementView from '../views/LoanStatementView'
 
 function UserDashboardController() {
   const { user } = useAuth()
@@ -194,7 +194,7 @@ function UserDashboardController() {
     onViewFullSchedule: handleViewFullSchedule
   }
 
-  return <UserProfileView {...viewProps} />
+  return <LoanStatementView {...viewProps} />
 }
 
 export default UserDashboardController
