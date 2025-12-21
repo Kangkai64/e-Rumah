@@ -185,10 +185,12 @@ function StepByStep() {
 
         {/* How To Apply */}
         <section className="sbs-apply-section" id="sbs-how-to-apply">
-          <h2>How To Apply</h2>
-          <p className="sbs-section-subtitle">
-            We make the application process for Reverse Mortgage Scheme as simple as possible. Follow these steps below and you're on your way to a Reverse Mortgage Loan!
-          </p>
+          <div className="sbs-apply-header">
+            <h2>How To Apply</h2>
+            <p className="sbs-section-subtitle">
+              We make the application process for Reverse Mortgage Scheme as simple as possible. Follow these steps below and you're on your way to a Reverse Mortgage Loan!
+            </p>
+          </div>
 
           <div className="sbs-apply-steps">
             {applicationSteps.map((step) => (
