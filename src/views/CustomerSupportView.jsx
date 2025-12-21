@@ -22,7 +22,7 @@ function NomineeDetailModal({ nominees, inquiry, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{maxWidth: '900px'}}>
+      <div className="nominee-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="inquiry-card">
           <div className="inquiry-header">
             <h2>Nominee Details - {inquiry?.user?.full_name || 'Elder'}</h2>
@@ -152,7 +152,7 @@ function FlagApplicationModal({ onClose, onFlag }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{maxWidth: '600px'}}>
+      <div className="flag-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="inquiry-card">
           <div className="inquiry-header">
             <h2>Flag Application for Admin Review</h2>
@@ -288,7 +288,7 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="inquiry-modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Inquiry Card */}
         <div className="inquiry-card">
           {/* Header */}
@@ -430,7 +430,7 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
               {/* Draft message preview */}
               {replyMessage && (
                 <div className="message draft-message">
-                  <div className="message-header">You (draft)</div>
+                  <div className="message-header">Your Message</div>
                   <div className="message-body">{replyMessage}</div>
                 </div>
               )}
@@ -459,13 +459,18 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
               <div className="reply-label-row">
                 <div>
                   <label>Reply to elder</label>
-                  <p className="reply-hint">Type your reply here or adjust the drafted message above before sending...</p>
                 </div>
               </div>
               
               <textarea
                 className="modal-reply-textarea"
-                placeholder="Type your reply..."
+                placeholder={
+                  activeTab === 'nominees' 
+                    ? 'Type your response to answer the nominee inquiry...'
+                    : activeTab === 'health_reports'
+                    ? 'Type your response to answer the health report inquiry...'
+                    : 'Type your response to answer the inquiry...'
+                }
                 value={replyMessage}
                 onChange={(e) => setReplyMessage(e.target.value)}
                 disabled={isSending}
@@ -1213,32 +1218,16 @@ export default function CustomerSupportView({
           />
           <div className="filter-group">
             <label className="filter-label">Status:</label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <button
-                className={`filter-button ${filterValue === '' ? 'active' : ''}`}
-                onClick={() => onFilterValueChange('')}
-              >
-                All
-              </button>
-              <button
-                className={`filter-button ${filterValue === 'open' ? 'active' : ''}`}
-                onClick={() => onFilterValueChange('open')}
-              >
-                Open
-              </button>
-              <button
-                className={`filter-button ${filterValue === 'in_progress' ? 'active' : ''}`}
-                onClick={() => onFilterValueChange('in_progress')}
-              >
-                In Progress
-              </button>
-              <button
-                className={`filter-button ${filterValue === 'resolved' ? 'active' : ''}`}
-                onClick={() => onFilterValueChange('resolved')}
-              >
-                Resolved
-              </button>
-            </div>
+            <select 
+              className="filter-select"
+              value={filterValue}
+              onChange={(e) => onFilterValueChange(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
 
             <label className="filter-label" style={{marginLeft: '1.5rem'}}>Sort:</label>
             <select 

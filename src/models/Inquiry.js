@@ -3,8 +3,8 @@ import { supabase } from '../config/supabase'
 
 class Inquiry {
   /**
-   * 获取所有询问记录
-   * @param {Object} filters - 过滤条件 { status, sortBy }
+   * Get all inquiries with optional filters
+   * @param {Object} filters - Filter conditions { status, sortBy }
    * @returns {Promise<{success: boolean, data: Array, error: any}>}
    */
   static async getAll(filters = {}) {
@@ -16,22 +16,22 @@ class Inquiry {
           user:users(id, full_name, email, phone)
         `)
       
-      // 添加状态过滤
+      // Add status filter
       if (filters.status) {
         query = query.eq('status', filters.status)
       }
 
-      // 添加 subject 过滤（inquiries | application | nominee）
+      // Add subject filter (inquiries | application | nominee)
       if (filters.subject) {
         query = query.eq('subject', filters.subject)
       }
 
-      // 添加优先级过滤
+      // Add priority filter
       if (filters.priority) {
         query = query.eq('priority', filters.priority)
       }
 
-      // 排序
+      // Sorting
       const sortBy = filters.sortBy || 'created_at'
       query = query.order(sortBy, { ascending: false })
 
@@ -47,8 +47,8 @@ class Inquiry {
   }
 
   /**
-   * 根据 ID 获取单个询问详情
-   * @param {string} id - 询问 ID
+   * Get a single inquiry by ID
+   * @param {string} id - Inquiry ID
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
   static async getById(id) {
@@ -73,7 +73,7 @@ class Inquiry {
   }
 
   /**
-   * 创建新的询问
+   * Create a new inquiry
    * @param {Object} inquiryData - { user_id, application_id, subject, content, status }
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
@@ -102,10 +102,10 @@ class Inquiry {
   }
 
   /**
-   * 更新询问状态
-   * @param {string} id - 询问 ID
-   * @param {string} status - 新状态 (pending, in_progress, resolved)
-   * @param {string} internalNote - 内部备注 (optional)
+   * Update inquiry status
+   * @param {string} id - Inquiry ID
+   * @param {string} status - New status (pending, in_progress, resolved)
+   * @param {string} internalNote - Internal note (optional)
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
   static async updateStatus(id, status, internalNote = null) {
@@ -142,8 +142,8 @@ class Inquiry {
   }
 
   /**
-   * 搜索询问（按标题或内容）
-   * @param {string} searchTerm - 搜索关键词
+   * Search inquiries (by subject or message)
+   * @param {string} searchTerm - Search keyword
    * @returns {Promise<{success: boolean, data: Array, error: any}>}
    */
   static async search(searchTerm) {
