@@ -14,12 +14,20 @@ function AdminApplicationReviewView({
   approvalLoading,
   showRejectModal,
   rejectionReason,
+  showFlagDocumentModal,
+  flaggedDocumentName,
+  flagDocumentReason,
+  flaggingDocument,
   onTabChange,
   onApprove,
   onReject,
   onConfirmReject,
   onCancelReject,
   onRejectionReasonChange,
+  onFlagDocument,
+  onConfirmFlagDocument,
+  onCancelFlagDocument,
+  onFlagDocumentReasonChange,
   onBackToDashboard,
   onViewDocument,
   formatCurrency,
@@ -174,7 +182,7 @@ function AdminApplicationReviewView({
                   <div className="info-item">
                     <span className="info-label">Tenure</span>
                     <span className="info-value">
-                      {application.application_data?.form_data?.tenureTitle || application.property?.tenure_title || 'N/A'}
+                      {application.application_data?.form_data?.tenureTitle || application.properties?.tenure_title || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -222,12 +230,30 @@ function AdminApplicationReviewView({
                             )}
                           </div>
                           {doc.status === 'FOUND' && doc.url && (
-                            <button
-                              className="view-document-btn"
-                              onClick={() => window.open(doc.url, '_blank')}
-                            >
-                              View
-                            </button>
+                            <div className="document-actions" style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                              <button
+                                className="view-document-btn"
+                                onClick={() => window.open(doc.url, '_blank')}
+                              >
+                                View
+                              </button>
+                              <button
+                                className="flag-document-btn"
+                                onClick={() => onFlagDocument(doc)}
+                                disabled={flaggingDocument}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#dc2626',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Flag
+                              </button>
+                            </div>
                           )}
                         </div>
                       )
@@ -261,6 +287,30 @@ function AdminApplicationReviewView({
                             <span className="info-value">{nominee.ic_number || 'N/A'}</span>
                           </div>
                           <div className="info-item">
+                            <span className="info-label">Date of Birth</span>
+                            <span className="info-value">
+                              {nominee.dob_day && nominee.dob_month && nominee.dob_year 
+                                ? `${nominee.dob_day}/${nominee.dob_month}/${nominee.dob_year}` 
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">Sex</span>
+                            <span className="info-value">{nominee.sex || 'N/A'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">Race</span>
+                            <span className="info-value">{nominee.race || 'N/A'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">Malaysian</span>
+                            <span className="info-value">{nominee.is_malaysian ? 'Yes' : 'No'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">Marital Status</span>
+                            <span className="info-value">{nominee.marital_status || 'N/A'}</span>
+                          </div>
+                          <div className="info-item">
                             <span className="info-label">Relationship</span>
                             <span className="info-value">{nominee.relationship || 'N/A'}</span>
                           </div>
@@ -268,17 +318,21 @@ function AdminApplicationReviewView({
                             <span className="info-label">Email</span>
                             <span className="info-value">{nominee.email || 'N/A'}</span>
                           </div>
+                          <div className="info-item">
+                            <span className="info-label">Residence Phone</span>
+                            <span className="info-value">{nominee.residence_phone || 'N/A'}</span>
+                          </div>
+                          <div className="info-item">
+                            <span className="info-label">Mobile Phone</span>
+                            <span className="info-value">{nominee.telephone || 'N/A'}</span>
+                          </div>
                           <div className="info-item full-width">
                             <span className="info-label">Address</span>
                             <span className="info-value">{nominee.address || 'N/A'}</span>
                           </div>
                           <div className="info-item">
-                            <span className="info-label">Occupation</span>
-                            <span className="info-value">{nominee.occupation || 'N/A'}</span>
-                          </div>
-                          <div className="info-item">
-                            <span className="info-label">Employer</span>
-                            <span className="info-value">{nominee.employer_name || 'N/A'}</span>
+                            <span className="info-label">Postcode</span>
+                            <span className="info-value">{nominee.postcode || 'N/A'}</span>
                           </div>
                         </div>
                       </div>
@@ -336,6 +390,36 @@ function AdminApplicationReviewView({
                 disabled={!rejectionReason.trim() || approvalLoading}
               >
                 {approvalLoading ? 'Processing...' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flag Document Modal */}
+      {showFlagDocumentModal && flaggedDocumentName && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Flag Document: {flaggedDocumentName}</h2>
+            <p>Please provide a reason for flagging this document. The document will be deleted and the user will be notified to re-upload a correct version.</p>
+            <textarea
+              className="rejection-textarea"
+              value={flagDocumentReason}
+              onChange={(e) => onFlagDocumentReasonChange(e.target.value)}
+              placeholder="Enter reason for flagging (e.g., Document is unclear, wrong document type, etc.)..."
+              rows="5"
+            />
+            <div className="modal-actions">
+              <button className="cancel-button" onClick={onCancelFlagDocument}>
+                Cancel
+              </button>
+              <button
+                className="confirm-reject-button"
+                onClick={onConfirmFlagDocument}
+                disabled={!flagDocumentReason.trim() || flaggingDocument}
+                style={{backgroundColor: '#dc2626'}}
+              >
+                {flaggingDocument ? 'Flagging...' : 'Flag & Delete Document'}
               </button>
             </div>
           </div>

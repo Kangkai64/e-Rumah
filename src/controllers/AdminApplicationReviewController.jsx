@@ -22,6 +22,10 @@ function AdminApplicationReviewController() {
   const [approvalLoading, setApprovalLoading] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [showFlagDocumentModal, setShowFlagDocumentModal] = useState(false)
+  const [flaggedDocument, setFlaggedDocument] = useState(null)
+  const [flagDocumentReason, setFlagDocumentReason] = useState('')
+  const [flaggingDocument, setFlaggingDocument] = useState(false)
 
   // Load application details on mount
   useEffect(() => {
@@ -40,12 +44,61 @@ function AdminApplicationReviewController() {
               ic_number,
               email,
               phone
+            ),
+            application_data (
+              *
+            ),
+            properties (
+              id,
+              property_type,
+              address,
+              postcode,
+              indicative_market_value,
+              valuation_date,
+              expected_market_value,
+              purchase_price,
+              purchase_date,
+              tenure_title,
+              expiry_date,
+              build_up_area,
+              land_area,
+              is_encumbered,
+              bank_name,
+              est_outstanding_balance
+            ),
+            nominees (
+              id,
+              type,
+              name,
+              ic_number,
+              address,
+              postcode,
+              email,
+              residence_phone,
+              telephone,
+              sex,
+              race,
+              is_malaysian,
+              marital_status,
+              relationship,
+              created_at,
+              updated_at,
+              dob
             )
           `)
           .eq('id', applicationId)
           .single()
 
         if (appError) throw appError
+
+        // Process application_data to extract form_data
+        if (appData.application_data && Array.isArray(appData.application_data)) {
+          appData.application_data = appData.application_data[0]
+        }
+
+        // Debug: Log nominees data
+        console.log('📋 Nominees data:', appData.nominees)
+        console.log('📋 Nominees count:', appData.nominees?.length || 0)
 
         setApplication(appData)
 
@@ -85,7 +138,7 @@ function AdminApplicationReviewController() {
       const result = await Admin.approveApplication(applicationId)
       if (result.success) {
         alert('Application approved successfully!')
-        navigate('/admin')
+        navigate('/admin/dashboard')
       } else {
         alert('Error approving application: ' + result.error)
       }
@@ -117,7 +170,7 @@ function AdminApplicationReviewController() {
       const result = await Admin.rejectApplication(applicationId, rejectionReason)
       if (result.success) {
         alert('Application rejected successfully!')
-        navigate('/admin')
+        navigate('/admin/dashboard')
       } else {
         alert('Error rejecting application: ' + result.error)
       }
@@ -149,7 +202,7 @@ function AdminApplicationReviewController() {
    * Handle back to dashboard
    */
   const handleBackToDashboard = () => {
-    navigate('/admin')
+    navigate('/admin/dashboard')
   }
 
   /**
@@ -159,6 +212,79 @@ function AdminApplicationReviewController() {
     if (documentUrl) {
       window.open(documentUrl, '_blank')
     }
+  }
+
+  /**
+   * Handle flag document - show modal
+   */
+  const handleFlagDocument = (doc) => {
+    setFlaggedDocument(doc)
+    setShowFlagDocumentModal(true)
+    setFlagDocumentReason('')
+  }
+
+  /**
+   * Handle confirm flag document
+   */
+  const handleConfirmFlagDocument = async () => {
+    if (!flagDocumentReason.trim() || !flaggedDocument) {
+      alert('Please provide a reason for flagging')
+      return
+    }
+
+    setFlaggingDocument(true)
+    try {
+      console.log('Flagging document:', flaggedDocument.displayName)
+      
+      // Import Application model method
+      const result = await Application.flagDocument(
+        applicationId,
+        flaggedDocument.displayName,
+        flaggedDocument.filePath,
+        flagDocumentReason,
+        application.user_id
+      )
+
+      if (result.success) {
+        alert(result.message || `Document "${flaggedDocument.displayName}" has been flagged and deleted. User will be notified.`)
+        
+        // Refresh documents
+        const documentsResult = await Application.getRequiredDocuments(application.user_id)
+        if (documentsResult.success) {
+          setDocuments(documentsResult.data)
+        }
+
+        // Close modal
+        setShowFlagDocumentModal(false)
+        setFlaggedDocument(null)
+        setFlagDocumentReason('')
+      } else {
+        const errorMsg = result.error || 'Unknown error occurred'
+        console.error('Flag document error:', errorMsg)
+        alert('Error flagging document: ' + errorMsg)
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      alert('Error: ' + (err.message || err.toString() || 'Unknown error'))
+    } finally {
+      setFlaggingDocument(false)
+    }
+  }
+
+  /**
+   * Handle cancel flag document
+   */
+  const handleCancelFlagDocument = () => {
+    setShowFlagDocumentModal(false)
+    setFlaggedDocument(null)
+    setFlagDocumentReason('')
+  }
+
+  /**
+   * Handle flag document reason change
+   */
+  const handleFlagDocumentReasonChange = (value) => {
+    setFlagDocumentReason(value)
   }
 
   /**
@@ -223,6 +349,10 @@ function AdminApplicationReviewController() {
       approvalLoading={approvalLoading}
       showRejectModal={showRejectModal}
       rejectionReason={rejectionReason}
+      showFlagDocumentModal={showFlagDocumentModal}
+      flaggedDocumentName={flaggedDocument?.displayName}
+      flagDocumentReason={flagDocumentReason}
+      flaggingDocument={flaggingDocument}
       onTabChange={handleTabChange}
       onApprove={handleApprove}
       onReject={handleReject}
@@ -231,6 +361,10 @@ function AdminApplicationReviewController() {
       onRejectionReasonChange={handleRejectionReasonChange}
       onBackToDashboard={handleBackToDashboard}
       onViewDocument={handleViewDocument}
+      onFlagDocument={handleFlagDocument}
+      onConfirmFlagDocument={handleConfirmFlagDocument}
+      onCancelFlagDocument={handleCancelFlagDocument}
+      onFlagDocumentReasonChange={handleFlagDocumentReasonChange}
       formatCurrency={formatCurrency}
       formatDate={formatDate}
       getStatusBadgeClass={getStatusBadgeClass}
