@@ -19,7 +19,13 @@ function AdminView({
   activeRecordTab,
   activeDetailTab,
   reportFilter,
+  showStatusModal,
+  statusUpdateApp,
+  newStatus,
+  statusRemarks,
+  updatingStatus,
   onSearchChange,
+  onSearch,
   onFilterFieldChange,
   onFilterValueChange,
   onSortChange,
@@ -34,6 +40,10 @@ function AdminView({
   onRecordTabChange,
   onDetailTabChange,
   onReportFilterChange,
+  onStatusChange,
+  onStatusRemarksChange,
+  onConfirmStatusUpdate,
+  onCancelStatusUpdate,
   formatDate,
   getStatusBadgeClass,
   getStatusDisplayText
@@ -97,25 +107,25 @@ function AdminView({
           <div className="admin-statistics-cards">
             <div className="admin-stat-card">
               <div className="admin-stat-label">Pending Applications</div>
-              <div className="admin-stat-value">{statistics.pending}</div>
+              <div className="admin-stat-value">{statistics.pending || 0}</div>
               <div className="admin-stat-subtitle">Awaiting review</div>
             </div>
 
             <div className="admin-stat-card">
               <div className="admin-stat-label">Approved</div>
-              <div className="admin-stat-value">{statistics.approved}</div>
+              <div className="admin-stat-value">{statistics.approved || 0}</div>
               <div className="admin-stat-subtitle">Active loan agreements</div>
             </div>
 
             <div className="admin-stat-card">
               <div className="admin-stat-label">Rejected</div>
-              <div className="admin-stat-value">{statistics.rejected}</div>
+              <div className="admin-stat-value">{statistics.rejected || 0}</div>
               <div className="admin-stat-subtitle">Last 30 days</div>
             </div>
 
             <div className="admin-stat-card admin-stat-card-small">
               <div className="admin-stat-label">Reports Generated</div>
-              <div className="admin-stat-value">{statistics.reportsGenerated}</div>
+              <div className="admin-stat-value">{statistics.reportsGenerated || 0}</div>
               <div className="admin-stat-subtitle">This month</div>
             </div>
           </div>
@@ -131,33 +141,59 @@ function AdminView({
               {/* Search and Filters */}
               <div className="admin-search-filters">
                 <div className="admin-search-input-wrapper">
+                  <span className="admin-search-icon">🔍</span>
                   <input
                     type="text"
                     className="admin-search-input"
-                    placeholder="Search applicants, properties, IDs"
+                    placeholder="Search applicants"
                     value={filters.search}
                     onChange={onSearchChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        onSearch()
+                      }
+                    }}
                   />
                 </div>
 
                 <div className="admin-filter-group">
-                  <span className="admin-filter-label">Filter field:</span>
-                  <button className="admin-filter-btn">Status</button>
-                </div>
-
-                <div className="admin-filter-group">
                   <span className="admin-filter-label">Value:</span>
-                  <button 
-                    className="admin-filter-btn"
-                    onClick={() => onFilterValueChange('pending')}
+                  <select
+                    className="admin-filter-select"
+                    value={filters.status}
+                    onChange={(e) => onFilterValueChange(e.target.value)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: '600',
+                      color: '#1f2937'
+                    }}
                   >
-                    {getStatusDisplayText(filters.status)}
-                  </button>
+                    <option value="all">All</option>
+                    <option value="underReviewed">Under Review</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="terminated">Terminated</option>
+                  </select>
                 </div>
 
                 <div className="admin-filter-group">
                   <span className="admin-filter-label">Sort:</span>
-                  <button className="admin-filter-btn">Newest</button>
+                  <button 
+                    className="admin-filter-btn"
+                    onClick={() => {
+                      const newOrder = filters.sortOrder === 'desc' ? 'asc' : 'desc'
+                      onSortChange('submitted_at', newOrder)
+                    }}
+                  >
+                    {filters.sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+                  </button>
                 </div>
               </div>
 
@@ -175,9 +211,6 @@ function AdminView({
                 >
                   Nominees
                 </button>
-                <div className="admin-tab-hint">
-                  Use filters to refine by status, dates, property type and more.
-                </div>
               </div>
 
               {/* Table Headers */}
@@ -230,7 +263,7 @@ function AdminView({
                           className="admin-action-btn"
                           onClick={(e) => {
                             e.stopPropagation()
-                            onUpdateStatus('underReviewed')
+                            onUpdateStatus(app)
                           }}
                         >
                           Update
@@ -410,6 +443,97 @@ function AdminView({
           </div>
         </div>
       </div>
+
+      {/* Status Update Modal */}
+      {showStatusModal && statusUpdateApp && (
+        <div 
+          className="modal-overlay"
+          onClick={onCancelStatusUpdate}
+        >
+          <div 
+            className="modal status-update-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3>Update Application Status</h3>
+              <button 
+                className="close-button"
+                onClick={onCancelStatusUpdate}
+                disabled={updatingStatus}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="status-update-info">
+                <p><strong>Applicant:</strong> {statusUpdateApp.user?.full_name || 'N/A'}</p>
+                <p><strong>Current Status:</strong> <span className={`admin-status-badge admin-status-${getStatusBadgeClass(statusUpdateApp.status)}`}>
+                  {getStatusDisplayText(statusUpdateApp.status)}
+                </span></p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="newStatus">New Status *</label>
+                <select
+                  id="newStatus"
+                  className="status-select"
+                  value={newStatus}
+                  onChange={(e) => onStatusChange(e.target.value)}
+                  disabled={updatingStatus}
+                >
+                  <option value="underReviewed">Under Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="statusRemarks">Remarks (Optional)</label>
+                <textarea
+                  id="statusRemarks"
+                  className="status-remarks-input"
+                  placeholder="Add any notes about this status change..."
+                  value={statusRemarks}
+                  onChange={(e) => onStatusRemarksChange(e.target.value)}
+                  rows={4}
+                  disabled={updatingStatus}
+                />
+              </div>
+
+              {newStatus === 'rejected' && (
+                <div className="status-warning">
+                  ⚠️ Rejecting this application will permanently change its status. Make sure to provide a reason in the remarks.
+                </div>
+              )}
+
+              {newStatus === 'terminated' && (
+                <div className="status-warning">
+                  ⚠️ Terminating this application will end the loan agreement. This action should only be done for approved applications.
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={onCancelStatusUpdate}
+                disabled={updatingStatus}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={onConfirmStatusUpdate}
+                disabled={updatingStatus || !newStatus || newStatus === statusUpdateApp.status}
+              >
+                {updatingStatus ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
