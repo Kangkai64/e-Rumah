@@ -502,13 +502,21 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
             </button>
             {inquiry.status !== 'resolved' && (
               activeTab === 'nominees' ? (
-                <button 
-                  className="btn-resolve"
-                  onClick={onFlag}
-                  style={{backgroundColor: '#dc2626'}}
-                >
-                  Flag Application
-                </button>
+                <>
+                  <button 
+                    className="btn-resolve"
+                    onClick={onFlag}
+                    style={{backgroundColor: '#dc2626'}}
+                  >
+                    Flag Application
+                  </button>
+                  <button 
+                    className="btn-resolve"
+                    onClick={handleMarkResolved}
+                  >
+                    Mark as Resolved
+                  </button>
+                </>
               ) : (
                 <button 
                   className="btn-resolve"
@@ -1187,6 +1195,25 @@ export default function CustomerSupportView({
                       }}
                     >
                       Flag Application
+                    </button>
+                  )}
+                  {activeTab === 'nominees' && selectedItem && selectedItem.status !== 'resolved' && (
+                    <button 
+                      className="btn-resolve"
+                      onClick={() => onUpdateStatus(selectedItem.id, 'resolved')}
+                      disabled={!selectedItem}
+                      style={{
+                        backgroundColor: '#16a34a',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: selectedItem ? 'pointer' : 'not-allowed',
+                        fontWeight: 500,
+                        marginRight: '8px'
+                      }}
+                    >
+                      Mark as Resolved
                     </button>
                   )}
                   <button 
