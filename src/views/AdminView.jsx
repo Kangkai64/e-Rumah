@@ -361,7 +361,7 @@ function AdminView({
                             }
                           </div>
                         )}
-                        {selectedApplication.property?.is_encumbered !== null && (
+                        {selectedApplication.property?.is_encumbered !== null && selectedApplication.property?.is_encumbered !== undefined && (
                           <div className="admin-eligibility-item">
                             • Encumbered: {selectedApplication.property.is_encumbered ? 'Yes' : 'No'}
                             {selectedApplication.property.is_encumbered && selectedApplication.property.est_outstanding_balance &&
