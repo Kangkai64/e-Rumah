@@ -3,6 +3,7 @@
 // NO imports from other models allowed!
 
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 const Admin = {
   /**
@@ -123,20 +124,15 @@ const Admin = {
    */
   async approveApplication(applicationId, approvalData = {}) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          remarks: approvalData.remarks || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        remarks: approvalData.remarks || null,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error approving application:', error)
       return { success: false, error: error.message }
@@ -151,19 +147,14 @@ const Admin = {
    */
   async rejectApplication(applicationId, remarks) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'rejected',
-          remarks: remarks,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'rejected',
+        remarks: remarks,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error rejecting application:', error)
       return { success: false, error: error.message }
@@ -179,19 +170,14 @@ const Admin = {
    */
   async updateApplicationStatus(applicationId, status, remarks = null) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: status,
-          remarks: remarks,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: status,
+        remarks: remarks,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating application status:', error)
       return { success: false, error: error.message }

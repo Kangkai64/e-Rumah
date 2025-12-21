@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 class User {
   /**
@@ -292,18 +293,13 @@ class User {
    */
   static async updateProfile(userId, profileData) {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .update({
-          ...profileData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('users', userId, {
+        ...profileData,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return data
+      if (!result.success) throw new Error(result.error)
+      return result.data
     } catch (error) {
       console.error('Error updating user profile:', error)
       throw error

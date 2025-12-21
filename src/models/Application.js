@@ -3,6 +3,7 @@
 // NO imports from other models allowed!
 
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 // Define the 17 required documents in order
 const REQUIRED_DOCUMENTS = [
@@ -78,21 +79,16 @@ const Application = {
 
   /**
    * Get full application details with form data, nominees, and properties
-   * @param {string} applicationId - The application ID
-   * @returns {Promise<Object>} Complete application with all related data
-   */
-  async getFullById(applicationId) {
-    try {
-      // Fetch application with user data
-      const { data: application, error: appError } = await supabase
-        .from('applications')
-        .select(`
-          *,
-          user:users!applications_user_id_fkey(id, full_name, email, ic_number, phone),
-          joint_user:users!applications_joint_user_id_fkey(id, full_name, email, ic_number, phone)
-        `)
-        .eq('id', applicationId)
-        .single()
+        const result = await corsProxyUpdate('applications', application.id, {
+          is_flagged: true,
+          flagged_reason: reason,
+          flagged_code: flaggedCode,
+          flagged_at: new Date().toISOString(),
+          flagged_by: staffUserId
+        })
+
+        if (!result.success) throw new Error(result.error)
+        return { success: true, data: result.data }
 
       if (appError) throw appError
 
@@ -167,15 +163,13 @@ const Application = {
    */
   async updateStatus(applicationId, status) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating application status:', error)
       return { success: false, error: error.message }
@@ -190,22 +184,17 @@ const Application = {
    */
   async approve(applicationId, approvalData) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'approved',
-          approved_monthly_amount: approvalData.monthlyAmount,
-          approved_total_amount: approvalData.totalAmount,
-          approved_at: new Date().toISOString(),
-          admin_notes: approvalData.adminNotes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'approved',
+        approved_monthly_amount: approvalData.monthlyAmount,
+        approved_total_amount: approvalData.totalAmount,
+        approved_at: new Date().toISOString(),
+        admin_notes: approvalData.adminNotes,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error approving application:', error)
       return { success: false, error: error.message }
@@ -219,22 +208,17 @@ const Application = {
    */
   async clearFlaggedStatus(applicationId) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          is_flagged: false,
-          flagged_code: null,
-          flagged_reason: null,
-          flagged_at: null,
-          flagged_by: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        is_flagged: false,
+        flagged_code: null,
+        flagged_reason: null,
+        flagged_at: null,
+        flagged_by: null,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error clearing flagged status:', error)
       return { success: false, error: error.message }
@@ -250,20 +234,15 @@ const Application = {
    */
   async terminate(applicationId, terminationReason) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'underReviewed',
-          termination_reason: terminationReason,
-          termination_submitted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'underReviewed',
+        termination_reason: terminationReason,
+        termination_submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error submitting termination request:', error)
       return { success: false, error: error.message }
@@ -277,19 +256,14 @@ const Application = {
    */
   async approveTermination(applicationId) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'terminated',
-          termination_update_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'terminated',
+        termination_update_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error approving termination:', error)
       return { success: false, error: error.message }
@@ -303,21 +277,16 @@ const Application = {
    */
   async rejectTermination(applicationId) {
     try {
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          status: 'approved',
-          termination_reason: null,
-          termination_submitted_at: null,
-          termination_update_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'approved',
+        termination_reason: null,
+        termination_submitted_at: null,
+        termination_update_at: null,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error rejecting termination:', error)
       return { success: false, error: error.message }
@@ -488,22 +457,17 @@ const Application = {
       
       const application = applications[0]
       
-      // Flag the application
-      const { data, error } = await supabase
-        .from('applications')
-        .update({
-          is_flagged: true,
-          flagged_reason: reason,
-          flagged_code: flaggedCode,
-          flagged_at: new Date().toISOString(),
-          flagged_by: staffUserId
-        })
-        .eq('id', application.id)
-        .select()
-      
-      if (error) throw error
-      
-      return { success: true, data: data[0] }
+      // Flag the application via proxy
+      const result = await corsProxyUpdate('applications', application.id, {
+        is_flagged: true,
+        flagged_reason: reason,
+        flagged_code: flaggedCode,
+        flagged_at: new Date().toISOString(),
+        flagged_by: staffUserId
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error flagging application:', error)
       return { success: false, error: error.message }

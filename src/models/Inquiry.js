@@ -1,5 +1,6 @@
 // src/models/Inquiry.js
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 class Inquiry {
   /**
@@ -126,15 +127,12 @@ class Inquiry {
       }
       
       // Avoid selecting the row back to prevent 406 when SELECT is restricted by RLS
-      const { error } = await supabase
-        .from('customer_support_inquiries')
-        .update(updateData)
-        .eq('id', id)
+      const result = await corsProxyUpdate('customer_support_inquiries', id, updateData)
 
-      if (error) throw error
-
-      // We rely on a subsequent fetch to refresh state; return minimal data here
-      return { success: true, data: { id, ...updateData }, error: null }
+      if (!result.success) throw new Error(result.error)
+      
+      // Return the result from proxy or construct minimal response
+      return { success: true, data: result.data || { id, ...updateData }, error: null }
     } catch (error) {
       console.error('Error updating inquiry status:', error)
       return { success: false, data: null, error }

@@ -1,5 +1,6 @@
 // src/models/CustomerSupportContact.js
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 class CustomerSupportContact {
   /**
@@ -79,15 +80,12 @@ class CustomerSupportContact {
       if (replyError) throw replyError
 
       // 2. 更新询问状态为 in_progress
-      const { error: updateError } = await supabase
-        .from('customer_support_inquiries')
-        .update({ 
-          status: 'in_progress',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', inquiryId)
+      const updateResult = await corsProxyUpdate('customer_support_inquiries', inquiryId, {
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      })
 
-      if (updateError) throw updateError
+      if (!updateResult.success) throw new Error(updateResult.error)
 
       return { success: true, data: replyData, error: null }
     } catch (error) {

@@ -3,6 +3,7 @@
 // NO imports from other models allowed!
 
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 import { uploadDocument, deleteDocument } from '../services/fileUploadService'
 import { sendHealthReportShareEmail } from '../services/emailService'
 
@@ -140,50 +141,10 @@ const HealthReport = {
    */
   async update(reportId, updates) {
     try {
-      const { data, error } = await supabase
-        .from('health_reports')
-        .update(updates)
-        .eq('id', reportId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('health_reports', reportId, updates)
 
-      if (error) throw error
-      return { success: true, data }
-    } catch (error) {
-      console.error('Error updating health report:', error)
-      return { success: false, error: error.message }
-    }
-  },
-
-  /**
-   * Delete health report
-   * @param {string} reportId - The health report ID
-   * @returns {Promise<Object>} Success indicator
-   */
-  async delete(reportId) {
-    try {
-      // First get the file URL to delete from storage
-      const getResult = await this.getById(reportId)
-
-      if (getResult.success && getResult.data.report_file_url) {
-        const storageResult = await deleteDocument(
-          getResult.data.report_file_url,
-          getResult.data.user_id,
-          { bucket: 'health-reports' }
-        )
-
-        if (storageResult?.error) {
-          console.error('Error deleting health report file:', storageResult.error)
-        }
-      }
-
-      const { error } = await supabase
-        .from('health_reports')
-        .delete()
-        .eq('id', reportId)
-
-      if (error) throw error
-      return { success: true }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error deleting health report:', error)
       return { success: false, error: error.message }
@@ -282,18 +243,13 @@ const HealthReport = {
    */
   async updateStatus(reportId, status) {
     try {
-      const { data, error } = await supabase
-        .from('health_reports')
-        .update({ 
-          health_report_status: status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reportId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('health_reports', reportId, {
+        health_report_status: status,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating health report status:', error)
       return { success: false, error: error.message }
@@ -308,18 +264,13 @@ const HealthReport = {
    */
   async updateDueStatus(reportId, dueStatus) {
     try {
-      const { data, error } = await supabase
-        .from('health_reports')
-        .update({ 
-          due_status: dueStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reportId)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('health_reports', reportId, {
+        due_status: dueStatus,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-      return { success: true, data }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating due status:', error)
       return { success: false, error: error.message }
@@ -995,59 +946,15 @@ export const getHealthReportShares = async (reportId) => {
 export const revokeHealthReportShare = async (shareId) => {
   try {
     const timestamp = new Date().toISOString()
-    
-    // Get the current user's session to pass JWT token
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    if (sessionError || !session) {
-      throw new Error('No active session')
-    }
 
-    // Call the edge function instead of direct Supabase update to bypass CORS issues
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          table: 'health_report_shares',
-          id: shareId,
-          patch: {
-            is_revoked: true,
-            expires_at: timestamp,
-            updated_at: timestamp
-          }
-        })
-      }
-    )
+    const result = await corsProxyUpdate('health_report_shares', shareId, {
+      is_revoked: true,
+      expires_at: timestamp,
+      updated_at: timestamp
+    })
 
-    if (!res.ok) {
-      const contentType = res.headers.get('content-type')
-      let errorMessage = `HTTP Error: ${res.status}`
-      
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          const errorData = await res.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          // Continue with default error message
-        }
-      }
-      throw new Error(errorMessage)
-    }
-
-    const contentType = res.headers.get('content-type')
-    let data = null
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await res.json()
-    } else {
-      data = { id: shareId, is_revoked: true }
-    }
-    
-    return { success: true, data }
+    if (!result.success) throw new Error(result.error)
+    return { success: true, data: result.data }
   } catch (error) {
     console.error('Error revoking health report share:', error)
     return { success: false, error: error.message }
@@ -1067,19 +974,14 @@ function generateToken() {
  */
 export const approveHealthReport = async (reportId, adminId) => {
   try {
-    const { data, error } = await supabase
-      .from('health_reports')
-      .update({
-        health_report_status: 'Reviewed',
-        updated_at: new Date().toISOString(),
-        notes: `Reviewed by admin ${adminId} on ${new Date().toLocaleDateString()}`
-      })
-      .eq('id', reportId)
-      .select()
-      .single()
+    const result = await corsProxyUpdate('health_reports', reportId, {
+      health_report_status: 'Reviewed',
+      updated_at: new Date().toISOString(),
+      notes: `Reviewed by admin ${adminId} on ${new Date().toLocaleDateString()}`
+    })
 
-    if (error) throw error
-    return { success: true, data, message: 'Health report approved successfully' }
+    if (!result.success) throw new Error(result.error)
+    return { success: true, data: result.data, message: 'Health report approved successfully' }
   } catch (error) {
     console.error('Error approving health report:', error)
     return { success: false, error: error.message }
@@ -1098,21 +1000,15 @@ export const flagHealthReport = async (reportId, adminId, flagReason) => {
     if (!flagReason || flagReason.trim().length === 0) {
       return { success: false, error: 'Flag reason is required' }
     }
+    const result = await corsProxyUpdate('health_reports', reportId, {
+      health_report_status: 'Flagged',
+      updated_at: new Date().toISOString(),
+      flagged_reason: flagReason.trim(),
+      notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`
+    })
 
-    const { data, error } = await supabase
-      .from('health_reports')
-      .update({
-        health_report_status: 'Flagged',
-        updated_at: new Date().toISOString(),
-        flagged_reason: flagReason.trim(),
-        notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`
-      })
-      .eq('id', reportId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return { success: true, data, message: 'Health report flagged successfully' }
+    if (!result.success) throw new Error(result.error)
+    return { success: true, data: result.data, message: 'Health report flagged successfully' }
   } catch (error) {
     console.error('Error flagging health report:', error)
     return { success: false, error: error.message }
@@ -1127,19 +1023,14 @@ export const flagHealthReport = async (reportId, adminId, flagReason) => {
  */
 export const archiveHealthReport = async (reportId, adminId) => {
   try {
-    const { data, error } = await supabase
-      .from('health_reports')
-      .update({
-        health_report_status: 'Archived',
-        updated_at: new Date().toISOString(),
-        notes: `Archived by admin ${adminId} on ${new Date().toLocaleDateString()}`
-      })
-      .eq('id', reportId)
-      .select()
-      .single()
+    const result = await corsProxyUpdate('health_reports', reportId, {
+      health_report_status: 'Archived',
+      updated_at: new Date().toISOString(),
+      notes: `Archived by admin ${adminId} on ${new Date().toLocaleDateString()}`
+    })
 
-    if (error) throw error
-    return { success: true, data, message: 'Health report archived successfully' }
+    if (!result.success) throw new Error(result.error)
+    return { success: true, data: result.data, message: 'Health report archived successfully' }
   } catch (error) {
     console.error('Error archiving health report:', error)
     return { success: false, error: error.message }
@@ -1546,49 +1437,12 @@ const RemindersService = {
     try {
       // Remove user_id from update data if present (shouldn't be updated)
       const { user_id, id, created_at, ...cleanUpdateData } = updateData
+      const result = await corsProxyUpdate('reminders', reminderId, {
+        ...cleanUpdateData,
+        updated_at: new Date().toISOString()
+      })
 
-      // Get the current user's session to pass JWT token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        return { success: false, error: 'No active session' }
-      }
-
-      // Use CORS proxy function for update
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            table: 'reminders',
-            id: reminderId,
-            patch: {
-              ...cleanUpdateData,
-              updated_at: new Date().toISOString()
-            }
-          })
-        }
-      )
-
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type')
-        let errorMessage = `HTTP Error: ${res.status}`
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await res.json()
-            errorMessage = errorData.error || errorMessage
-          } catch (e) {
-            // Continue with default error message
-          }
-        }
-        return { success: false, error: errorMessage }
-      }
-
-      const result = await res.json()
+      if (!result.success) return { success: false, error: result.error }
       return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error updating reminder:', error)
@@ -1615,48 +1469,12 @@ const RemindersService = {
   // Toggle reminder enabled status
   async toggleReminder(reminderId, isEnabled) {
     try {
-      // Get the current user's session to pass JWT token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        return { success: false, error: 'No active session' }
-      }
+      const result = await corsProxyUpdate('reminders', reminderId, {
+        is_enabled: isEnabled,
+        updated_at: new Date().toISOString()
+      })
 
-      // Use CORS proxy function for update
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            table: 'reminders',
-            id: reminderId,
-            patch: {
-              is_enabled: isEnabled,
-              updated_at: new Date().toISOString()
-            }
-          })
-        }
-      )
-
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type')
-        let errorMessage = `HTTP Error: ${res.status}`
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await res.json()
-            errorMessage = errorData.error || errorMessage
-          } catch (e) {
-            // Continue with default error message
-          }
-        }
-        return { success: false, error: errorMessage }
-      }
-
-      const result = await res.json()
+      if (!result.success) return { success: false, error: result.error }
       return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error toggling reminder:', error)
@@ -1761,48 +1579,12 @@ const RemindersService = {
   // Mark reminder as notified
   async markAsNotified(reminderId) {
     try {
-      // Get the current user's session to pass JWT token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        return { success: false, error: 'No active session' }
-      }
+      const result = await corsProxyUpdate('reminders', reminderId, {
+        notified_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
 
-      // Use CORS proxy function for update
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            table: 'reminders',
-            id: reminderId,
-            patch: {
-              notified_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          })
-        }
-      )
-
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type')
-        let errorMessage = `HTTP Error: ${res.status}`
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await res.json()
-            errorMessage = errorData.error || errorMessage
-          } catch (e) {
-            // Continue with default error message
-          }
-        }
-        return { success: false, error: errorMessage }
-      }
-
-      const result = await res.json()
+      if (!result.success) return { success: false, error: result.error }
       return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error marking reminder as notified:', error)

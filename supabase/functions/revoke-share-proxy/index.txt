@@ -42,12 +42,24 @@ Deno.serve(async (req: Request) => {
 
     // Allowlist of tables and optional allowed patch fields per-table
     const ALLOWLIST: Record<string, string[]> = {
-      // table_name: [allowed_field_names_in_patch]
-      health_report_shares: ['is_revoked'],
-      health_reports: ['report_file_url', 'health_report_status', 'updated_at'],
-      reminders: ['reminder_type', 'reminder_title', 'reminder_date', 'is_enabled', 'reminder_frequency', 'notes', 'category', 'updated_at', 'notified_at'],
-      // add other allowed tables here
-    };
+    // table_name: [allowed_field_names_in_patch]
+    users: ['email','full_name','phone','updated_at','role'],
+    applications: ['status','remarks','is_flagged','flagged_reason','flagged_at','termination_reason','termination_submitted_at','termination_update_at','updated_at'],
+    application_data: ['current_step','form_data','updated_at'],
+    nominees: ['name','ic_number','address','postcode','email','residence_phone','telephone','sex','race','is_malaysian','marital_status','relationship','dob','updated_at'],
+    properties: ['property_type','address','postcode','indicative_market_value','valuation_date','expected_market_value','purchase_price','purchase_date','tenure_title','expiry_date','build_up_area','land_area','is_encumbered','bank_name','est_outstanding_balance','has_fire_insurance','insurance_company','insurance_period_validity','updated_at'],
+    transactions: ['transaction_type','amount','transaction_date','description','reference_number','updated_at'],
+    health_reports: ['report_date','report_file_url','notes','updated_at','health_report_status','due_status','report_title','provider_name','flagged_reason'],
+    customer_support_inquiries: ['subject','message','status','priority','assigned_to','resolved_at','updated_at','internal_note'],
+    support_conversations: ['message','sender_type','sender_id','updated_at'],
+    reminders: ['reminder_type','reminder_title','reminder_date','is_enabled','reminder_frequencies','notes','category','updated_at','notified_at'],
+    reminder_notifications: ['scheduled_time','notification_offset','is_sent','sent_at','updated_at'],
+    caregivers: ['license_number','specialization','years_of_experience','bio','is_verified','updated_at'],
+    healthcare_providers: ['provider_type','license_number','specialty','organization_name','address','is_verified','updated_at'],
+    health_report_shares: ['is_revoked','expires_at','access_count','last_accessed_at','updated_at'],
+    family_members: ['relationship_type','is_emergency_contact','is_verified','permissions_level','notes','updated_at']
+  };
+
 
     if (!tableParam) return new Response(JSON.stringify({ success: false, error: 'Missing table parameter' }), { status: 400, headers: corsHeaders() });
     if (!Object.prototype.hasOwnProperty.call(ALLOWLIST, tableParam)) {

@@ -1,5 +1,6 @@
 // src/models/Nominee.js
 import { supabase } from '../config/supabase'
+import { corsProxyUpdate } from '../services/corsProxyService'
 
 class Nominee {
   /**
@@ -130,19 +131,13 @@ class Nominee {
    */
   static async updateStatus(id, status) {
     try {
-      const { data, error } = await supabase
-        .from('nominees')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
+      const result = await corsProxyUpdate('nominees', id, {
+        status,
+        updated_at: new Date().toISOString()
+      })
 
-      if (error) throw error
-
-      return { success: true, data, error: null }
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data, error: null }
     } catch (error) {
       console.error('Error updating nominee status:', error)
       return { success: false, data: null, error }
