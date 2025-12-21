@@ -1097,7 +1097,12 @@ function ApplicationController({ editNomineeOnly = false }) {
     fillTextField(form, 'applicant_employerAddress_postcode', data.employerPostcode)
     fillTextField(form, 'applicant_purpose', data.purposeOfApplication)
     fillRadio(form, 'applicant_payout', data.payoutOption)
-    fillRadio(form, 'applicant_lumpSumUsage', data.lumpSumUsage)
+    // Only fill lumpSumUsage if payoutOption is 'lumpSum', otherwise clear the field
+    if (data.payoutOption === 'lumpSum') {
+      fillRadio(form, 'applicant_lumpSumUsage', data.lumpSumUsage)
+    } else {
+      fillRadio(form, 'applicant_lumpSumUsage', '')
+    }
     fillRadio(form, 'applicant_payment', data.paymentOption)
     fillRadio(form, 'fromWhere', data.howDidYouKnow)
     fillRadio(form, 'ssb_prefererence', data.preferredScheme)

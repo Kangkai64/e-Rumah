@@ -245,6 +245,36 @@ const HealthReport = {
   },
 
   /**
+   * Get all flagged health reports (for support staff workspace)
+   * @returns {Promise<Object>} { success, data }
+   */
+  async getFlagged() {
+    try {
+      const { data, error } = await supabase
+        .from('health_reports')
+        .select(`
+          *,
+          user:users!health_reports_user_id_fkey (
+            id,
+            full_name,
+            email,
+            phone,
+            ic_number
+          )
+        `)
+        .eq('health_report_status', 'Flagged')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      return { success: true, data: data || [] }
+    } catch (error) {
+      console.error('Error fetching flagged health reports:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+  },
+
+  /**
    * Update health report status
    * @param {string} reportId - Health report ID
    * @param {string} status - New status
