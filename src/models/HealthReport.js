@@ -23,7 +23,6 @@ const HealthReport = {
           report_type: reportData.reportType,
           report_date: reportData.reportDate,
           report_title: reportData.reportTitle,
-          provider_name: reportData.providerName,
           report_file_url: reportData.reportFileUrl,
           notes: reportData.notes,
           health_report_status: reportData.healthReportStatus || 'Pending',
@@ -79,10 +78,6 @@ const HealthReport = {
         query = query.eq('report_type', filters.reportType)
       }
 
-      if (filters.providerName) {
-        query = query.ilike('provider_name', `%${filters.providerName}%`)
-      }
-
       if (filters.applicationId) {
         query = query.eq('application_id', filters.applicationId)
       }
@@ -122,7 +117,7 @@ const HealthReport = {
         .from('health_reports')
         .select('*')
         .eq('user_id', userId)
-        .or(`report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%,report_title.ilike.%${searchKey}%,provider_name.ilike.%${searchKey}%`)
+        .or(`report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%,report_title.ilike.%${searchKey}%`)
         .order('report_date', { ascending: false })
 
       if (error) throw error
@@ -303,7 +298,6 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
       reportType: metadata.reportType,
       reportDate: metadata.reportDate,
       reportTitle: metadata.reportTitle,
-      providerName: metadata.providerName,
       reportFileUrl: uploadResult.data.url,
       notes: metadata.notes
     }
@@ -1056,26 +1050,20 @@ export const getAllHealthReports = async (filters = {}) => {
         users!health_reports_user_id_fkey(id, full_name, email, ic_number, phone)
       `)
 
-    // Apply search filter
-    if (filters.searchKey) {
+    // Apply search filter (restrict to base columns to avoid PostgREST parse errors with nested relations)
+    const rawSearchKey = filters.searchKey?.trim()
+    if (rawSearchKey) {
+      const safeSearch = rawSearchKey.replace(/,/g, ' ')
       query = query.or(
-        `report_type.ilike.%${filters.searchKey}%,` +
-        `notes.ilike.%${filters.searchKey}%,` +
-        `provider_name.ilike.%${filters.searchKey}%,` +
-        `applications.users.full_name.ilike.%${filters.searchKey}%,` +
-        `applications.users.email.ilike.%${filters.searchKey}%,` +
-        `users.full_name.ilike.%${filters.searchKey}%,` +
-        `users.email.ilike.%${filters.searchKey}%`
+        `report_type.ilike.%${safeSearch}%,` +
+        `report_title.ilike.%${safeSearch}%,` +
+        `notes.ilike.%${safeSearch}%`
       )
     }
 
     // Apply filters
     if (filters.reportType) {
       query = query.eq('report_type', filters.reportType)
-    }
-
-    if (filters.providerName) {
-      query = query.ilike('provider_name', `%${filters.providerName}%`)
     }
 
     if (filters.uploadStatus) {
@@ -1126,6 +1114,24 @@ export const getAllHealthReports = async (filters = {}) => {
         phone: report.applications.users.phone
       } : null)
     }))
+
+    // Client-side search across nested user fields (since server-side OR excludes nested relations)
+    if (rawSearchKey) {
+      const searchLower = rawSearchKey.toLowerCase()
+      processedData = processedData.filter(report => {
+        const haystack = [
+          report.report_type,
+          report.report_title,
+          report.notes,
+          report.userData?.full_name,
+          report.userData?.email
+        ]
+
+        return haystack.some(val =>
+          val && val.toString().toLowerCase().includes(searchLower)
+        )
+      })
+    }
 
     // Apply due status filtering (complex logic)
     if (filters.dueStatus) {
