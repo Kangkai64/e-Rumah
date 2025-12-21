@@ -189,8 +189,9 @@ function MaintainApplicationController() {
       if (result.success) {
         setApplicationStatus('underReviewed')
         setError(null)
-        // Redirect to user applications page after successful submission
-        navigate('/user/application')
+        // Redirect and refresh page after successful termination submission
+        alert('Termination request submitted successfully. Redirecting...')
+        window.location.href = '/user/application'
       } else {
         setError('Failed to submit termination request')
       }

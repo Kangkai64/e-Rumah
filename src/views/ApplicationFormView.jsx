@@ -123,7 +123,7 @@ function SignaturePad({ value, onChange, label = 'Signature' }) {
 }
 
 // Wizard Navigation Component
-function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep, isSubmitting, editNomineeOnly = false, nomineeCount = 0 }) {
+function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, isLastStep, isSubmitting, editNomineeOnly = false, nomineeCount = 0, handleBackToMaintainApplication = null, handlePopulateNomineeForm = null }) {
   const progress = (currentStep / totalSteps) * 100
 
   const stepTitles = [
@@ -160,9 +160,14 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
       
       <div className="wizard-buttons">
         {editNomineeOnly ? (
-          <button type="button" className="wizard-btn wizard-btn-next" onClick={handleNominateConfirm}>
-            Nominate New Nominee
-          </button>
+          <div style={{display: 'flex', gap: '1rem', width: '100%'}}>
+            <button type="button" className="wizard-btn wizard-btn-back" onClick={handleBackToMaintainApplication} style={{flex: 1}}>
+              ← BACK
+            </button>
+            <button type="button" className="wizard-btn wizard-btn-next" onClick={handleNominateConfirm} style={{flex: 1}}>
+              Nominate New Nominee
+            </button>
+          </div>
         ) : (
           <>
             {currentStep > 1 && (
@@ -1453,7 +1458,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 }
 
 // Step 4: Nominee(s) Details
-function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0 }) {
+function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0, showNomineeForm = true, handlePopulateNomineeForm = null, handleBackToMaintainApplication = null }) {
   const getNomineeMessage = () => {
     if (!editNomineeOnly) return null
     if (promoteNominee2) return '⚠️ You are promoting Nominee 2 to become Nominee 1. Please verify the information and provide a new signature.'
@@ -1463,13 +1468,15 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
   }
 
   return (
-    <div className="step-container">
-      <h2>Nominee Information</h2>
-      {editNomineeOnly && (
-        <div className="edit-nominee-notice">
-          <p className="notice-text">{getNomineeMessage()}</p>
-        </div>
-      )}
+    <>
+      <div className="step-container">
+        <h2>Nominee Information</h2>
+        
+        {editNomineeOnly && (
+          <div className="edit-nominee-notice">
+            <p className="notice-text">{getNomineeMessage()}</p>
+          </div>
+        )}
       <p className="step-description">Provide details of your nominee(s) who will inherit the property</p>
       <ErrorSummary errors={errors} />
       
@@ -1939,7 +1946,9 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           </div>
         </section>
       )}
-    </div>
+
+      </div>
+    </>
   )
 }
 
@@ -2664,7 +2673,10 @@ export default function ApplicationFormView({
   readOnlyMode = false,
   editNomineeOnly = false,
   promoteNominee2 = false,
-  nomineeCount = 0
+  nomineeCount = 0,
+  showNomineeForm = true,
+  handlePopulateNomineeForm = null,
+  handleBackToMaintainApplication = null
 }) {
   // Force step 4 if in editNomineeOnly mode
   const displayStep = editNomineeOnly ? 4 : currentStep
@@ -2678,7 +2690,7 @@ export default function ApplicationFormView({
       case 3:
         return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 4:
-        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} promoteNominee2={promoteNominee2} nomineeCount={nomineeCount} />
+        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} promoteNominee2={promoteNominee2} nomineeCount={nomineeCount} showNomineeForm={showNomineeForm} handlePopulateNomineeForm={handlePopulateNomineeForm} handleBackToMaintainApplication={handleBackToMaintainApplication} />
       case 5:
         return <Step5InfoDisplay formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 6:
@@ -2733,6 +2745,8 @@ export default function ApplicationFormView({
             isSubmitting={isSubmitting}
             editNomineeOnly={editNomineeOnly}
             nomineeCount={nomineeCount}
+            handleBackToMaintainApplication={handleBackToMaintainApplication}
+            handlePopulateNomineeForm={handlePopulateNomineeForm}
           />
           {renderStep()}
           <WizardNavigation
@@ -2745,6 +2759,8 @@ export default function ApplicationFormView({
             isSubmitting={isSubmitting}
             editNomineeOnly={editNomineeOnly}
             nomineeCount={nomineeCount}
+            handleBackToMaintainApplication={handleBackToMaintainApplication}
+            handlePopulateNomineeForm={handlePopulateNomineeForm}
           />
         </div>
       </div>

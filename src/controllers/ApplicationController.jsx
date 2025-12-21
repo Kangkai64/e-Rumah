@@ -36,6 +36,8 @@ function ApplicationController({ editNomineeOnly = false }) {
   const [isSaving, setIsSaving] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState({})
+  const [showNomineeForm, setShowNomineeForm] = useState(true)
+  const [existingNomineeData, setExistingNomineeData] = useState(null)
   const saveTimeoutRef = useRef(null)
   const isInitialized = useRef(false)
   const hasRedirected = useRef(false)
@@ -343,6 +345,37 @@ function ApplicationController({ editNomineeOnly = false }) {
             
             setFormData(prev => ({ ...prev, ...loadedData }))
             setCurrentStep(applicationData.current_step || 1)
+            
+            // If in edit nominee mode, store the existing data for later population
+            if (editNomineeOnly) {
+              setExistingNomineeData(loadedData)
+              // Clear nominee fields for blank form
+              const blankNomineeForm = {
+                nominee1Salutation: '',
+                nominee1Name: '',
+                nominee1Ic: '',
+                nominee1DobDay: '',
+                nominee1DobMonth: '',
+                nominee1DobYear: '',
+                nominee1Sex: '',
+                nominee1Race: '',
+                nominee1Malaysian: false,
+                nominee1Marital: '',
+                nominee1Relationship: '',
+                nominee1Address: '',
+                nominee1Postcode: '',
+                nominee1Email: '',
+                nominee1Telephone: '',
+                nominee1ResidencePhone: '',
+                nominee1Occupation: '',
+                nominee1EmployerName: '',
+                ackNominee_signature: '',
+                ackNominee_signature_name: '',
+                ackNominee_signature_date: ''
+              }
+              setFormData(prev => ({ ...prev, ...blankNomineeForm }))
+              setShowNomineeForm(false)
+            }
             console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(loadedData).length)
           } else {
             // New application - auto-populate with user profile data
@@ -495,6 +528,9 @@ function ApplicationController({ editNomineeOnly = false }) {
   // Trigger auto-save when formData or currentStep changes
   useEffect(() => {
     if (isLoading) return // Don't save during initial load
+    
+    // Don't auto-save blank nominee data in editNomineeOnly mode
+    if (editNomineeOnly && !formData.nominee1Name) return
 
     // Clear previous timeout
     if (saveTimeoutRef.current) {
@@ -823,12 +859,66 @@ function ApplicationController({ editNomineeOnly = false }) {
     }
   }
 
+  // ==========================================
+  // NOMINEE FORM HANDLERS
+  // ==========================================
+  const handlePopulateNomineeForm = () => {
+    if (existingNomineeData) {
+      setFormData(prev => ({ ...prev, ...existingNomineeData }))
+      setShowNomineeForm(true)
+    }
+  }
+
+  const handleBackToMaintainApplication = () => {
+    // Restore existing nominee data before navigating back
+    if (existingNomineeData) {
+      setFormData(prev => ({
+        ...prev,
+        nominee1Salutation: existingNomineeData.nominee1Salutation || '',
+        nominee1Name: existingNomineeData.nominee1Name || '',
+        nominee1Ic: existingNomineeData.nominee1Ic || '',
+        nominee1DobDay: existingNomineeData.nominee1DobDay || '',
+        nominee1DobMonth: existingNomineeData.nominee1DobMonth || '',
+        nominee1DobYear: existingNomineeData.nominee1DobYear || '',
+        nominee1Sex: existingNomineeData.nominee1Sex || '',
+        nominee1Race: existingNomineeData.nominee1Race || '',
+        nominee1Malaysian: existingNomineeData.nominee1Malaysian || false,
+        nominee1Marital: existingNomineeData.nominee1Marital || '',
+        nominee1Relationship: existingNomineeData.nominee1Relationship || '',
+        nominee1Address: existingNomineeData.nominee1Address || '',
+        nominee1Postcode: existingNomineeData.nominee1Postcode || '',
+        nominee1Email: existingNomineeData.nominee1Email || '',
+        nominee1Telephone: existingNomineeData.nominee1Telephone || '',
+        nominee1ResidencePhone: existingNomineeData.nominee1ResidencePhone || '',
+        nominee1Occupation: existingNomineeData.nominee1Occupation || '',
+        nominee1EmployerName: existingNomineeData.nominee1EmployerName || '',
+        ackNominee_signature: existingNomineeData.ackNominee_signature || '',
+        ackNominee_signature_name: existingNomineeData.ackNominee_signature_name || '',
+        ackNominee_signature_date: existingNomineeData.ackNominee_signature_date || ''
+      }))
+    }
+    // Navigate after a small delay to ensure state update completes
+    setTimeout(() => {
+      navigate('/user/application')
+    }, 100)
+  }
+
   /**
    * Validate and move to next step
    */
   const handleNext = async () => {
-    // For editNomineeOnly mode, skip validation and go straight to redirect
+    // For editNomineeOnly mode, validate nominee form before saving
     if (editNomineeOnly && currentStep === 4) {
+      // Validate nominee form
+      const stepErrors = validateStep(4, formData)
+      
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors(stepErrors)
+        // Scroll to first error
+        window.scrollTo(0, 0)
+        return
+      }
+      
       try {
         // Save the form data first
         if (currentUser && applicationId) {
@@ -1394,6 +1484,9 @@ function ApplicationController({ editNomineeOnly = false }) {
       editNomineeOnly={editNomineeOnly}
       promoteNominee2={promoteNominee2}
       nomineeCount={formData.nominee1Name ? (formData.nominee2Name ? 2 : 1) : 0}
+      showNomineeForm={showNomineeForm}
+      handlePopulateNomineeForm={handlePopulateNomineeForm}
+      handleBackToMaintainApplication={handleBackToMaintainApplication}
     />
   )
 }
