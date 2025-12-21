@@ -49,19 +49,29 @@ class SupportConversation {
    * @param {string} message - Message content
    * @param {string} senderType - 'elder' or 'staff'
    * @param {string} senderId - UUID of the sender (user_id)
+   * @param {string} fileUrl - Optional file URL
+   * @param {string} fileName - Optional file name
    * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
    */
-  static async send(entityType, entityId, message, senderType, senderId) {
+  static async send(entityType, entityId, message, senderType, senderId, fileUrl = null, fileName = null) {
     try {
+      const payload = {
+        entity_type: entityType,
+        entity_id: entityId,
+        message,
+        sender_type: senderType,
+        sender_id: senderId
+      }
+
+      // Add file fields if provided
+      if (fileUrl) {
+        payload.file_url = fileUrl
+        payload.file_name = fileName || 'attachment'
+      }
+
       const { data, error } = await supabase
         .from('support_conversations')
-        .insert({
-          entity_type: entityType,
-          entity_id: entityId,
-          message,
-          sender_type: senderType,
-          sender_id: senderId
-        })
+        .insert(payload)
         .select()
         .single()
 
