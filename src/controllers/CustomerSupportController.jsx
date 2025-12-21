@@ -6,7 +6,7 @@ import Application from '../models/Application'
 import SupportConversation from '../models/SupportConversation'
 import HealthReport from '../models/HealthReport'
 import CustomerSupportView from '../views/customerSupportView'
-import { supabase } from '../config/supabase'
+import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
 
 export default function CustomerSupportController() {
   // 1. State Management
@@ -32,31 +32,25 @@ export default function CustomerSupportController() {
 
   // 3. Load Contact Settings
   useEffect(() => {
-    fetchContactSettings()
+    // Load from localStorage on mount
+    const { email, phone } = getCompanyContactInfo()
+    setContactEmail(email)
+    setContactPhone(phone)
+
+    // Listen for changes from other tabs
+    const handleStorage = (e) => {
+      if (e.key === 'companyContactEmail' || e.key === 'companyContactPhone') {
+        const { email, phone } = getCompanyContactInfo()
+        setContactEmail(email)
+        setContactPhone(phone)
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
-  const fetchContactSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('customer_support_contact')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error // PGRST116 = no rows found
-
-      if (data) {
-        setContactEmail(data.contact_email || '')
-        setContactPhone(data.contact_phone || '')
-      }
-    } catch (error) {
-      console.error('Error fetching contact settings:', error)
-    }
-  }
-
   // 4. Save Contact Settings
-  const handleSaveContactSettings = async () => {
+  const handleSaveContactSettings = () => {
     // Validate
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(contactEmail)) {
@@ -75,39 +69,7 @@ export default function CustomerSupportController() {
     setContactSuccess('')
 
     try {
-      const { data: existingData, error: fetchError } = await supabase
-        .from('customer_support_contact')
-        .select('id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
-
-      if (existingData) {
-        // Update
-        const { error: updateError } = await supabase
-          .from('customer_support_contact')
-          .update({
-            contact_email: contactEmail,
-            contact_phone: contactPhone,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingData.id)
-
-        if (updateError) throw updateError
-      } else {
-        // Insert
-        const { error: insertError } = await supabase
-          .from('customer_support_contact')
-          .insert([{
-            contact_email: contactEmail,
-            contact_phone: contactPhone
-          }])
-
-        if (insertError) throw insertError
-      }
-
+      setCompanyContactInfo({ email: contactEmail, phone: contactPhone })
       setContactSuccess('Contact settings updated successfully!')
       setTimeout(() => setContactSuccess(''), 3000)
     } catch (error) {

@@ -162,16 +162,29 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/admin/dashboard" className="nav-link">Dashboard</Link>
-            <Link to="/admin/applications" className="nav-link">Applications</Link>
-            <Link to="/admin/health-reports" className="nav-link">Health Reports</Link>
-            <Link to="/admin/users" className="nav-link">Users</Link>
-            <Link to="/admin/reports" className="nav-link">Reports</Link>
-            <Link to="/admin/settings" className="nav-link">Settings</Link>
+            <Link to="/admin/dashboard" className="nav-link">Application Review</Link>
+            <Link to="/admin/health-reports" className="nav-link">Health Report Review</Link>
           </nav>
 
           <div className="header-actions">
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
+            <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                  {user?.full_name || user?.full_name || 'Admin'}
+                </span>
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -188,10 +201,6 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/support/dashboard" className="nav-link">Dashboard</Link>
-            <Link to="/support/inquiries" className="nav-link">Inquiries</Link>
-            <Link to="/support/applications" className="nav-link">Applications</Link>
-            <Link to="/support/knowledge-base" className="nav-link">Knowledge Base</Link>
           </nav>
 
           <div className="header-actions">

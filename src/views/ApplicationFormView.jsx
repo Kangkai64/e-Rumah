@@ -785,19 +785,20 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           <div className="form-group">
             <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
             <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="jDobDay" value={formData.jDobDay} onChange={handleChange} style={{width: '70px'}} required>
+              <select name="jDobDay" value={formData.jDobDay} onChange={handleChange} style={{width: '70px'}} className={errors.jDob ? 'error' : ''} required>
                 <option value="">DD</option>
                 {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
               </select>
-              <select name="jDobMonth" value={formData.jDobMonth} onChange={handleChange} style={{width: '70px'}} required>
+              <select name="jDobMonth" value={formData.jDobMonth} onChange={handleChange} style={{width: '70px'}} className={errors.jDob ? 'error' : ''} required>
                 <option value="">MM</option>
                 {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
               </select>
-              <select name="jDobYear" value={formData.jDobYear} onChange={handleChange} style={{width: '90px'}} required>
+              <select name="jDobYear" value={formData.jDobYear} onChange={handleChange} style={{width: '90px'}} className={errors.jDob ? 'error' : ''} required>
                 <option value="">YYYY</option>
                 {Array.from({length: 100}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
               </select>
             </div>
+            <ErrorMessage error={errors.jDob} />
           </div>
 
           <div className="form-group">

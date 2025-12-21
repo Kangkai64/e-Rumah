@@ -13,6 +13,7 @@ import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import AdminController from './controllers/AdminController.jsx'
+import AdminApplicationReviewController from './controllers/AdminApplicationReviewController.jsx'
 import UserDashboardController from './controllers/UserDashboardController.jsx'
 import CustomerSupportController from './controllers/CustomerSupportController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
@@ -594,9 +595,9 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requireRole="admin">
-              <Header />
+                <Header />
                 <AdminController />
-              <Footer />
+                <Footer />
             </ProtectedRoute>
           } />
 
@@ -604,10 +605,7 @@ function App() {
             <ProtectedRoute requireRole="admin">
               <>
                 <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>Application Review</h1>
-                  <p>Review application details here.</p>
-                </div>
+                <AdminApplicationReviewController />
                 <Footer />
               </>
             </ProtectedRoute>

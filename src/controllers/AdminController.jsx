@@ -25,16 +25,23 @@ function AdminController() {
 
   // Filter and search state
   const [filters, setFilters] = useState({
-    status: 'pending',
+    status: 'all',
     search: '',
     sortBy: 'submitted_at',
     sortOrder: 'desc'
   })
 
   // Tab states
-  const [activeRecordTab, setActiveRecordTab] = useState('applications') // applications | nominees
-  const [activeDetailTab, setActiveDetailTab] = useState('overview') // overview | documents | nominees
+  const [activeRecordTab, setActiveRecordTab] = useState('applications')
+  const [activeDetailTab, setActiveDetailTab] = useState('overview')
   const [reportFilter, setReportFilter] = useState('this_month')
+
+  // Status update modal state
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [statusUpdateApp, setStatusUpdateApp] = useState(null)
+  const [newStatus, setNewStatus] = useState('')
+  const [statusRemarks, setStatusRemarks] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   const navigate = useNavigate()
 
@@ -54,12 +61,12 @@ function AdminController() {
     }
   }, [user, userRole, authLoading]) // Removed filters from dependencies
 
-  // Load dashboard data when filters change
+  // Load dashboard data when filters change (except search - search only triggers on Enter)
   useEffect(() => {
     if (user && userRole === 'admin' && !loading) {
       loadDashboardData()
     }
-  }, [filters.status, filters.search, filters.sortBy, filters.sortOrder])
+  }, [filters.status, filters.sortBy, filters.sortOrder])
 
   /**
    * Load all dashboard data
@@ -104,13 +111,21 @@ function AdminController() {
   }
 
   /**
-   * Handle search input change
+   * Handle search input change (just updates state, doesn't trigger search)
    */
   const handleSearchChange = (e) => {
     setFilters({
       ...filters,
       search: e.target.value
     })
+  }
+
+  /**
+   * Handle search trigger (Enter key or button click)
+   */
+  const handleSearch = () => {
+    console.log('🔍 Searching for:', filters.search)
+    loadDashboardData()
   }
 
   /**
@@ -127,6 +142,7 @@ function AdminController() {
    * Handle filter value change
    */
   const handleFilterValueChange = (value) => {
+    console.log('Filter status changed to:', value)
     setFilters({
       ...filters,
       status: value
@@ -134,12 +150,14 @@ function AdminController() {
   }
 
   /**
-   * Handle sort change
+   * Handle sort change - toggles between newest and oldest
    */
-  const handleSortChange = (sortBy) => {
+  const handleSortChange = (sortBy, sortOrder) => {
+    console.log('Sort changed to:', sortOrder === 'desc' ? 'Newest' : 'Oldest')
     setFilters({
       ...filters,
-      sortBy: sortBy
+      sortBy: sortBy,
+      sortOrder: sortOrder
     })
   }
 
@@ -170,21 +188,82 @@ function AdminController() {
   }
 
   /**
-   * Handle update application status
+   * Handle update application status - show modal
    */
-  const handleUpdateStatus = async (status) => {
-    if (!selectedApplication) return
+  const handleUpdateStatus = async (application) => {
+    setStatusUpdateApp(application)
+    setNewStatus(application.status)
+    setStatusRemarks('')
+    setShowStatusModal(true)
+  }
 
-    const remarks = prompt('Enter remarks (optional):')
-    const result = await Admin.updateApplicationStatus(selectedApplication.id, status, remarks)
-    
-    if (result.success) {
-      alert('Application status updated successfully!')
-      loadDashboardData()
-    } else {
-      alert('Error updating status: ' + result.error)
+  /**
+   * Confirm status update
+   */
+  const handleConfirmStatusUpdate = async () => {
+    if (!statusUpdateApp || !newStatus) return
+
+    // Validate status change
+    if (newStatus === statusUpdateApp.status) {
+      alert('Please select a different status')
+      return
+    }
+
+    setUpdatingStatus(true)
+
+    try {
+      const result = await Admin.updateApplicationStatus(
+        statusUpdateApp.id,
+        newStatus,
+        statusRemarks.trim() || null
+      )
+
+      if (result.success) {
+        alert('Application status updated successfully!')
+        setShowStatusModal(false)
+        setStatusUpdateApp(null)
+        setNewStatus('')
+        setStatusRemarks('')
+        loadDashboardData() // Refresh data
+      } else {
+        alert('Error updating status: ' + result.error)
+      }
+    } catch (err) {
+      alert('Error updating status: ' + err.message)
+    } finally {
+      setUpdatingStatus(false)
     }
   }
+
+  /**
+   * Cancel status update
+   */
+  const handleCancelStatusUpdate = () => {
+    setShowStatusModal(false)
+    setStatusUpdateApp(null)
+    setNewStatus('')
+    setStatusRemarks('')
+  }
+
+  // Add escape key handler for status modal
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape' && showStatusModal && !updatingStatus) {
+        handleCancelStatusUpdate()
+      }
+    }
+
+    if (showStatusModal) {
+      document.addEventListener('keydown', handleEscapeKey)
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey)
+      document.body.style.overflow = 'unset'
+    }
+  }, [showStatusModal, updatingStatus])
 
   /**
    * Handle view application details (navigate to review page)
@@ -256,12 +335,15 @@ function AdminController() {
   const getStatusDisplayText = (status) => {
     switch (status) {
       case 'submitted':
+        return 'Submitted'
       case 'underReviewed':
-        return 'Pending'
+        return 'Under Review'
       case 'approved':
         return 'Approved'
       case 'rejected':
         return 'Rejected'
+      case 'terminated':
+        return 'Terminated'
       default:
         return status
     }
@@ -280,7 +362,13 @@ function AdminController() {
       activeRecordTab={activeRecordTab}
       activeDetailTab={activeDetailTab}
       reportFilter={reportFilter}
+      showStatusModal={showStatusModal}
+      statusUpdateApp={statusUpdateApp}
+      newStatus={newStatus}
+      statusRemarks={statusRemarks}
+      updatingStatus={updatingStatus}
       onSearchChange={handleSearchChange}
+      onSearch={handleSearch}
       onFilterFieldChange={handleFilterFieldChange}
       onFilterValueChange={handleFilterValueChange}
       onSortChange={handleSortChange}
@@ -295,6 +383,10 @@ function AdminController() {
       onRecordTabChange={setActiveRecordTab}
       onDetailTabChange={setActiveDetailTab}
       onReportFilterChange={setReportFilter}
+      onStatusChange={setNewStatus}
+      onStatusRemarksChange={setStatusRemarks}
+      onConfirmStatusUpdate={handleConfirmStatusUpdate}
+      onCancelStatusUpdate={handleCancelStatusUpdate}
       formatDate={formatDate}
       getStatusBadgeClass={getStatusBadgeClass}
       getStatusDisplayText={getStatusDisplayText}

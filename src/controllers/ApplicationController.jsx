@@ -917,7 +917,34 @@ function ApplicationController({ editNomineeOnly = false }) {
     
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors)
-      window.scrollTo(0, 0)
+      // After setting errors, scroll to the first error field smoothly.
+      setTimeout(() => {
+        try {
+          const firstKey = Object.keys(stepErrors)[0]
+          // Try to find an element by name matching the error key
+          let el = document.querySelector(`[name="${firstKey}"]`)
+
+          // If not found, find the first element with the error class within the form
+          if (!el) {
+            el = document.querySelector('.app-container .error') || document.querySelector('.application-form .error') || document.querySelector('.error')
+          }
+
+          // If still not found, fall back to error summary (top of form)
+          if (!el) {
+            el = document.querySelector('.error-summary')
+          }
+
+          if (el && typeof el.scrollIntoView === 'function') {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // Focus the element where appropriate
+            try { el.focus && el.focus() } catch(e) { /* ignore */ }
+          } else {
+            window.scrollTo(0, 0)
+          }
+        } catch (e) {
+          window.scrollTo(0, 0)
+        }
+      }, 60)
       return
     }
     
@@ -1155,9 +1182,12 @@ function ApplicationController({ editNomineeOnly = false }) {
     fillTextField(form, 'property_purchDate_mm', data.purchaseMonth)
     fillTextField(form, 'property_purchDate_yyyy', data.purchaseYear)
     fillRadio(form, 'property_tenureTitle', data.tenureTitle)
-    fillTextField(form, 'property_expiryDoL_dd', data.expiryDay)
-    fillTextField(form, 'property_expiryDoL_mm', data.expiryMonth)
-    fillTextField(form, 'property_expiryDoL_yyyy', data.expiryYear)
+    // Only fill in expiry date of lease if tenure title is leasehold
+    if (data.tenureTitle == 'leasehold') {
+      fillTextField(form, 'property_expiryDoL_dd', data.expiryDay)
+      fillTextField(form, 'property_expiryDoL_mm', data.expiryMonth)
+      fillTextField(form, 'property_expiryDoL_yyyy', data.expiryYear)
+    }
     fillTextField(form, 'property_buildUpArea', data.buildUpArea)
     fillTextField(form, 'property_landArea', data.landArea)
     fillRadio(form, 'property_encumbered', data.propertyEncumbered)
