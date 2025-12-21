@@ -16,6 +16,7 @@ import AdminController from './controllers/AdminController.jsx'
 import AdminApplicationReviewController from './controllers/AdminApplicationReviewController.jsx'
 import UserDashboardController from './controllers/UserDashboardController.jsx'
 import CustomerSupportController from './controllers/CustomerSupportController.jsx'
+import UserSupportController from './controllers/UserSupportController.jsx'
 import UserLoginPage from './components/auth/UserLoginPage'
 import StaffLoginPage from './components/auth/StaffLoginPage'
 import RegistrationPage from './components/auth/RegistrationPage'
@@ -519,10 +520,7 @@ function App() {
             <ProtectedRoute requireRole="user">
               <>
                 <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>Support</h1>
-                  <p>Contact support or view FAQs here.</p>
-                </div>
+                <UserSupportController />
                 <Footer />
               </>
             </ProtectedRoute>

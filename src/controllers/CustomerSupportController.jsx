@@ -1,5 +1,6 @@
 // src/controllers/CustomerSupportController.jsx
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { supabase } from '../config/supabase'
 import Inquiry from '../models/Inquiry'
 import Nominee from '../models/Nominee'
 import Application from '../models/Application'

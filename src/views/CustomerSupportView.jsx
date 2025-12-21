@@ -422,7 +422,21 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
                   <div className="message-header">
                     {conv.sender?.full_name || (conv.sender_type === 'elder' ? 'Elder' : 'Support')}
                   </div>
-                  <div className="message-body">{conv.message}</div>
+                  <div className="message-body">
+                    {conv.message}
+                    {conv.file_url && (
+                      <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+                        <a 
+                          href={conv.file_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{ color: 'inherit', textDecoration: 'none', fontSize: '0.875rem' }}
+                        >
+                          📎 {conv.file_name || 'Download Attachment'}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                   <div className="message-meta">{formatDate(conv.created_at)}</div>
                 </div>
               ))}
