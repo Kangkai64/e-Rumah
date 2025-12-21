@@ -27,19 +27,12 @@ function MaintainApplicationView({
   downloadingPDF = false,
   pdfError = null,
   onDownloadPDF = null,
-  onEditApplication,
   onTerminateApplication
 }) {
   const [selectedMissingDoc, setSelectedMissingDoc] = useState(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [editingNominee, setEditingNominee] = useState(null)
-  const [nomineeForm, setNomineeForm] = useState({
-    name: '',
-    nric: '',
-    relationship: ''
-  })
   const [showTerminateModal, setShowTerminateModal] = useState(false)
   const [terminationReason, setTerminationReason] = useState('')
   const [terminatingApp, setTerminatingApp] = useState(false)
@@ -131,17 +124,6 @@ function MaintainApplicationView({
     }
   }
 
-  // Handle nominee edit
-  const handleEditNominee = (nomineeIndex) => {
-    const nominee = nominees[nomineeIndex]
-    setEditingNominee(nomineeIndex)
-    setNomineeForm({
-      name: nominee.name || '',
-      nric: nominee.nric || '',
-      relationship: nominee.relationship || ''
-    })
-  }
-
   // Handle navigate to edit nominees in form
   const handleUpdateNomineeInForm = () => {
     // Navigate to application form with editNomineeOnly mode
@@ -149,23 +131,14 @@ function MaintainApplicationView({
     window.location.href = url
   }
 
-  // Handle nominee save
-  const handleSaveNominee = async () => {
-    // TODO: Save nominee changes to database
-    // For now, just close the edit mode
-    console.log('Saving nominee:', nomineeForm)
-    setEditingNominee(null)
+  // Handle promote nominee 2 to nominee 1
+  const handlePromoteNominee2 = () => {
+    // Navigate to application form to promote nominee 2 with mode 'promoteNominee2'
+    const url = `/application/edit-nominees/${application?.id}?promote=true`
+    window.location.href = url
   }
 
-  // Handle nominee cancel edit
-  const handleCancelEditNominee = () => {
-    setEditingNominee(null)
-    setNomineeForm({
-      name: '',
-      nric: '',
-      relationship: ''
-    })
-  }
+
   if (isLoading) {
     return (
       <Container>
@@ -374,9 +347,6 @@ function MaintainApplicationView({
                     const isInactive = 
                       (isNominee1 && (flaggedCode === 'nominee1_inactive' || flaggedCode === 'both_nominees_inactive')) ||
                       (isNominee2 && (flaggedCode === 'nominee2_inactive' || flaggedCode === 'both_nominees_inactive'))
-                    
-                    // Check if currently editing this nominee
-                    const isEditing = editingNominee === index
 
                     return (
                       <div 
@@ -393,78 +363,38 @@ function MaintainApplicationView({
                         )}
                         <div className="nominee-header">NOMINEE {index + 1}</div>
                         
-                        {isEditing ? (
-                          // Edit form
-                          <div className="nominee-edit-form">
-                            <div className="form-group">
-                              <label>Name</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.name}
-                                onChange={(e) => setNomineeForm({...nomineeForm, name: e.target.value})}
-                                placeholder="Enter nominee name"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>NRIC</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.nric}
-                                onChange={(e) => setNomineeForm({...nomineeForm, nric: e.target.value})}
-                                placeholder="Enter NRIC number"
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label>Relationship</label>
-                              <input
-                                type="text"
-                                value={nomineeForm.relationship}
-                                onChange={(e) => setNomineeForm({...nomineeForm, relationship: e.target.value})}
-                                placeholder="Enter relationship"
-                              />
-                            </div>
-                            <div className="form-actions">
-                              <button 
-                                className="btn btn-primary"
-                                onClick={handleSaveNominee}
-                              >
-                                Save
-                              </button>
+                        <div className="nominee-content">
+                          <div className="nominee-row">
+                            <span className="label">NAME:</span>
+                            <span className="value">{nominee.name || '-'}</span>
+                          </div>
+                          <div className="nominee-row">
+                            <span className="label">NRIC:</span>
+                            <span className="value">{nominee.nric || '-'}</span>
+                          </div>
+                          <div className="nominee-row">
+                            <span className="label">RELATIONSHIP:</span>
+                            <span className="value">{nominee.relationship || '-'}</span>
+                          </div>
+                          {isInactive && (
+                            <div className="nominee-actions">
+                              {nominees.length === 2 && (
+                                <button 
+                                  className="btn btn-secondary"
+                                  onClick={handlePromoteNominee2}
+                                >
+                                  Promote Nominee 2 to Nominee 1
+                                </button>
+                              )}
                               <button 
                                 className="btn btn-secondary"
-                                onClick={handleCancelEditNominee}
+                                onClick={handleUpdateNomineeInForm}
                               >
-                                Cancel
+                                Nominate New Nominee
                               </button>
                             </div>
-                          </div>
-                        ) : (
-                          // Display form
-                          <div className="nominee-content">
-                            <div className="nominee-row">
-                              <span className="label">NAME:</span>
-                              <span className="value">{nominee.name || '-'}</span>
-                            </div>
-                            <div className="nominee-row">
-                              <span className="label">NRIC:</span>
-                              <span className="value">{nominee.nric || '-'}</span>
-                            </div>
-                            <div className="nominee-row">
-                              <span className="label">RELATIONSHIP:</span>
-                              <span className="value">{nominee.relationship || '-'}</span>
-                            </div>
-                            {isInactive && (
-                              <div className="nominee-actions">
-                                <button 
-                                  className="btn btn-nominate-new"
-                                  onClick={handleUpdateNomineeInForm}
-                                >
-                                  Nominate New Nominee
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )
                   })}

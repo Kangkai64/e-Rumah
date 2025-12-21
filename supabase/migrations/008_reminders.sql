@@ -5,7 +5,7 @@ create table public.reminders (
   reminder_title text not null,
   reminder_date timestamp with time zone not null,
   is_enabled boolean not null default true,
-  reminder_frequency jsonb null,
+  reminder_frequencies jsonb null,
   category text null default 'Health & appointments'::text,
   notes text null,
   created_at timestamp with time zone null default now(),

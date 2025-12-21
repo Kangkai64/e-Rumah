@@ -1,9 +1,9 @@
 import './HomePage.css'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import Button from '../common/Button.jsx'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
+import iconArrowRight from '../../assets/icons/icon_arrowRight.svg'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'
 import partnershipImage from '../../assets/images/main_page/hero_aboutUs.jpeg'
 import elderImage from '../../assets/images/main_page/hero_asianAttractiveHappySenior.jpg'
@@ -70,7 +70,7 @@ const HomePage = () => {
             <h2 className="services-heading">
               We invest in people to create a progressive society that is meaningfully invested in each other.
             </h2>
-            <Button className="btn btn-tertiary" showArrow={true} to={"/about"}>Our Impact</Button>
+            <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#A8202D', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }}>Our Impact<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem', filter: 'invert()' }} /></Link>
           </div>
 
           <div className="services-grid">
@@ -127,9 +127,9 @@ const HomePage = () => {
               <li>Meets e-Rumah evaluation criteria</li>
             </ul>
             <div className="eligibility-buttons">
-              <Button className="btn btn-secondary" showArrow={true}>FAQs</Button>
-              <Button className="btn btn-secondary" showArrow={true}>Excluded Postcodes</Button>
-              <Button className="btn btn-secondary" showArrow={true}>Brochure</Button>
+              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>FAQs<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
+              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Excluded Postcodes<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
+              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Brochure<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
             </div>
           </div>
           <div className="eligibility-image">
@@ -221,8 +221,8 @@ const HomePage = () => {
               <div className="partnership-text">
                 <h2>A partnership with innovation and impact at its core</h2>
                 <div className="partnership-buttons">
-                  <Button variant="tertiary" to="/about" showArrow={true}>About Us</Button>
-                  <Button variant="primary" to="/about" showArrow={true}>Our Impact</Button>
+                  <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#A8202D', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }}>About Us<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem', filter: 'invert()' }} /></Link>
+                  <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: '#A8202D', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }}>Our Impact<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
                 </div>
               </div>
             </div>
@@ -297,7 +297,7 @@ const HomePage = () => {
               50300 Kuala Lumpur<br />
               Malaysia
             </p>
-            <Button variant="secondary" to="/about" showArrow={true}>Connect with Us</Button>
+            <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Connect with Us<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
           </div>
         </div>
       </section>

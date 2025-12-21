@@ -160,7 +160,7 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
       
       <div className="wizard-buttons">
         {editNomineeOnly ? (
-          <button type="button" className="wizard-btn wizard-btn-danger" onClick={handleNominateConfirm}>
+          <button type="button" className="wizard-btn wizard-btn-next" onClick={handleNominateConfirm}>
             Nominate New Nominee
           </button>
         ) : (
@@ -1452,9 +1452,10 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 }
 
 // Step 4: Nominee(s) Details
-function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, nomineeCount = 0 }) {
+function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0 }) {
   const getNomineeMessage = () => {
     if (!editNomineeOnly) return null
+    if (promoteNominee2) return '⚠️ You are promoting Nominee 2 to become Nominee 1. Please verify the information and provide a new signature.'
     if (nomineeCount === 0) return '⚠️ You are adding your first nominee.'
     if (nomineeCount === 1) return '⚠️ You are updating Nominee 1. You can add another nominee.'
     if (nomineeCount === 2) return '⚠️ You are updating Nominee 1.'
@@ -1685,21 +1686,46 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
         </div>
       </section>
 
+      {/* Nominee 1 Signature Section (when editing nominees) */}
+      {editNomineeOnly && (
+        <section className="form-section">
+          <h3>Nominee 1 Signature * <span style={{color: '#dc2626'}}>Required</span></h3>
+          <p style={{color: '#666', fontSize: '0.9rem', marginBottom: '1rem'}}>
+            The nominee must sign below to acknowledge their role as nominee and their willingness to accept the responsibility.
+          </p>
+          
+          <div className="form-group">
+            <SignaturePad
+              label="Signature of Nominee 1 *"
+              value={formData.ackNominee_signature}
+              onChange={(value) => handleChange({target: {name: 'ackNominee_signature', value}})}
+            />
+            <ErrorMessage error={errors.ackNominee_signature} />
+          </div>
+        </section>
+      )}
+
       <div className="form-group">
-        <label className="checkbox-label">
+        <label className="checkbox-label" style={editNomineeOnly && !promoteNominee2 && formData.nominee2Name ? {opacity: 0.6, cursor: 'not-allowed'} : {}}>
           <input 
             type="checkbox" 
             name="hasSecondNominee" 
             checked={formData.hasSecondNominee} 
-            onChange={handleChange} 
+            onChange={handleChange}
+            disabled={editNomineeOnly && !promoteNominee2 && formData.nominee2Name}
           />
           <span>Add Second Nominee</span>
         </label>
       </div>
 
       {formData.hasSecondNominee && (
-        <section className="form-section conditional-section">
+        <section className="form-section conditional-section" style={editNomineeOnly && !promoteNominee2 && formData.nominee2Name ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
           <h3>Nominee 2 (Secondary) *</h3>
+          {editNomineeOnly && !promoteNominee2 && formData.nominee2Name && (
+            <div style={{padding: '0.75rem', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '1rem', color: '#856404', fontSize: '0.9rem', border: '1px solid #ffeaa7'}}>
+              ℹ️ Nominee 2 information is locked while nominating a new Nominee 1
+            </div>
+          )}
           
           <div className="form-group">
             <label>Salutation</label>
@@ -2636,6 +2662,7 @@ export default function ApplicationFormView({
   uploadProgress,
   readOnlyMode = false,
   editNomineeOnly = false,
+  promoteNominee2 = false,
   nomineeCount = 0
 }) {
   // Force step 4 if in editNomineeOnly mode
@@ -2650,7 +2677,7 @@ export default function ApplicationFormView({
       case 3:
         return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 4:
-        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} nomineeCount={nomineeCount} />
+        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} promoteNominee2={promoteNominee2} nomineeCount={nomineeCount} />
       case 5:
         return <Step5InfoDisplay formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 6:
@@ -2678,7 +2705,7 @@ export default function ApplicationFormView({
   return (
     <div className="application-form">
       <div className="app-container">
-        <h1>{editNomineeOnly ? 'Nominate New Nominee' : 'SKIM SARAAN BERCAGAR (SSB) Application Form'}</h1>
+        <h1 style={editNomineeOnly ? {color: '#A8202D'} : {}}>{editNomineeOnly ? 'Nominate New Nominee' : 'SKIM SARAAN BERCAGAR (SSB) Application Form'}</h1>
         {isSaving && (
           <div style={{ 
             position: 'fixed', 

@@ -85,84 +85,6 @@ function MaintainApplicationController() {
         
         buildTimeline(appData)
         setError(null)
-        
-        // DUMMY DATA FOR TESTING - Remove this block when real data structure is confirmed
-        /* const dummyData = {
-          id: appData.id,
-          user_id: currentUser.id,
-          status: 'approved',
-          submitted_at: '2025-11-15T10:30:00Z',
-          updated_at: '2025-12-01T14:20:00Z',
-          submitted_form_data: {
-            nameAsPerNRIC: 'Ahmad bin Hassan',
-            age: '68 years',
-            nricNo: '560813-10-1234',
-            telephone: '012-3456789',
-            email: 'ahmad.hassan@email.com',
-            maritalStatus: '2 (Ages 25, 30)',
-            isJointApplicant: true,
-            jSalutation: 'Encik',
-            jName: 'Siti Mariam Ahmad',
-            jMalaysian: true,
-            jAge: '65 years',
-            jEmail: 'siti.mariam@email.com',
-            jTelephone: '012-9876543',
-            propertyAddress: 'No. 45, Jalan Merdeka 3/2, Taman Mutiara, 53100 Kuala Lumpur',
-            propertyType: 'Terrace House',
-            ownershipDuration: '15',
-            propertyValue: '450000',
-            approvedAmount: '1850.00',
-            nominees: [
-              {
-                name: 'Siti Izzati Ahmad',
-                nric: '560813-10-5678',
-                relationship: 'Daughter'
-              },
-              {
-                name: 'Hanisah bin Ahmad',
-                nric: '560813-10-9012',
-                relationship: 'Sister'
-              }
-            ]
-          }
-        }
-        
-        setApplication(dummyData)
-        setApplicationStatus(dummyData.status)
-        setApprovedAmount(parseFloat(dummyData.submitted_form_data.approvedAmount))
-        buildTimeline(dummyData)
-        setError(null) */
-        
-        // Old code kept for reference
-        /*
-        const result = await Application.getById(urlApplicationId || appData.id)
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch application')
-        }
-        
-        const appData = result.data
-        
-        // Verify user owns this application
-        if (appData.user_id !== currentUser.id) {
-          setError('You do not have permission to view this application')
-          setIsLoading(false)
-          return
-        }
-        
-        setApplication(appData)
-        setApplicationStatus(appData.status)
-        
-        // Extract approved amount from application data
-        if (appData.submitted_form_data) {
-          setApprovedAmount(appData.submitted_form_data.approvedAmount || 0)
-        }
-        
-        // Build timeline from application history
-        buildTimeline(appData)
-        
-        setError(null)
-        */
       } catch (err) {
         console.error('Error fetching application:', err)
         setError(err.message)
@@ -259,11 +181,6 @@ function MaintainApplicationController() {
     setTimeline(events)
   }
   
-  // Handle edit application
-  const handleEditApplication = () => {
-    navigate(`/application/edit/${applicationId}`)
-  }
-  
   // Handle terminate application
   const handleTerminateApplication = async (terminationReason) => {
     try {
@@ -347,7 +264,6 @@ function MaintainApplicationController() {
       downloadingPDF={downloadingPDF}
       pdfError={pdfError}
       onDownloadPDF={handleDownloadPDF}
-      onEditApplication={handleEditApplication}
       onTerminateApplication={handleTerminateApplication}
     />
   )
