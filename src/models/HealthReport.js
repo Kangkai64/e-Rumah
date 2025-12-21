@@ -1123,14 +1123,16 @@ export const archiveHealthReport = async (reportId, adminId) => {
  */
 export const getAllHealthReports = async (filters = {}) => {
   try {
+    // Fetch health reports with user information (via applications and direct user relationship)
     let query = supabase
       .from('health_reports')
       .select(`
         *,
         applications!health_reports_application_id_fkey(
           user_id,
-          users!applications_user_id_fkey(full_name, email)
-        )
+          users!applications_user_id_fkey(id, full_name, email, ic_number, phone)
+        ),
+        users!health_reports_user_id_fkey(id, full_name, email, ic_number, phone)
       `)
 
     // Apply search filter
@@ -1140,7 +1142,9 @@ export const getAllHealthReports = async (filters = {}) => {
         `notes.ilike.%${filters.searchKey}%,` +
         `provider_name.ilike.%${filters.searchKey}%,` +
         `applications.users.full_name.ilike.%${filters.searchKey}%,` +
-        `applications.users.email.ilike.%${filters.searchKey}%`
+        `applications.users.email.ilike.%${filters.searchKey}%,` +
+        `users.full_name.ilike.%${filters.searchKey}%,` +
+        `users.email.ilike.%${filters.searchKey}%`
       )
     }
 
@@ -1189,10 +1193,22 @@ export const getAllHealthReports = async (filters = {}) => {
 
     if (error) throw error
 
-    // Post-process due status filtering (complex logic)
-    let processedData = data
+    // Post-process to normalize user data and handle both direct and application-linked users
+    let processedData = data.map(report => ({
+      ...report,
+      // Normalize user data - prefer direct user relationship, fallback to application user
+      userData: report.users || (report.applications?.users ? {
+        id: report.applications.users.id,
+        full_name: report.applications.users.full_name,
+        email: report.applications.users.email,
+        ic_number: report.applications.users.ic_number,
+        phone: report.applications.users.phone
+      } : null)
+    }))
+
+    // Apply due status filtering (complex logic)
     if (filters.dueStatus) {
-      processedData = data.filter(report => {
+      processedData = processedData.filter(report => {
         const now = new Date()
         const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
         const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)

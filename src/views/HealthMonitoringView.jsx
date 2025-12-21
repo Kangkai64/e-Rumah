@@ -2309,6 +2309,8 @@ function AdminHealthReportDashboardView() {
   const [sortBy, setSortBy] = useState('newest')
   const [sortOrder, setSortOrder] = useState('desc')
   const [activeTab, setActiveTab] = useState('reports')
+  const [showFilters, setShowFilters] = useState(false)
+  const [showSort, setShowSort] = useState(false)
   
   // Modal states
   const [showApprovalConfirm, setShowApprovalConfirm] = useState(false)
@@ -2398,6 +2400,31 @@ function AdminHealthReportDashboardView() {
 
   const onClearSearch = useCallback(() => {
     setSearchKey('')
+  }, [])
+
+  // Safe event handlers with default functions
+  const safeOnSearchChange = useCallback((value) => {
+    onSearchChange(value)
+  }, [onSearchChange])
+
+  const safeOnSearch = useCallback(() => {
+    onSearch()
+  }, [onSearch])
+
+  const safeOnClearSearch = useCallback(() => {
+    onClearSearch()
+  }, [onClearSearch])
+
+  const onSetShowFilters = useCallback((show) => {
+    setShowFilters(show)
+  }, [])
+
+  const onSetShowSort = useCallback((show) => {
+    setShowSort(show)
+  }, [])
+
+  const onTabFilter = useCallback((tab) => {
+    setActiveTab(tab)
   }, [])
 
   const onFilterChange = useCallback((field, value) => {
@@ -2908,6 +2935,7 @@ function AdminHealthReportDashboardView() {
           <div className="results-table">
             <div className="table-header-row">
               <div className="table-header-col">Report Title</div>
+              <div className="table-header-col">User Name</div>
               <div className="table-header-col">Report Type</div>
               <div className="table-header-col">Report Date</div>
               <div className="table-header-col">Upload Date</div>
@@ -2923,6 +2951,10 @@ function AdminHealthReportDashboardView() {
                     <div className="table-data-col">
                       <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
                       <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                    </div>
+                    <div className="table-data-col">
+                      <div className="user-name">{report.userData?.full_name || 'N/A'}</div>
+                      <div className="user-email" style={{ fontSize: '0.85rem', color: '#666' }}>{report.userData?.email || ''}</div>
                     </div>
                     <div className="table-data-col">{report.report_type || 'Medical Report'}</div>
                     <div className="table-data-col">

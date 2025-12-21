@@ -38,7 +38,7 @@ function AdminController() {
 
   const navigate = useNavigate()
 
-  // Load dashboard data on mount
+  // Load dashboard data on mount and when auth changes
   useEffect(() => {
     console.log('🔍 AdminController mounting - Auth state:', { 
       user: user?.email, 
@@ -52,7 +52,14 @@ function AdminController() {
     } else if (user && userRole && userRole !== 'admin') {
       console.warn('⚠️ Non-admin user trying to access admin dashboard:', userRole)
     }
-  }, [filters, user, userRole, authLoading])
+  }, [user, userRole, authLoading]) // Removed filters from dependencies
+
+  // Load dashboard data when filters change
+  useEffect(() => {
+    if (user && userRole === 'admin' && !loading) {
+      loadDashboardData()
+    }
+  }, [filters.status, filters.search, filters.sortBy, filters.sortOrder])
 
   /**
    * Load all dashboard data
