@@ -125,19 +125,22 @@ class ReminderService {
         throw new Error('No active session')
       }
 
-      // Use fetch to bypass CORS issues
+      // Use CORS proxy function for update
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-            ...cleanUpdateData,
-            updated_at: new Date().toISOString()
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              ...cleanUpdateData,
+              updated_at: new Date().toISOString()
+            }
           })
         }
       )
@@ -149,7 +152,7 @@ class ReminderService {
         if (contentType && contentType.includes('application/json')) {
           try {
             const errorData = await res.json()
-            errorMessage = errorData.message || errorMessage
+            errorMessage = errorData.error || errorMessage
           } catch (e) {
             // Continue with default error message
           }
@@ -157,15 +160,8 @@ class ReminderService {
         throw new Error(errorMessage)
       }
 
-      const contentType = res.headers.get('content-type')
-      let data = null
-      
-      if (contentType && contentType.includes('application/json')) {
-        const responseData = await res.json()
-        data = Array.isArray(responseData) ? responseData[0] : responseData
-      }
-
-      return data ? Reminder.fromDatabase(data) : null
+      const result = await res.json()
+      return result.data ? Reminder.fromDatabase(result.data) : null
     } catch (error) {
       console.error('Service error updating reminder:', error)
       throw error
@@ -225,19 +221,22 @@ class ReminderService {
         throw new Error('No active session')
       }
 
-      // Use fetch to bypass CORS issues
+      // Use CORS proxy function for update
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-            is_enabled: isEnabled,
-            updated_at: new Date().toISOString()
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              is_enabled: isEnabled,
+              updated_at: new Date().toISOString()
+            }
           })
         }
       )
@@ -249,7 +248,7 @@ class ReminderService {
         if (contentType && contentType.includes('application/json')) {
           try {
             const errorData = await res.json()
-            errorMessage = errorData.message || errorMessage
+            errorMessage = errorData.error || errorMessage
           } catch (e) {
             // Continue with default error message
           }
@@ -257,15 +256,8 @@ class ReminderService {
         throw new Error(errorMessage)
       }
 
-      const contentType = res.headers.get('content-type')
-      let data = null
-      
-      if (contentType && contentType.includes('application/json')) {
-        const responseData = await res.json()
-        data = Array.isArray(responseData) ? responseData[0] : responseData
-      }
-
-      return data ? Reminder.fromDatabase(data) : null
+      const result = await res.json()
+      return result.data ? Reminder.fromDatabase(result.data) : null
     } catch (error) {
       console.error('Service error toggling reminder:', error)
       throw error
@@ -381,19 +373,22 @@ class ReminderService {
         throw new Error('No active session')
       }
 
-      // Use fetch to bypass CORS issues
+      // Use CORS proxy function for update
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/reminders?id=eq.${encodeURIComponent(reminderId)}`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-            notified_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              notified_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
           })
         }
       )
@@ -405,7 +400,7 @@ class ReminderService {
         if (contentType && contentType.includes('application/json')) {
           try {
             const errorData = await res.json()
-            errorMessage = errorData.message || errorMessage
+            errorMessage = errorData.error || errorMessage
           } catch (e) {
             // Continue with default error message
           }
@@ -413,15 +408,8 @@ class ReminderService {
         throw new Error(errorMessage)
       }
 
-      const contentType = res.headers.get('content-type')
-      let data = null
-      
-      if (contentType && contentType.includes('application/json')) {
-        const responseData = await res.json()
-        data = Array.isArray(responseData) ? responseData[0] : responseData
-      }
-
-      return data ? Reminder.fromDatabase(data) : null
+      const result = await res.json()
+      return result.data ? Reminder.fromDatabase(result.data) : null
     } catch (error) {
       console.error('Service error marking reminder as notified:', error)
       throw error

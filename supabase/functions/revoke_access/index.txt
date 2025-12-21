@@ -1,55 +1,102 @@
-The code is already deployed at the Supabase server. Do not uncomment it
+========================================================================================================
 
-// import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-// // Edge Function: receive POST from browser, forward PATCH to Supabase REST using user's JWT to preserve RLS
-// const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-// const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
-// if (!SUPABASE_URL) console.warn('SUPABASE_URL not set');
-// if (!SUPABASE_ANON_KEY) console.warn('SUPABASE_ANON_KEY not set');
+The function is already deployed on the Supabase server. Do not uncomment or deploy it again!
 
-// serve(async (req: Request) => {
-//   if (req.method === 'OPTIONS') {
-//     return new Response(null, { status: 204, headers: corsHeaders() });
-//   }
+========================================================================================================
 
-//   if (req.method !== 'POST') {
-//     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders() });
-//   }
+// Edge Function: revoke-share-proxy with table allowlist and per-table allowed fields
+console.info('revoke-share-proxy starting (allowlist)');
 
-//   try {
-//     const body = await req.json();
-//     const { id, patch } = body;
-//     if (!id || !patch) return new Response(JSON.stringify({ error: 'Missing id or patch' }), { status: 400, headers: corsHeaders() });
+Deno.serve(async (req: Request) => {
+  const corsHeaders = () => ({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json'
+  });
 
-//     const authHeader = req.headers.get('authorization') || '';
-//     // Use user's JWT if provided to keep RLS enforcement
-//     const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
+  if (req.method !== 'POST') return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), { status: 405, headers: corsHeaders() });
 
-//     const url = `${SUPABASE_URL}/rest/v1/health_report_shares?id=eq.${encodeURIComponent(id)}`;
-//     const res = await fetch(url, {
-//       method: 'PATCH',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'apikey': SUPABASE_ANON_KEY || '',
-//         'Authorization': token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY || ''}`
-//       },
-//       body: JSON.stringify(patch)
-//     });
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY');
+    return new Response(JSON.stringify({ success: false, error: 'Server misconfiguration' }), { status: 500, headers: corsHeaders() });
+  }
 
-//     const text = await res.text();
-//     const headers = corsHeaders();
-//     // forward status and body
-//     return new Response(text, { status: res.status, headers });
-//   } catch (err) {
-//     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders() });
-//   }
-// });
+  try {
+    const contentType = req.headers.get('content-type') || '';
+    let body: any = {};
+    if (contentType.includes('application/json')) body = await req.json();
+    else {
+      const txt = await req.text();
+      try { body = txt ? JSON.parse(txt) : {}; } catch (e) { body = {}; }
+    }
 
-// function corsHeaders() {
-//   return {
-//     'Access-Control-Allow-Origin': '*',
-//     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-//     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-//     'Content-Type': 'application/json'
-//   };
-// }
+    // Accept table via body.table or ?table= param
+    const urlObj = new URL(req.url);
+    const tableParam = (body.table || urlObj.searchParams.get('table') || '').toString();
+    const id = body.id;
+    const patch = body.patch;
+
+    // Allowlist of tables and optional allowed patch fields per-table
+    const ALLOWLIST: Record<string, string[]> = {
+      // table_name: [allowed_field_names_in_patch]
+      health_report_shares: ['is_revoked'],
+      health_reports: ['report_file_url', 'health_report_status', 'updated_at'],
+      reminders: ['reminder_type', 'reminder_title', 'reminder_date', 'is_enabled', 'reminder_frequency', 'notes', 'category', 'updated_at', 'notified_at'],
+      // add other allowed tables here
+    };
+
+    if (!tableParam) return new Response(JSON.stringify({ success: false, error: 'Missing table parameter' }), { status: 400, headers: corsHeaders() });
+    if (!Object.prototype.hasOwnProperty.call(ALLOWLIST, tableParam)) {
+      return new Response(JSON.stringify({ success: false, error: 'Table not allowed' }), { status: 403, headers: corsHeaders() });
+    }
+
+    if (!id || !patch || typeof patch !== 'object') return new Response(JSON.stringify({ success: false, error: 'Missing id or patch' }), { status: 400, headers: corsHeaders() });
+
+    // Validate patch keys against per-table allowlist
+    const allowedFields = ALLOWLIST[tableParam];
+    const patchKeys = Object.keys(patch);
+    const invalidKeys = patchKeys.filter(k => !allowedFields.includes(k));
+    if (invalidKeys.length > 0) {
+      return new Response(JSON.stringify({ success: false, error: 'Patch contains disallowed fields', invalidKeys }), { status: 400, headers: corsHeaders() });
+    }
+
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+    // Build REST URL for PATCH with eq filter on id. Assume id column is 'id'.
+    const url = `${SUPABASE_URL}/rest/v1/${encodeURIComponent(tableParam)}?id=eq.${encodeURIComponent(id)}`;
+
+    const upstreamRes = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: token ? `Bearer ${token}` : `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify(patch)
+    });
+
+    let data: any = null;
+    const respText = await upstreamRes.text();
+    if (respText) {
+      try { data = JSON.parse(respText); } catch (e) { data = respText; }
+    }
+
+    const headers = corsHeaders();
+    if (upstreamRes.status === 204) return new Response(JSON.stringify({ success: true, data: null }), { status: 200, headers });
+    if (upstreamRes.status >= 400) {
+      console.error('Upstream error', upstreamRes.status, data);
+      return new Response(JSON.stringify({ success: false, status: upstreamRes.status, error: data || 'Upstream error' }), { status: 502, headers });
+    }
+
+    return new Response(JSON.stringify({ success: true, data }), { status: 200, headers });
+
+  } catch (err) {
+    console.error('Function error', err);
+    return new Response(JSON.stringify({ success: false, error: String(err) }), { status: 500, headers: corsHeaders() });
+  }
+});

@@ -368,24 +368,26 @@ export const checkHealthReportAlerts = async (userId) => {
     if (!result.success) return result
 
     const now = new Date()
-    const alerts = result.data.reduce((acc, report) => {
-      const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
-      const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)
+    const alerts = result.data
+      .filter(report => report.health_report_status !== 'Archived') // Exclude archived reports
+      .reduce((acc, report) => {
+        const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
+        const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)
 
-      if (monthsOverdue >= 3) {
-        acc.push({
-          type: 'error',
-          message: `Health report due: ${report.report_type} from ${formatDate(new Date(report.report_date))} is overdue (due ${formatDate(dueDate)})`
-        })
-      } else if (monthsOverdue >= 2) {
-        acc.push({
-          type: 'warning', 
-          message: `Approaching due date: ${report.report_type} is due on ${formatDate(dueDate)}`
-        })
-      }
+        if (monthsOverdue >= 3) {
+          acc.push({
+            type: 'error',
+            message: `Health report due: ${report.report_type} from ${formatDate(new Date(report.report_date))} is overdue (due ${formatDate(dueDate)})`
+          })
+        } else if (monthsOverdue >= 2) {
+          acc.push({
+            type: 'warning', 
+            message: `Approaching due date: ${report.report_type} is due on ${formatDate(dueDate)}`
+          })
+        }
 
-      return acc
-    }, [])
+        return acc
+      }, [])
 
     return { success: true, data: alerts }
   } catch (error) {
@@ -416,6 +418,7 @@ export const getDueReports = async (userId, options = {}) => {
     threshold.setDate(threshold.getDate() + withinDays)
 
     const dueReports = result.data
+      .filter((report) => report.health_report_status !== 'Archived') // Exclude archived reports
       .map((report) => {
         const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
         const status = dueDate < now ? 'overdue' : 'due'
@@ -979,6 +982,7 @@ export const revokeHealthReportShare = async (shareId) => {
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
+          table: 'health_report_shares',
           id: shareId,
           patch: {
             is_revoked: true,
@@ -1070,6 +1074,7 @@ export const flagHealthReport = async (reportId, adminId, flagReason) => {
       .update({
         health_report_status: 'Flagged',
         updated_at: new Date().toISOString(),
+        flagged_reason: flagReason.trim(),
         notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`
       })
       .eq('id', reportId)
@@ -1226,7 +1231,7 @@ export class Reminder {
     reminder_title,
     reminder_date,
     is_enabled = true,
-    reminder_frequency = null,
+    reminder_frequencies = null,
     category = 'Health & appointments',
     notes = null,
     created_at = null,
@@ -1239,7 +1244,7 @@ export class Reminder {
     this.reminder_title = reminder_title
     this.reminder_date = reminder_date
     this.is_enabled = is_enabled
-    this.reminder_frequency = reminder_frequency
+    this.reminder_frequencies = reminder_frequencies
     this.category = category
     this.notes = notes
     this.created_at = created_at
@@ -1256,7 +1261,7 @@ export class Reminder {
       reminder_title: row.reminder_title,
       reminder_date: new Date(row.reminder_date),
       is_enabled: row.is_enabled,
-      reminder_frequency: row.reminder_frequency,
+      reminder_frequencies: row.reminder_frequencies,
       category: row.category,
       notes: row.notes,
       created_at: row.created_at ? new Date(row.created_at) : null,
@@ -1273,7 +1278,7 @@ export class Reminder {
       reminder_title: this.reminder_title,
       reminder_date: this.reminder_date.toISOString(),
       is_enabled: this.is_enabled,
-      reminder_frequency: this.reminder_frequency,
+      reminder_frequencies: this.reminder_frequencies,
       category: this.category,
       notes: this.notes
     }
@@ -1496,18 +1501,49 @@ const RemindersService = {
       // Remove user_id from update data if present (shouldn't be updated)
       const { user_id, id, created_at, ...cleanUpdateData } = updateData
 
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({
-          ...cleanUpdateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        return { success: false, error: 'No active session' }
+      }
 
-      if (error) throw error
-      return { success: true, data: Reminder.fromDatabase(data) }
+      // Use CORS proxy function for update
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              ...cleanUpdateData,
+              updated_at: new Date().toISOString()
+            }
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.error || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        return { success: false, error: errorMessage }
+      }
+
+      const result = await res.json()
+      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error updating reminder:', error)
       return { success: false, error: error.message }
@@ -1533,18 +1569,49 @@ const RemindersService = {
   // Toggle reminder enabled status
   async toggleReminder(reminderId, isEnabled) {
     try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({ 
-          is_enabled: isEnabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        return { success: false, error: 'No active session' }
+      }
 
-      if (error) throw error
-      return { success: true, data: Reminder.fromDatabase(data) }
+      // Use CORS proxy function for update
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              is_enabled: isEnabled,
+              updated_at: new Date().toISOString()
+            }
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.error || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        return { success: false, error: errorMessage }
+      }
+
+      const result = await res.json()
+      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error toggling reminder:', error)
       return { success: false, error: error.message }
@@ -1648,18 +1715,49 @@ const RemindersService = {
   // Mark reminder as notified
   async markAsNotified(reminderId) {
     try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({ 
-          notified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', reminderId)
-        .select()
-        .single()
+      // Get the current user's session to pass JWT token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        return { success: false, error: 'No active session' }
+      }
 
-      if (error) throw error
-      return { success: true, data: Reminder.fromDatabase(data) }
+      // Use CORS proxy function for update
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            table: 'reminders',
+            id: reminderId,
+            patch: {
+              notified_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.error || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+        return { success: false, error: errorMessage }
+      }
+
+      const result = await res.json()
+      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
     } catch (error) {
       console.error('Error marking reminder as notified:', error)
       return { success: false, error: error.message }

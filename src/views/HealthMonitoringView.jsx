@@ -506,13 +506,25 @@ function ReminderModal({
   errors,
   onCancel,
   onFormChange,
-  onSubmit
+  onSubmit,
+  successMessage,
+  showSuccessOverlay
 }) {
   if (!show) return null
+
+  const isNew = !editingReminder
 
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-content reminder-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Success message inside modal */}
+        {showSuccessOverlay && successMessage && (
+          <div className="modal-success-banner">
+            <div className="success-icon">✓</div>
+            <span>{successMessage}</span>
+          </div>
+        )}
+        
         <div className="modal-header">
           <h3>{editingReminder ? 'Edit Reminder' : 'Create New Reminder'}</h3>
           <button className="close-button" onClick={onCancel}>×</button>
@@ -596,10 +608,52 @@ function ReminderModal({
           </div>
 
           <div className="form-group">
+            <label>Reminder Frequency (Default: 1 week and 1 day before)</label>
+            <div className="frequency-options">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={reminderForm?.reminder_frequencies?.enabled_1_week ?? (isNew ? true : false)}
+                  onChange={(e) => onFormChange?.('reminder_frequencies', { 
+                    ...reminderForm?.reminder_frequencies, 
+                    enabled_1_week: e.target.checked 
+                  })}
+                />
+                <span className="checkmark"></span>
+                1 week before
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={reminderForm?.reminder_frequencies?.enabled_3_days ?? (isNew ? true : false)}
+                  onChange={(e) => onFormChange?.('reminder_frequencies', {
+                    ...reminderForm?.reminder_frequencies,
+                    enabled_3_days: e.target.checked
+                  })}
+                />
+                <span className="checkmark"></span>
+                3 days before
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={reminderForm?.reminder_frequencies?.enabled_1_day ?? (isNew ? true : false)}
+                  onChange={(e) => onFormChange?.('reminder_frequencies', { 
+                    ...reminderForm?.reminder_frequencies, 
+                    enabled_1_day: e.target.checked 
+                  })}
+                />
+                <span className="checkmark"></span>
+                1 day before
+              </label>
+            </div>
+          </div>
+
+          <div className="form-group">
             <label className="checkbox-label">
               <input
                 type="checkbox"
-                checked={reminderForm?.is_enabled ?? true}
+                checked={reminderForm?.is_enabled ?? (isNew ? true : false)}
                 onChange={(e) => onFormChange?.('is_enabled', e.target.checked)}
               />
               <span className="checkmark"></span>
@@ -643,6 +697,7 @@ function UserHealthReportView({
   showShareModal,
   showPDFViewer,
   viewingReportUrl,
+  viewingReport,
   showFilters,
   showSort,
   isDragging,
@@ -661,6 +716,9 @@ function UserHealthReportView({
   reminderForm,
   editingReminder,
   selectedReminderCategory,
+  showArchivedModal,
+  showReuploadConfirm,
+  reuploadFileData,
 
   // Handlers
   onUploadClick,
@@ -702,7 +760,12 @@ function UserHealthReportView({
   onReminderFormChange,
   onSubmitReminder,
   onCancelReminderModal,
-  onReminderCategoryFilter
+  onReminderCategoryFilter,
+  onViewAllArchived,
+  onCloseArchivedModal,
+  onReuploadReport,
+  onReuploadConfirm,
+  onReuploadCancel
 }) {
   // Add default values to prevent undefined errors
   const defaultStatistics = {
@@ -732,7 +795,7 @@ function UserHealthReportView({
     if (safeOnSearch) safeOnSearch();
   });
 
-  // Local state for managing selected files
+  // Local state for managing selected files (declare before effects)
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
@@ -740,6 +803,30 @@ function UserHealthReportView({
   const [successModalData, setSuccessModalData] = useState({ fileNames: '', fileCount: 0 });
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
   const [selectedDates, setSelectedDates] = useState({ startDate: '', endDate: '' });
+
+  // Disable background scrolling when any overlay/modal is open
+  useEffect(() => {
+    const hasOpenOverlay = Boolean(
+      showUploadModal ||
+      showShareModal ||
+      showReminderModal ||
+      showPDFViewer ||
+      showSuccessOverlay ||
+      showSuccessModal
+    );
+
+    if (hasOpenOverlay) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [showUploadModal, showShareModal, showReminderModal, showPDFViewer, showSuccessOverlay, showSuccessModal]);
+
+  // (moved state declarations above to avoid TDZ in effects)
 
   // File input ref for programmatic file selection
   const fileInputRef = useRef(null);
@@ -1046,8 +1133,10 @@ function UserHealthReportView({
     }
   };
 
-  // Archived reports from the actual reports prop
-  const archivedReports = reports || [];
+  // Archived reports - filter to show only archived status
+  const archivedReports = activeTab === 'archived' 
+    ? (reports && reports.filter(r => r.health_report_status === 'Archived')) || []
+    : [];
 
   return (
     <div className={`health-report-container ${isDragActive ? 'drag-active' : ''}`}>
@@ -1149,7 +1238,7 @@ function UserHealthReportView({
             {/* Form fields for report type and date */}
             <div className="upload-form-fields" style={{ marginBottom: '1.5rem' }}>
               <div className="form-row" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group" style={{ flex: 1.5 }}>
                   <label htmlFor="reportType" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Type *</label>
                   <select
                     id="reportType"
@@ -1176,7 +1265,7 @@ function UserHealthReportView({
                   </select>
                 </div>
                 
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className="form-group" style={{ flex: 1.5 }}>
                   <label htmlFor="reportDate" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.9rem' }}>Report Date *</label>
                   <input
                     type="date"
@@ -1395,9 +1484,19 @@ function UserHealthReportView({
                       {(() => {
                         const now = new Date();
                         const reminderDate = new Date(reminder.reminder_date);
-                        const diffTime = reminderDate - now;
-                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                        return diffDays > 0 ? ` (${diffDays} days left)` : '';
+                        const diffMs = reminderDate.getTime() - now.getTime();
+                        if (diffMs <= 0) return ' (due)';
+                        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+                        const days = Math.floor(totalMinutes / (60 * 24));
+                        const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+                        const minutes = totalMinutes % 60;
+                        if (days > 0) {
+                          return ` (${days}d ${hours}h ${minutes}m left)`;
+                        }
+                        if (hours > 0) {
+                          return ` (${hours}h ${minutes}m left)`;
+                        }
+                        return ` (${minutes}m left)`;
                       })()}
                     </div>
                   </div>
@@ -1489,19 +1588,24 @@ function UserHealthReportView({
           <div className="archived-reports-card">
             <div className="archived-header">
               <h3>Archived Health Reports</h3>
-              <button className="btn-view-all">View all</button>
+              <button 
+                className="btn-view-all"
+                onClick={() => onViewAllArchived?.()}
+              >
+                View all
+              </button>
             </div>
 
             <div className="archived-table">
               <div className="table-header">
-                <div className="table-col">Type</div>
+                <div className="table-col">Report Title</div>
                 <div className="table-col">Date</div>
                 <div className="table-col">Actions</div>
               </div>
 
-              {archivedReports.length > 0 ? archivedReports.map((report) => (
+              {archivedReports.length > 0 ? archivedReports.slice(0, 3).map((report) => (
                 <div key={report.id} className="table-row">
-                  <div className="table-col">{report.report_type || 'Medical Report'}</div>
+                  <div className="table-col">{report.report_title || report.report_type || 'Medical Report'}</div>
                   <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
                   <div className="table-col table-actions">
                     <button 
@@ -1924,6 +2028,8 @@ function UserHealthReportView({
             onCancel={onCancelReminderModal}
             onFormChange={onReminderFormChange}
             onSubmit={onSubmitReminder}
+            successMessage={successMessage}
+            showSuccessOverlay={showSuccessOverlay}
           />
         )}
 
@@ -1935,6 +2041,48 @@ function UserHealthReportView({
                 <h3>Health Report</h3>
                 <button className="close-button" onClick={onClosePDFViewer}>×</button>
               </div>
+              
+              {/* Display flagged reason if report is flagged */}
+              {viewingReport && viewingReport.health_report_status === 'Flagged' && viewingReport.flagged_reason && (
+                <div style={{
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  margin: '0 24px 16px 24px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <img 
+                    src={warningIcon} 
+                    alt="Warning" 
+                    style={{ 
+                      width: '20px', 
+                      height: '20px', 
+                      marginTop: '2px',
+                      flexShrink: 0
+                    }} 
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontWeight: '600',
+                      color: '#991B1B',
+                      marginBottom: '4px',
+                      fontSize: '14px'
+                    }}>
+                      This report has been flagged
+                    </div>
+                    <div style={{
+                      color: '#7F1D1D',
+                      fontSize: '14px',
+                      lineHeight: '1.5'
+                    }}>
+                      <strong>Reason:</strong> {viewingReport.flagged_reason}
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="modal-body pdf-viewer-body">
                 <iframe
@@ -1956,11 +2104,173 @@ function UserHealthReportView({
                 >
                   Close
                 </button>
+                {viewingReport && viewingReport.health_report_status === 'Flagged' && (
+                  <button 
+                    className="btn btn-warning"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (onReuploadReport) {
+                        onReuploadReport(viewingReport.id);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#F59E0B',
+                      color: '#FFFFFF',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Reupload Document
+                  </button>
+                )}
                 <button 
                   className="btn btn-primary" 
                   onClick={() => window.open(viewingReportUrl, '_blank')}
                 >
                   Open in New Tab
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Archived Reports Modal */}
+        {showArchivedModal && (
+          <div className="modal-overlay" onClick={onCloseArchivedModal}>
+            <div className="modal-content archived-modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>All Archived Health Reports</h3>
+                <button className="close-button" onClick={onCloseArchivedModal}>×</button>
+              </div>
+              
+              <div className="modal-body archived-modal-body">
+                {archivedReports.length > 0 ? (
+                  <div className="archived-table">
+                    <div className="table-header">
+                      <div className="table-col">Report Title</div>
+                      <div className="table-col">Date</div>
+                      <div className="table-col">Actions</div>
+                    </div>
+                    {archivedReports.map((report) => (
+                      <div key={report.id} className="table-row">
+                        <div className="table-col">{report.report_title || report.report_type || 'Medical Report'}</div>
+                        <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
+                        <div className="table-col table-actions">
+                          <button 
+                            className="btn-secondary btn-action"
+                            onClick={() => onDownload?.(report.id)}
+                          >
+                            View
+                          </button>
+                          <button 
+                            className="btn-primary btn-action"
+                            onClick={() => {
+                              onCloseArchivedModal?.();
+                              onShareClick?.(report);
+                            }}
+                          >
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-data-message">
+                    <p>No archived reports available</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="modal-footer">
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onCloseArchivedModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reupload Confirmation Modal */}
+        {showReuploadConfirm && reuploadFileData && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>Confirm File Reupload</h3>
+              <p>Please review the file details before reuploading:</p>
+              
+              <div className="file-preview-section" style={{
+                backgroundColor: '#F9FAFB',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                padding: '20px',
+                margin: '20px 0'
+              }}>
+                <div className="file-preview-item" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{ fontWeight: '600', color: '#374151' }}>File Name:</span>
+                  <span style={{ color: '#6B7280' }}>{reuploadFileData.name}</span>
+                </div>
+                
+                <div className="file-preview-item" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{ fontWeight: '600', color: '#374151' }}>File Size:</span>
+                  <span style={{ color: '#6B7280' }}>
+                    {(reuploadFileData.size / (1024 * 1024)).toFixed(2)} MB
+                  </span>
+                </div>
+                
+                <div className="file-preview-item" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span style={{ fontWeight: '600', color: '#374151' }}>File Type:</span>
+                  <span style={{ color: '#6B7280' }}>
+                    {reuploadFileData.type || 'application/pdf'}
+                  </span>
+                </div>
+              </div>
+              
+              <div style={{
+                backgroundColor: '#FEF3C7',
+                border: '1px solid #FDE047',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <p style={{ margin: 0, fontSize: '14px', color: '#78350F' }}>
+                  Reuploading will replace the current file and reset the report status to Pending for re-review.
+                </p>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={onReuploadCancel}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn btn-warning" 
+                  onClick={onReuploadConfirm}
+                  style={{
+                    backgroundColor: '#F59E0B',
+                    color: '#FFFFFF'
+                  }}
+                >
+                  Confirm Reupload
                 </button>
               </div>
             </div>
@@ -2006,6 +2316,26 @@ function AdminHealthReportDashboardView() {
   const [showFlagModal, setShowFlagModal] = useState(false)
   const [flagReason, setFlagReason] = useState('')
   const [actionReport, setActionReport] = useState(null)
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
+
+  // Disable background scrolling when admin modals are open
+  useEffect(() => {
+    const hasAdminOverlay = Boolean(
+      showApprovalConfirm ||
+      showArchiveConfirm ||
+      showFlagModal
+    )
+
+    if (hasAdminOverlay) {
+      document.body.classList.add('modal-open')
+    } else {
+      document.body.classList.remove('modal-open')
+    }
+
+    return () => {
+      document.body.classList.remove('modal-open')
+    }
+  }, [showApprovalConfirm, showArchiveConfirm, showFlagModal])
 
   // Data fetching functions
   const fetchStatistics = useCallback(async () => {
@@ -2104,6 +2434,7 @@ function AdminHealthReportDashboardView() {
       const result = await approveHealthReport(actionReport.id, user.id)
       if (result.success) {
         setSuccessMessage('Health report approved successfully')
+        setShowSuccessOverlay(true)
         await fetchReports()
         await fetchStatistics()
       } else {
@@ -2130,6 +2461,7 @@ function AdminHealthReportDashboardView() {
       const result = await flagHealthReport(actionReport.id, user.id, flagReason)
       if (result.success) {
         setSuccessMessage('Health report flagged successfully')
+        setShowSuccessOverlay(true)
         await fetchReports()
         await fetchStatistics()
       } else {
@@ -2157,6 +2489,7 @@ function AdminHealthReportDashboardView() {
       const result = await archiveHealthReport(actionReport.id, user.id)
       if (result.success) {
         setSuccessMessage('Health report archived successfully')
+        setShowSuccessOverlay(true)
         await fetchReports()
         await fetchStatistics()
       } else {
@@ -2200,7 +2533,10 @@ function AdminHealthReportDashboardView() {
   // Clear messages after a delay
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000)
+      const timer = setTimeout(() => {
+        setSuccessMessage(null)
+        setShowSuccessOverlay(false)
+      }, 5000)
       return () => clearTimeout(timer)
     }
   }, [successMessage])
@@ -2922,6 +3258,8 @@ export default function HealthMonitoringView({
   showFlagModal,
   flagReason,
   actionReport,
+  showReuploadConfirm,
+  reuploadFileData,
   onApproveClick,
   onApproveConfirm,
   onFlagClick,
@@ -2949,6 +3287,7 @@ export default function HealthMonitoringView({
   showShareModal,
   showPDFViewer,
   viewingReportUrl,
+  viewingReport,
   showFilters,
   showSort,
   isDragging,
@@ -3012,6 +3351,12 @@ export default function HealthMonitoringView({
   onReportSelect,
   onViewReport,
   onClearSearch,
+  onViewAllArchived,
+  onCloseArchivedModal,
+  showArchivedModal,
+  onReuploadReport,
+  onReuploadConfirm,
+  onReuploadCancel,
   
   // Aliases
   onAdminSort
@@ -3047,6 +3392,7 @@ export default function HealthMonitoringView({
       showShareModal={showShareModal}
       showPDFViewer={showPDFViewer}
       viewingReportUrl={viewingReportUrl}
+      viewingReport={viewingReport}
       showFilters={showFilters}
       showSort={showSort}
       isDragging={isDragging}
@@ -3055,6 +3401,9 @@ export default function HealthMonitoringView({
       statistics={statistics}
       user={user}
       applicationId={applicationId}
+      showArchivedModal={showArchivedModal}
+      showReuploadConfirm={showReuploadConfirm}
+      reuploadFileData={reuploadFileData}
       reminders={reminders}
       upcomingReminders={upcomingReminders}
       overdueReminders={overdueReminders}
@@ -3103,6 +3452,11 @@ export default function HealthMonitoringView({
       onSubmitReminder={onSubmitReminder}
       onCancelReminderModal={onCancelReminderModal}
       onReminderCategoryFilter={onReminderCategoryFilter}
+      onViewAllArchived={onViewAllArchived}
+      onCloseArchivedModal={onCloseArchivedModal}
+      onReuploadReport={onReuploadReport}
+      onReuploadConfirm={onReuploadConfirm}
+      onReuploadCancel={onReuploadCancel}
     />
   )
 }

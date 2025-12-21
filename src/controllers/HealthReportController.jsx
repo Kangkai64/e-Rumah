@@ -29,6 +29,7 @@ import {
 } from '../models/HealthReport'
 import { useAuth } from '../components/context/AuthContext'
 import { processPDF } from '../utils/pdfCompression'
+import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 
 function HealthReportController() {
   const navigate = useNavigate()
@@ -46,7 +47,9 @@ function HealthReportController() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [showPDFViewer, setShowPDFViewer] = useState(false)
+  const [showArchivedModal, setShowArchivedModal] = useState(false)
   const [viewingReportUrl, setViewingReportUrl] = useState(null)
+  const [viewingReport, setViewingReport] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
@@ -68,6 +71,11 @@ function HealthReportController() {
   const [showFlagModal, setShowFlagModal] = useState(false)
   const [flagReason, setFlagReason] = useState('')
   const [actionReport, setActionReport] = useState(null)
+
+  // Reupload confirmation state
+  const [showReuploadConfirm, setShowReuploadConfirm] = useState(false)
+  const [reuploadFileData, setReuploadFileData] = useState(null)
+  const [reuploadReportId, setReuploadReportId] = useState(null)
 
   // Filter and sort state
   const [searchKey, setSearchKey] = useState('')
@@ -137,14 +145,19 @@ function HealthReportController() {
     reminder_time: '',
     category: 'Health & appointments',
     notes: '',
-    is_enabled: true
+    is_enabled: true,
+    reminder_frequencies: {
+      enabled_1_week: true,
+      enabled_3_days: true,
+      enabled_1_day: true
+    }
   })
 
   // Reminder filters and sorting
   const [reminderFilters, setReminderFilters] = useState({
     category: '',
     reminder_type: '',
-    is_enabled: true
+    is_enabled: undefined // undefined = show all reminders (enabled and disabled)
   })
   
   const [reminderSortBy, setReminderSortBy] = useState('reminder_date')
@@ -729,6 +742,11 @@ function HealthReportController() {
     loadShareLinks(report?.id)
   }, [loadShareLinks])
 
+  // Handle view all archived reports
+  const handleViewAllArchived = useCallback(() => {
+    setShowArchivedModal(true)
+  }, [])
+
   // Handle share submit
   const handleShareSubmit = async () => {
     try {
@@ -936,14 +954,18 @@ function HealthReportController() {
     try {
       const result = await RemindersService.getUpcomingReminders(userId)
       if (result.success) {
-        setUpcomingReminders(result.data)
+        // Apply category filter if selected
+        const filteredData = selectedReminderCategory === 'all' 
+          ? result.data 
+          : result.data.filter(reminder => reminder.category === selectedReminderCategory)
+        setUpcomingReminders(filteredData)
       } else {
         console.error('Error loading upcoming reminders:', result.error)
       }
     } catch (error) {
       console.error('Error loading upcoming reminders:', error)
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, selectedReminderCategory])
 
   // Load overdue reminders
   const loadOverdueReminders = useCallback(async (userId = currentUser?.id) => {
@@ -952,14 +974,18 @@ function HealthReportController() {
     try {
       const result = await RemindersService.getOverdueReminders(userId)
       if (result.success) {
-        setOverdueReminders(result.data)
+        // Apply category filter if selected
+        const filteredData = selectedReminderCategory === 'all' 
+          ? result.data 
+          : result.data.filter(reminder => reminder.category === selectedReminderCategory)
+        setOverdueReminders(filteredData)
       } else {
         console.error('Error loading overdue reminders:', result.error)
       }
     } catch (error) {
       console.error('Error loading overdue reminders:', error)
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, selectedReminderCategory])
 
   // Handle reminder form changes
   const handleReminderFormChange = useCallback((field, value) => {
@@ -988,21 +1014,11 @@ function HealthReportController() {
   const handleReminderCategoryFilter = useCallback((category) => {
     setSelectedReminderCategory(category)
     
-    // Filter upcoming reminders based on selected category
-    if (category === 'all') {
-      // Show all reminders - reload from original data
-      loadUpcomingReminders(currentUser?.id)
-    } else {
-      // Filter by category
-      setUpcomingReminders(prev => {
-        // Get all reminders again and filter
-        return reminders.filter(reminder => 
-          reminder.category === category && 
-          new Date(reminder.reminder_date) >= new Date()
-        )
-      })
-    }
-  }, [currentUser?.id, reminders, loadUpcomingReminders])
+    // Reload upcoming and overdue reminders with the new category filter
+    // The loadUpcomingReminders and loadOverdueReminders functions will apply the filter
+    loadUpcomingReminders(currentUser?.id)
+    loadOverdueReminders(currentUser?.id)
+  }, [currentUser?.id, loadUpcomingReminders, loadOverdueReminders])
 
   // Open reminder modal for creation
   const handleCreateReminder = useCallback(() => {
@@ -1014,7 +1030,12 @@ function HealthReportController() {
       reminder_time: '',
       category: 'Health & appointments',
       notes: '',
-      is_enabled: true
+      is_enabled: true,
+      reminder_frequencies: {
+        enabled_1_week: true,
+        enabled_3_days: true,
+        enabled_1_day: true
+      }
     })
     setShowReminderModal(true)
   }, [])
@@ -1035,7 +1056,13 @@ function HealthReportController() {
       reminder_time: timeStr,
       category: reminder.category,
       notes: reminder.notes || '',
-      is_enabled: reminder.is_enabled
+      // Reflect existing data; default only applies to creation
+      is_enabled: reminder.is_enabled ?? false,
+      reminder_frequencies: {
+        enabled_1_week: reminder.reminder_frequencies?.enabled_1_week ?? false,
+        enabled_3_days: reminder.reminder_frequencies?.enabled_3_days ?? false,
+        enabled_1_day: reminder.reminder_frequencies?.enabled_1_day ?? false
+      }
     })
     setShowReminderModal(true)
   }, [])
@@ -1044,8 +1071,11 @@ function HealthReportController() {
   const handleSubmitReminder = useCallback(async () => {
     if (!currentUser?.id) return
 
+    // Clear previous messages and show loading state
     setIsLoading(true)
     setError(null)
+    setSuccessMessage(null)
+    setShowSuccessOverlay(false)
 
     try {
       // Combine date and time
@@ -1058,7 +1088,8 @@ function HealthReportController() {
         reminder_date: reminderDateTime,
         category: reminderForm.category,
         notes: reminderForm.notes,
-        is_enabled: reminderForm.is_enabled
+        is_enabled: reminderForm.is_enabled,
+        reminder_frequencies: reminderForm.reminder_frequencies
       }
 
       let result
@@ -1071,14 +1102,105 @@ function HealthReportController() {
       }
 
       if (result.success) {
-        setSuccessMessage(editingReminder ? 'Reminder updated successfully' : 'Reminder created successfully')
-        setShowReminderModal(false)
+        // For updates, data might be null, so we use the existing reminder ID
+        const reminderId = editingReminder ? editingReminder.id : result.data?.id
+
+        // Create reminder notifications for each enabled frequency
+        if (!editingReminder && reminderForm.reminder_frequencies) {
+          const frequencies = []
+
+          // Add 1 week before reminder
+          if (reminderForm.reminder_frequencies.enabled_1_week) {
+            const weekBefore = new Date(reminderDateTime)
+            weekBefore.setDate(weekBefore.getDate() - 7)
+            frequencies.push({
+              reminder_id: reminderId,
+              scheduled_time: weekBefore.toISOString(),
+              notification_offset: '1 week before'
+            })
+          }
+
+          // Add 1 day before reminder
+          if (reminderForm.reminder_frequencies.enabled_1_day) {
+            const dayBefore = new Date(reminderDateTime)
+            dayBefore.setDate(dayBefore.getDate() - 1)
+            frequencies.push({
+              reminder_id: reminderId,
+              scheduled_time: dayBefore.toISOString(),
+              notification_offset: '1 day before'
+            })
+          }
+
+          // Add 3 days before reminder
+          if (reminderForm.reminder_frequencies.enabled_3_days) {
+            const threeDaysBefore = new Date(reminderDateTime)
+            threeDaysBefore.setDate(threeDaysBefore.getDate() - 3)
+            frequencies.push({
+              reminder_id: reminderId,
+              scheduled_time: threeDaysBefore.toISOString(),
+              notification_offset: '3 days before'
+            })
+          }
+
+          // Create reminder notifications in database
+          for (const freq of frequencies) {
+            try {
+              await supabase
+                .from('reminder_notifications')
+                .insert({
+                  ...freq,
+                  is_sent: false
+                })
+            } catch (err) {
+              console.error('Error creating reminder notification:', err)
+            }
+          }
+
+          // Trigger server-side reminder processor to handle due notifications
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reminder-processor/run`, {
+              method: 'GET',
+              headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : undefined
+            })
+          } catch (err) {
+            console.error('Error invoking reminder processor function:', err)
+          }
+        }
+
+        // Set success message and show overlay
+        const message = editingReminder ? 'Reminder updated successfully' : 'Reminder created successfully'
+        setSuccessMessage(message)
+        setShowSuccessOverlay(true)
+        
+        // Reload reminders data
         loadReminders()
         loadReminderStats()
         loadUpcomingReminders()
         loadOverdueReminders()
+        
+        // Close modal after a brief delay to allow users to see the success message
+        setTimeout(() => {
+          setShowReminderModal(false)
+          
+          // Reset reminder form
+          setReminderForm({
+            reminder_title: '',
+            reminder_type: 'Next health check',
+            reminder_date: '',
+            reminder_time: '',
+            category: 'Health & appointments',
+            notes: '',
+            is_enabled: true,
+            reminder_frequencies: {
+              enabled_1_week: true,
+              enabled_3_days: true,
+              enabled_1_day: true
+            }
+          })
+        }, 800)
       } else {
-        setError(result.error)
+        setError(result.error || 'Failed to save reminder')
       }
     } catch (error) {
       console.error('Error saving reminder:', error)
@@ -1155,7 +1277,12 @@ function HealthReportController() {
       reminder_time: '',
       category: 'Health & appointments',
       notes: '',
-      is_enabled: true
+      is_enabled: true,
+      reminder_frequencies: {
+        enabled_1_week: true,
+        enabled_3_days: true,
+        enabled_1_day: true
+      }
     })
   }, [])
 
@@ -1255,6 +1382,7 @@ function HealthReportController() {
   const handleClosePDFViewer = useCallback(() => {
     setShowPDFViewer(false)
     setViewingReportUrl(null)
+    setViewingReport(null)
   }, [])
 
   const handleTabChange = useCallback((tab) => {
@@ -1270,11 +1398,200 @@ function HealthReportController() {
     if (report && report.report_file_url) {
       // Show the report in overlay modal
       setViewingReportUrl(report.report_file_url)
+      setViewingReport(report)
       setShowPDFViewer(true)
     } else {
       setError('Report file not found or URL is invalid')
     }
   }, [reports])
+
+  const handleReuploadReport = useCallback(async (reportId) => {
+    try {
+      // Create a file input for the user to select a new file
+      const fileInput = document.createElement('input')
+      fileInput.type = 'file'
+      fileInput.accept = '.pdf,.jpg,.jpeg,.png' // Accept multiple file types
+      
+      fileInput.onchange = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) {
+          return
+        }
+
+        setError(null) // Clear any previous errors
+
+        try {
+          // Validate file
+          const validation = await validateHealthReportFile(file)
+          
+          if (!validation.valid) {
+            setError(`Invalid file: ${validation.error}`)
+            return
+          }
+
+          let processedFile = file
+
+          // Convert image to PDF if needed
+          if (isImageFile(file)) {
+            const fileName = `health_report_reupload_${Date.now()}.pdf`
+            processedFile = await convertImagesToPDF([file], fileName)
+          }
+
+          // Process PDF (compress, validate, repair if needed)
+          if (isPDFFile(processedFile)) {
+            const processResult = await processPDF(processedFile, {
+              compress: true,
+              compressionLevel: 0.8,
+              maxFileSize: 5 * 1024 * 1024 // 5MB
+            })
+            
+            if (processResult.success) {
+              processedFile = processResult.file
+            }
+          }
+
+          // Store file data and show confirmation dialog
+          const filePreview = {
+            name: file.name,
+            size: processedFile.size,
+            type: processedFile.type,
+            file: processedFile,
+            originalFile: file
+          }
+
+          setReuploadFileData(filePreview)
+          setReuploadReportId(reportId)
+          setShowReuploadConfirm(true)
+        } catch (error) {
+          setError(error.message || 'An error occurred while processing the file. Please try again.')
+        }
+      }
+
+      // Add error handler for file input
+      fileInput.onerror = (error) => {
+        setError('Failed to open file selector. Please try again.')
+      }
+
+      // Trigger file selection
+      fileInput.click()
+    } catch (error) {
+      setError('Failed to initiate file selection. Please try again.')
+    }
+  }, [])
+
+  // Handle reupload confirmation
+  const handleReuploadConfirm = useCallback(async () => {
+    if (!reuploadFileData || !reuploadReportId) return
+
+    try {
+      setIsUploading(true)
+      setUploadProgress(0)
+      setError(null)
+      setShowReuploadConfirm(false)
+
+      // Upload the new file
+      const uploadResult = await uploadHealthReportFile(
+        reuploadFileData.file,
+        currentUser.id,
+        'health_report',
+        {
+          signedUrlDuration: 31536000 // 1 year
+        }
+      )
+
+      if (uploadResult.error) {
+        setError(`Failed to reupload file: ${uploadResult.error.message}`)
+        setIsUploading(false)
+        return
+      }
+
+      // Get current session for authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError || !session) {
+        setError('Authentication failed. Please log in again.')
+        setIsUploading(false)
+        return
+      }
+
+      // Use CORS proxy function for update
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            table: 'health_reports',
+            id: reuploadReportId,
+            patch: {
+              report_file_url: uploadResult.url,
+              health_report_status: 'Pending',
+              updated_at: new Date().toISOString()
+            }
+          })
+        }
+      )
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type')
+        let errorMessage = `HTTP Error: ${res.status}`
+        
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await res.json()
+            errorMessage = errorData.error || errorMessage
+          } catch (e) {
+            // Continue with default error message
+          }
+        }
+
+        setError('File uploaded but failed to save record to database. Please contact support.')
+        setIsUploading(false)
+        return
+      }
+
+      const result = await res.json()
+      if (!result.success) {
+        setError('File uploaded but failed to save record to database. Please contact support.')
+        setIsUploading(false)
+        return
+      }
+
+      // Close PDF viewer
+      handleClosePDFViewer()
+
+      // Refresh reports and alerts
+      await fetchReports(currentUser.id)
+      await checkAlerts(currentUser.id)
+
+      // Show success message
+      setSuccessMessage('Document reuploaded successfully. The report has been reset for re-review.')
+      setShowSuccessOverlay(true)
+      setTimeout(() => {
+        setShowSuccessOverlay(false)
+        setSuccessMessage(null)
+      }, 3000)
+
+      // Clear reupload state
+      setReuploadFileData(null)
+      setReuploadReportId(null)
+    } catch (error) {
+      setError(error.message || 'An unexpected error occurred during reupload. Please try again.')
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }, [reuploadFileData, reuploadReportId, currentUser, handleClosePDFViewer, fetchReports, checkAlerts])
+
+  // Handle reupload cancel
+  const handleReuploadCancel = useCallback(() => {
+    setShowReuploadConfirm(false)
+    setReuploadFileData(null)
+    setReuploadReportId(null)
+    setError(null)
+  }, [])
 
   // Filter handlers
   const handleFilterChange = useCallback((filterType, value) => {
@@ -1306,6 +1623,7 @@ function HealthReportController() {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(null)
+        setShowSuccessOverlay(false)
       }, 5000)
       return () => clearTimeout(timer)
     }
@@ -1330,6 +1648,8 @@ function HealthReportController() {
       showFlagModal={showFlagModal}
       flagReason={flagReason}
       actionReport={actionReport}
+      showReuploadConfirm={showReuploadConfirm}
+      reuploadFileData={reuploadFileData}
       onApproveClick={handleApproveClick}
       onApproveConfirm={handleApproveConfirm}
       onFlagClick={handleFlagClick}
@@ -1348,12 +1668,14 @@ function HealthReportController() {
       successMessage={successMessage}
       showSuccessOverlay={showSuccessOverlay}
       isDragging={isDragging}
+      showArchivedModal={showArchivedModal}
       isUploading={isUploading}
       uploadProgress={uploadProgress}
       showShareModal={showShareModal}
       showUploadModal={showUploadModal}
       showPDFViewer={showPDFViewer}
       viewingReportUrl={viewingReportUrl}
+      viewingReport={viewingReport}
       errors={errors}
 
       // Filter and sort
@@ -1399,6 +1721,8 @@ function HealthReportController() {
       onUploadClick={() => setShowUploadModal(true)}
       onCancelUploadModal={handleCancel}
       onCancelShareModal={handleCancel}
+      onViewAllArchived={handleViewAllArchived}
+      onCloseArchivedModal={() => setShowArchivedModal(false)}
       onClosePDFViewer={handleClosePDFViewer}
       showFilters={showFilters}
       showSort={showSort}
@@ -1406,6 +1730,9 @@ function HealthReportController() {
       onSetShowSort={(value) => setShowSort(!showSort)}
       onSort={handleSort}
       onDownload={(reportId) => handleViewReport(reportId)}
+      onReuploadReport={handleReuploadReport}
+      onReuploadConfirm={handleReuploadConfirm}
+      onReuploadCancel={handleReuploadCancel}
       applicationId={applicationId}
 
       // Reminders data
