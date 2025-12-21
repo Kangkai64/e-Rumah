@@ -123,7 +123,7 @@ function AdminView({
               <div className="admin-stat-subtitle">Last 30 days</div>
             </div>
 
-            <div className="admin-stat-card admin-stat-card-small">
+            <div className="admin-stat-card">
               <div className="admin-stat-label">Reports Generated</div>
               <div className="admin-stat-value">{statistics.reportsGenerated || 0}</div>
               <div className="admin-stat-subtitle">This month</div>
@@ -325,7 +325,7 @@ function AdminView({
                             })()}
                           </div>
                           <div className="admin-info-subtitle">
-                            Estimated value: RM {selectedApplication.property?.expected_market_value?.toLocaleString() || selectedApplication.property?.indicative_market_value?.toLocaleString() || 'N/A'}
+                            Estimated value: RM {selectedApplication.property?.expected_market_value?.toLocaleString() || selectedApplication.property?.indicative_market_value?.toLocaleString()}
                           </div>
                         </div>
                       </div>
@@ -334,10 +334,10 @@ function AdminView({
                       <div className="admin-requested-amount">
                         <div className="admin-info-label">Purchase Price</div>
                         <div className="admin-amount-value">
-                          RM {selectedApplication.property?.purchase_price?.toLocaleString() || 'N/A'}
+                          RM {selectedApplication.property?.purchase_price?.toLocaleString()}
                         </div>
                         <div className="admin-info-subtitle">
-                          Purchased: {selectedApplication.property?.purchase_date ? formatDate(selectedApplication.property.purchase_date) : 'N/A'}
+                          Purchased: {selectedApplication.property?.purchase_date ? formatDate(selectedApplication.property.purchase_date) : ''}
                         </div>
                       </div>
 
@@ -375,8 +375,9 @@ function AdminView({
                       <button 
                         className="admin-approve-btn"
                         onClick={onApproveApplication}
+                        disabled={selectedApplication?.status === 'approved'}
                       >
-                        Approve Application
+                        {selectedApplication?.status === 'approved' ? 'Already Approved' : 'Approve Application'}
                       </button>
                     </>
                   ) : (
@@ -424,7 +425,7 @@ function AdminView({
                 </>
               ) : (
                 <div className="admin-no-selection">
-                  {/* Empty - no message, just empty space */}
+                  No application selected. Click on an application record to view details.
                 </div>
               )}
             </div>

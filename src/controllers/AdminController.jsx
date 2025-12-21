@@ -91,11 +91,6 @@ function AdminController() {
       const appsResult = await Admin.getAllApplications(filters)
       if (appsResult.success) {
         setApplications(appsResult.data)
-        
-        // Auto-select first application if none selected
-        if (!selectedApplication && appsResult.data.length > 0) {
-          setSelectedApplication(appsResult.data[0])
-        }
       }
 
       // Load reports
@@ -269,7 +264,30 @@ function AdminController() {
   /**
    * Handle view application details (navigate to review page)
    */
-  const handleReviewApplication = (application) => {
+  const handleReviewApplication = async (application) => {
+    // If application status is 'submitted', automatically change to 'underReviewed'
+    if (application.status === 'submitted') {
+      try {
+        console.log('📝 Auto-updating status from submitted to underReviewed')
+        const result = await Admin.updateApplicationStatus(
+          application.id,
+          'underReviewed',
+          'Application moved to review by admin'
+        )
+
+        if (!result.success) {
+          console.error('Failed to update status:', result.error)
+          // Still navigate even if status update fails
+        } else {
+          console.log('✅ Status updated successfully')
+        }
+      } catch (err) {
+        console.error('Error updating application status:', err)
+        // Still navigate even if error occurs
+      }
+    }
+
+    // Navigate to review page
     navigate(`/admin/review/${application.id}`)
   }
 

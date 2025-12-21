@@ -183,11 +183,18 @@ const Admin = {
    */
   async updateApplicationStatus(applicationId, status, remarks = null) {
     try {
-      const result = await corsProxyUpdate('applications', applicationId, {
-          status: status,
-          remarks: remarks,
-          updated_at: new Date().toISOString()
-        })
+      const updates = {
+        status: status,
+        remarks: remarks,
+        updated_at: new Date().toISOString()
+      }
+
+      // Add reviewed_at timestamp when moving to underReviewed status
+      if (status === 'underReviewed') {
+        updates.reviewed_at = new Date().toISOString()
+      }
+
+      const result = await corsProxyUpdate('applications', applicationId, updates)
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
