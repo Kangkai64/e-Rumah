@@ -533,13 +533,16 @@ function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSa
               <button
                 className="btn-secondary"
                 onClick={() => {
-                  const event = new CustomEvent('openPDFViewer', {
-                    detail: {
-                      fileUrl: inquiry.report_file_url,
-                      fileName: inquiry.report_title || 'Health Report'
-                    }
-                  })
-                  window.dispatchEvent(event)
+                  onClose() // Close modal first
+                  setTimeout(() => {
+                    const event = new CustomEvent('openPDFViewer', {
+                      detail: {
+                        fileUrl: inquiry.report_file_url,
+                        fileName: inquiry.report_title || 'Health Report'
+                      }
+                    })
+                    window.dispatchEvent(event)
+                  }, 100) // Small delay to ensure modal closes first
                 }}
                 style={{
                   backgroundColor: '#3b82f6',
@@ -1249,18 +1252,18 @@ export default function CustomerSupportView({
         </div>
 
         {/* 搜索和过滤栏 */}
-        <div className="toolbar">
+        <div className="cs-toolbar">
           <input
             type="text"
-            className="search-input"
+            className="cs-search"
             placeholder="Search elders, applications, IDs..."
             value={searchTerm}
             onChange={(e) => onSearch(e.target.value)}
           />
-          <div className="filter-group">
-            <label className="filter-label">Status:</label>
+          <div className="cs-filters">
+            <label className="cs-label">Status:</label>
             <select 
-              className="filter-select"
+              className="cs-select"
               value={filterValue}
               onChange={(e) => onFilterValueChange(e.target.value)}
             >
@@ -1270,9 +1273,9 @@ export default function CustomerSupportView({
               <option value="resolved">Resolved</option>
             </select>
 
-            <label className="filter-label" style={{marginLeft: '1.5rem'}}>Sort:</label>
+            <label className="cs-label">Sort:</label>
             <select 
-              className="filter-select"
+              className="cs-select"
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
             >
