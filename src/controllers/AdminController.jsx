@@ -54,7 +54,7 @@ function AdminController() {
     })
     
     // Only load data if user is authenticated and confirmed as admin
-    if (user && userRole === 'admin' && !authLoading) {
+    if (user && userRole === 'admin') {
       loadDashboardData()
     } else if (user && userRole && userRole !== 'admin') {
       console.warn('⚠️ Non-admin user trying to access admin dashboard:', userRole)
@@ -63,10 +63,11 @@ function AdminController() {
 
   // Load dashboard data when filters change (except search - search only triggers on Enter)
   useEffect(() => {
-    if (user && userRole === 'admin' && !loading) {
+    // Only fetch if user is admin and we're not already loading
+    if (user && userRole === 'admin') {
       loadDashboardData()
     }
-  }, [filters.status, filters.sortBy, filters.sortOrder])
+  }, [filters.status, filters.sortBy, filters.sortOrder, user, userRole])
 
   /**
    * Load all dashboard data
@@ -113,11 +114,11 @@ function AdminController() {
   /**
    * Handle search input change (just updates state, doesn't trigger search)
    */
-  const handleSearchChange = (e) => {
-    setFilters({
-      ...filters,
-      search: e.target.value
-    })
+  const handleSearchChange = (value) => {
+    setFilters(prev => ({
+      ...prev,
+      search: value
+    }))
   }
 
   /**

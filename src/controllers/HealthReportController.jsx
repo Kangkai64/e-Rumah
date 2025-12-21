@@ -62,7 +62,9 @@ function HealthReportController() {
     reminderThisWeek: 0,
     overdueHealthReport: 0,
     healthReportDueSoon: 0,
-    flaggedHealthReport: 0
+    pending: 0,
+    reviewed: 0,
+    flagged: 0
   })
 
   // Admin specific state
@@ -227,7 +229,7 @@ function HealthReportController() {
         providerName: filters.providerName || undefined,
         sortBy,
         sortOrder,
-        showArchived: activeTab === 'archived' || userRole === 'admin'
+        showArchived: activeTab === 'archived' && userRole !== 'admin'
       }
 
       // Use different function based on user role
@@ -894,7 +896,9 @@ function HealthReportController() {
         }).length,
         overdueHealthReport: reports.filter(r => r.due_status === 'Overdue').length,
         healthReportDueSoon: reports.filter(r => r.due_status === 'Due Soon').length,
-        flaggedHealthReport: reports.filter(r => r.health_report_status === 'Flagged').length
+        pending: reports.filter(r => !r.health_report_status || r.health_report_status?.toLowerCase() === 'pending').length,
+        reviewed: reports.filter(r => r.health_report_status?.toLowerCase() === 'reviewed').length,
+        flagged: reports.filter(r => r.health_report_status?.toLowerCase() === 'flagged').length
       }
       setStatistics(stats)
     } else {
@@ -902,7 +906,9 @@ function HealthReportController() {
         reminderThisWeek: 0,
         overdueHealthReport: 0,
         healthReportDueSoon: 0,
-        flaggedHealthReport: 0
+        pending: 0,
+        reviewed: 0,
+        flagged: 0
       })
     }
   }, [reports])

@@ -43,15 +43,15 @@ Deno.serve(async (req: Request) => {
     // Allowlist of tables and optional allowed patch fields per-table
     const ALLOWLIST: Record<string, string[]> = {
     // table_name: [allowed_field_names_in_patch]
-    users: ['email','full_name','phone','updated_at','role'],
-    applications: ['status','remarks','is_flagged','flagged_reason','flagged_at','termination_reason','termination_submitted_at','termination_update_at','updated_at'],
+    users: ['email','full_name','phone', 'ic_number','updated_at','role'],
+    applications: ['status','remarks', 'main_applicant_deceased', 'submitted_at', 'reviewed_at', 'approved_at','is_flagged','flagged_reason','flagged_at', 'flagged_by', 'flagged_code','termination_reason','termination_submitted_at','termination_update_at','updated_at'],
     application_data: ['current_step','form_data','updated_at'],
-    nominees: ['name','ic_number','address','postcode','email','residence_phone','telephone','sex','race','is_malaysian','marital_status','relationship','dob','updated_at'],
+    nominees: ['type', 'name','ic_number','address','postcode','email','residence_phone','telephone','sex','race','is_malaysian','marital_status','relationship','dob','updated_at'],
     properties: ['property_type','address','postcode','indicative_market_value','valuation_date','expected_market_value','purchase_price','purchase_date','tenure_title','expiry_date','build_up_area','land_area','is_encumbered','bank_name','est_outstanding_balance','has_fire_insurance','insurance_company','insurance_period_validity','updated_at'],
-    transactions: ['transaction_type','amount','transaction_date','description','reference_number','updated_at'],
-    health_reports: ['report_date','report_file_url','notes','updated_at','health_report_status','due_status','report_title','provider_name','flagged_reason'],
+    transactions: ['transaction_type','amount','transaction_date','description','reference_number'],
+    health_reports: ['report_date', 'report_type', 'report_file_url','notes','updated_at','health_report_status','due_status','report_title','provider_name','flagged_reason'],
     customer_support_inquiries: ['subject','message','status','priority','assigned_to','resolved_at','updated_at','internal_note'],
-    support_conversations: ['message','sender_type','sender_id','updated_at'],
+    support_conversations: ['entity_type', 'message','sender_type','sender_id'],
     reminders: ['reminder_type','reminder_title','reminder_date','is_enabled','reminder_frequencies','notes','category','updated_at','notified_at'],
     reminder_notifications: ['scheduled_time','notification_offset','is_sent','sent_at','updated_at'],
     caregivers: ['license_number','specialization','years_of_experience','bio','is_verified','updated_at'],
