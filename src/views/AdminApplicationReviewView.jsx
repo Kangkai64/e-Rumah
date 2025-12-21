@@ -18,6 +18,9 @@ function AdminApplicationReviewView({
   flaggedDocumentName,
   flagDocumentReason,
   flaggingDocument,
+  showPDFViewer,
+  viewingDocumentUrl,
+  viewingDocumentName,
   onTabChange,
   onApprove,
   onReject,
@@ -30,6 +33,7 @@ function AdminApplicationReviewView({
   onFlagDocumentReasonChange,
   onBackToDashboard,
   onViewDocument,
+  onClosePDFViewer,
   formatCurrency,
   formatDate,
   getStatusBadgeClass,
@@ -224,16 +228,16 @@ function AdminApplicationReviewView({
                               {doc.status === 'FOUND' ? `${(doc.size / 1024).toFixed(2)} KB` : 'Not uploaded'}
                             </span>
                             {doc.status === 'FOUND' && doc.createdAt && (
-                              <span className="document-date" style={{fontSize: '11px', color: '#9CA3AF', marginTop: '4px'}}>
+                              <span className="document-date">
                                 Uploaded: {formatDate(doc.createdAt)}
                               </span>
                             )}
                           </div>
                           {doc.status === 'FOUND' && doc.url && (
-                            <div className="document-actions" style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                            <div className="document-actions">
                               <button
                                 className="view-document-btn"
-                                onClick={() => window.open(doc.url, '_blank')}
+                                onClick={() => onViewDocument(doc)}
                               >
                                 View
                               </button>
@@ -241,15 +245,6 @@ function AdminApplicationReviewView({
                                 className="flag-document-btn"
                                 onClick={() => onFlagDocument(doc)}
                                 disabled={flaggingDocument}
-                                style={{
-                                  padding: '6px 12px',
-                                  backgroundColor: '#dc2626',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer'
-                                }}
                               >
                                 Flag
                               </button>
@@ -347,21 +342,21 @@ function AdminApplicationReviewView({
         </div>
 
         {/* Action Buttons */}
-        {application.status !== 'approved' && application.status !== 'rejected' && (
+        {application.status !== 'rejected' && (
           <div className="review-actions">
             <button
               className="reject-button"
               onClick={onReject}
-              disabled={approvalLoading}
+              disabled={approvalLoading || application.status === 'approved'}
             >
               Reject Application
             </button>
             <button
               className="approve-button"
               onClick={onApprove}
-              disabled={approvalLoading}
+              disabled={approvalLoading || application.status === 'approved'}
             >
-              {approvalLoading ? 'Processing...' : 'Approve Application'}
+              {approvalLoading ? 'Processing...' : application.status === 'approved' ? 'Already Approved' : 'Approve Application'}
             </button>
           </div>
         )}
@@ -420,6 +415,41 @@ function AdminApplicationReviewView({
                 style={{backgroundColor: '#dc2626'}}
               >
                 {flaggingDocument ? 'Flagging...' : 'Flag & Delete Document'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {showPDFViewer && viewingDocumentUrl && (
+        <div className="modal-overlay pdf-viewer-overlay">
+          <div className="modal-content pdf-viewer-modal">
+            <div className="modal-header">
+              <h3>{viewingDocumentName}</h3>
+              <button className="close-button" onClick={onClosePDFViewer}>×</button>
+            </div>
+            <div className="pdf-viewer-body">
+              <iframe
+                src={viewingDocumentUrl}
+                title={viewingDocumentName}
+                style={{
+                  width: '100%',
+                  height: '70vh',
+                  border: 'none',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="cancel-button" onClick={onClosePDFViewer}>
+                Close
+              </button>
+              <button 
+                className="approve-button"
+                onClick={() => window.open(viewingDocumentUrl, '_blank')}
+              >
+                Open in New Tab
               </button>
             </div>
           </div>

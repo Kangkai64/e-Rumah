@@ -13,7 +13,7 @@ import ApplicationController from './controllers/ApplicationController.jsx'
 import PropertyCalculatorController from './controllers/PropertyCalculatorController.jsx'
 import MaintainApplicationController from './controllers/MaintainApplicationController.jsx'
 import AdminController from './controllers/AdminController.jsx'
-import AdminApplicationReviewController from './controllers/AdminApplicationReviewController.jsx'
+import AdminReportController from './controllers/AdminReportController.jsx'
 import UserDashboardController from './controllers/UserDashboardController.jsx'
 import CustomerSupportController from './controllers/CustomerSupportController.jsx'
 import UserSupportController from './controllers/UserSupportController.jsx'
@@ -603,7 +603,7 @@ function App() {
             <ProtectedRoute requireRole="admin">
               <>
                 <Header />
-                <AdminApplicationReviewController />
+                <AdminReportController mode="review" />
                 <Footer />
               </>
             </ProtectedRoute>
