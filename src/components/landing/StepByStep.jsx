@@ -12,28 +12,28 @@ function StepByStep() {
   const applicationSteps = [
     {
       id: 1,
-      icon: '👥',
+      icon: '/src/assets/icons/step_by_step_page/step1.svg',
       title: 'Walk in to any of the EPF / AKPK Designated Branches below',
       branches: ['EPF Kuala Lumpur', 'EPF Petaling Jaya', 'EPF Johor Bahru', 'EPF Seremban Jaya', 'EPF Ipoh', 'EPF Seremban', 'EPF Melaka', 'AKPK Kuala Lumpur*', 'AKPK Johor Bahru', 'AKPK Penang', 'AKPK Ipoh', 'AKPK Melaka', '*For Selangor, Negeri Sembilan & Kuala Lumpur']
     },
     {
       id: 2,
-      icon: '📋',
+      icon: '/src/assets/icons/step_by_step_page/step2.svg',
       title: 'Take a pre-assessment test to determine your eligibility'
     },
     {
       id: 3,
-      icon: '📅',
+      icon: '/src/assets/icons/step_by_step_page/step3.svg',
       title: "Make an appointment with AKPK's Financial Advisor"
     },
     {
       id: 4,
-      icon: '📝',
+      icon: '/src/assets/icons/step_by_step_page/step4.svg',
       title: 'Complete the reverse mortgage financial advisory module with AKPK'
     },
     {
       id: 5,
-      icon: '✓',
+      icon: '/src/assets/icons/step_by_step_page/step5.svg',
       title: 'Submit your application to e-Rumah/AKPK, Online Application is now available'
     }
   ]
@@ -81,7 +81,10 @@ function StepByStep() {
           <p className="sbs-hero-desc">
             From 3 December 2025, Reverse Mortgage Scheme will be available in Klang Valley, Johor Bahru, Penang Island, Ipoh, Seremban and Malacca City. Customer can now submit application online.
           </p>
-          <a href="#sbs-how-to-apply" className="sbs-scroll-btn">⬇ SCROLL DOWN</a>
+          <a href="#sbs-how-to-apply" className="sbs-scroll-btn">
+            <img src="/src/assets/icons/step_by_step_page/down_arrow.svg" alt="Scroll down"/>
+            SCROLL DOWN
+          </a>
         </div>
         <div className="sbs-hero-image">
           <img src="/src/assets/images/step_by_step_page/banner1.png" alt="Reverse Mortgage Scheme" />
@@ -106,25 +109,25 @@ function StepByStep() {
 
             <div className="sbs-about-right">
               <div className="sbs-about-card">
-                <div className="sbs-card-icon">💳</div>
+                <img src="/src/assets/icons/step_by_step_page/lifetime_tenure.svg" alt="Lifetime tenure" className="sbs-card-icon"/>
                 <h3>Lifetime tenure</h3>
                 <p>Fixed monthly payouts throughout the entire life of the borrower or joint borrower.</p>
               </div>
 
               <div className="sbs-about-card">
-                <div className="sbs-card-icon">🏠</div>
+                <img src="/src/assets/icons/step_by_step_page/residing_in_own_home.svg" alt="Residing in own home" className="sbs-card-icon"/>
                 <h3>Residing in own home</h3>
                 <p>Borrower and joint borrower can continue to stay in their property throughout their life.</p>
               </div>
 
               <div className="sbs-about-card">
-                <div className="sbs-card-icon">❌</div>
+                <img src="/src/assets/icons/step_by_step_page/no_repayment.svg" alt="No repayment during lifetime" className="sbs-card-icon"/>
                 <h3>No repayment during lifetime</h3>
                 <p>Repayment only due when borrower or joint borrower passes away, whichever later.</p>
               </div>
 
               <div className="sbs-about-card">
-                <div className="sbs-card-icon">❤️</div>
+                <img src="/src/assets/icons/step_by_step_page/non_recourse.svg" alt="Non-recourse" className="sbs-card-icon"/>
                 <h3>Non-recourse</h3>
                 <p>Borrower's estate will not be responsible for any shortfall to settle the Reverse Mortgage Loan if the sale proceeds of the property is less than the outstanding loan amount.</p>
               </div>
@@ -139,16 +142,18 @@ function StepByStep() {
 
           <div className="sbs-eligibility-grid">
             <div className="sbs-eligibility-card">
-              <h3>👥 Eligibility Criteria for Borrower</h3>
+              <img src="/src/assets/icons/step_by_step_page/eligibility_borrower.svg" alt="Eligibility Borrower" className="sbs-card-icon"/> 
+              <h3>Eligibility Criteria for Borrower</h3>
               <ul>
                 {eligibilityCriteria.borrower.map((item, idx) => (
                   <li key={idx}>✓ {item}</li>
                 ))}
               </ul>
             </div>
-
+            
             <div className="sbs-eligibility-card">
-              <h3>🏠 Eligibility Criteria for Property</h3>
+              <img src="/src/assets/icons/step_by_step_page/eligibility_property.svg" alt="Eligibility Property" className="sbs-card-icon"/> 
+              <h3>Eligibility Criteria for Property</h3>
               <ul>
                 {eligibilityCriteria.property.map((item, idx) => (
                   <li key={idx}>✓ {item}</li>
@@ -188,7 +193,7 @@ function StepByStep() {
           <div className="sbs-apply-steps">
             {applicationSteps.map((step) => (
               <div key={step.id} className={`sbs-apply-step ${step.id === 1 ? 'first-step' : ''}`}>
-                <div className="sbs-step-icon">{step.icon}</div>
+                <div className="sbs-step-icon">{step.icon.includes('.svg') ? <img src={step.icon} alt="Step icon" /> : step.icon}</div>
                 <div className="sbs-step-content">
                   <p className="sbs-step-text">{step.title}</p>
                   {step.branches && (
