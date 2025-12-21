@@ -147,7 +147,7 @@ function AdminView({
                     className="admin-search-input"
                     placeholder="Search applicants"
                     value={filters.search}
-                    onChange={onSearchChange}
+                    onChange={(e) => onSearchChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -176,6 +176,7 @@ function AdminView({
                     }}
                   >
                     <option value="all">All</option>
+                    <option value="submitted">Submitted</option>
                     <option value="underReviewed">Under Review</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
@@ -200,16 +201,10 @@ function AdminView({
               {/* Record Type Tabs */}
               <div className="admin-record-tabs">
                 <button
-                  className={`admin-tab ${activeRecordTab === 'applications' ? 'admin-tab-active' : ''}`}
+                  className={`admin-tab admin-tab-active`}
                   onClick={() => onRecordTabChange('applications')}
                 >
                   Applications
-                </button>
-                <button
-                  className={`admin-tab ${activeRecordTab === 'nominees' ? 'admin-tab-active' : ''}`}
-                  onClick={() => onRecordTabChange('nominees')}
-                >
-                  Nominees
                 </button>
               </div>
 
@@ -236,10 +231,17 @@ function AdminView({
                       onClick={() => onApplicationClick(app)}
                     >
                       <div className="admin-table-col admin-table-name">
-                        {app.user?.full_name || 'N/A'}
+                        {app.users?.full_name || 'N/A'}
                       </div>
                       <div className="admin-table-col">
-                        {app.property?.property_type || 'N/A'}, {app.property?.address?.split(',')[0] || 'N/A'}
+                        {(() => {
+                          const propertyType = app.properties?.property_type
+                          const address = app.properties?.address?.split(',')[0]
+                          if (!propertyType && !address) return ''
+                          if (!propertyType) return address
+                          if (!address) return propertyType
+                          return `${propertyType}, ${address}`
+                        })()}
                       </div>
                       <div className="admin-table-col">
                         {formatDate(app.submitted_at)}
@@ -290,12 +292,6 @@ function AdminView({
                   Overview
                 </button>
                 <button
-                  className={`admin-tab ${activeDetailTab === 'documents' ? 'admin-tab-active' : ''}`}
-                  onClick={() => onDetailTabChange('documents')}
-                >
-                  Documents
-                </button>
-                <button
                   className={`admin-tab ${activeDetailTab === 'nominees' ? 'admin-tab-active' : ''}`}
                   onClick={() => onDetailTabChange('nominees')}
                 >
@@ -305,71 +301,131 @@ function AdminView({
 
               {selectedApplication ? (
                 <>
-                  {/* Applicant and Property Info */}
-                  <div className="admin-details-info">
-                    <div className="admin-info-left">
-                      <div className="admin-info-label">Applicant</div>
-                      <div className="admin-info-value">{selectedApplication.user?.full_name || 'N/A'}</div>
-                      <div className="admin-info-subtitle">
-                        IC: {selectedApplication.user?.ic_number || 'N/A'}
+                  {activeDetailTab === 'overview' ? (
+                    <>
+                      {/* Applicant and Property Info */}
+                      <div className="admin-details-info">
+                        <div className="admin-info-left">
+                          <div className="admin-info-label">Applicant</div>
+                          <div className="admin-info-value">{selectedApplication.user?.full_name}</div>
+                          <div className="admin-info-subtitle">
+                            IC {selectedApplication.user?.ic_number}
+                          </div>
+                        </div>
+                        <div className="admin-info-right">
+                          <div className="admin-info-label">Property</div>
+                          <div className="admin-info-value">
+                            {(() => {
+                              const propertyType = selectedApplication.property?.property_type
+                              const address = selectedApplication.property?.address?.split(',')[0]
+                              if (!propertyType && !address) return ''
+                              if (!propertyType) return address
+                              if (!address) return propertyType
+                              return `${propertyType}, ${address}`
+                            })()}
+                          </div>
+                          <div className="admin-info-subtitle">
+                            Estimated value: RM {selectedApplication.property?.expected_market_value?.toLocaleString() || selectedApplication.property?.indicative_market_value?.toLocaleString() || 'N/A'}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="admin-info-right">
-                      <div className="admin-info-label">Property</div>
-                      <div className="admin-info-value">
-                        {selectedApplication.property?.property_type || 'N/A'}, {selectedApplication.property?.address?.split(',')[0] || 'N/A'}
+
+                      {/* Requested Amount */}
+                      <div className="admin-requested-amount">
+                        <div className="admin-info-label">Purchase Price</div>
+                        <div className="admin-amount-value">
+                          RM {selectedApplication.property?.purchase_price?.toLocaleString() || 'N/A'}
+                        </div>
+                        <div className="admin-info-subtitle">
+                          Purchased: {selectedApplication.property?.purchase_date ? formatDate(selectedApplication.property.purchase_date) : 'N/A'}
+                        </div>
                       </div>
-                      <div className="admin-info-subtitle">
-                        Estimated value: RM {selectedApplication.property?.indicative_market_value?.toLocaleString() || 'N/A'}
+
+                      {/* Property Details */}
+                      <div className="admin-eligibility-list">
+                        {selectedApplication.property?.build_up_area && (
+                          <div className="admin-eligibility-item">
+                            • Build-up Area: {selectedApplication.property.build_up_area} sq ft
+                          </div>
+                        )}
+                        {selectedApplication.property?.land_area && (
+                          <div className="admin-eligibility-item">
+                            • Land Area: {selectedApplication.property.land_area} sq ft
+                          </div>
+                        )}
+                        {selectedApplication.property?.tenure_title && (
+                          <div className="admin-eligibility-item">
+                            • Tenure: {selectedApplication.property.tenure_title}
+                            {selectedApplication.property.expiry_date && selectedApplication.property.tenure_title === 'leasehold' && 
+                              ` (Expires: ${formatDate(selectedApplication.property.expiry_date)})`
+                            }
+                          </div>
+                        )}
+                        {selectedApplication.property?.is_encumbered !== null && (
+                          <div className="admin-eligibility-item">
+                            • Encumbered: {selectedApplication.property.is_encumbered ? 'Yes' : 'No'}
+                            {selectedApplication.property.is_encumbered && selectedApplication.property.est_outstanding_balance &&
+                              ` (Outstanding: RM ${selectedApplication.property.est_outstanding_balance.toLocaleString()})`
+                            }
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Requested Amount */}
-                  <div className="admin-requested-amount">
-                    <div className="admin-info-label">Requested amount</div>
-                    <div className="admin-amount-value">RM 300,000</div>
-                    <div className="admin-info-subtitle">Suggested: RM 250,000 based on eligibility</div>
-                  </div>
-
-                  {/* Eligibility Points */}
-                  <div className="admin-eligibility-list">
-                    <div className="admin-eligibility-item">
-                      • Eligibility: Meets minimum age and income criteria.
+                      {/* Approve Button */}
+                      <button 
+                        className="admin-approve-btn"
+                        onClick={onApproveApplication}
+                      >
+                        Approve Application
+                      </button>
+                    </>
+                  ) : (
+                    /* Nominees Tab */
+                    <div className="admin-nominees-content">
+                      {selectedApplication.nominees && selectedApplication.nominees.length > 0 ? (
+                        <div className="admin-nominees-list">
+                          {selectedApplication.nominees.map((nominee, index) => (
+                            <div key={nominee.id || index} className="admin-nominee-card">
+                              <h3 style={{fontSize: '14px', fontWeight: '600', color: '#A8202D', marginBottom: '12px'}}>
+                                Nominee {index + 1} {index === 0 ? '(Primary)' : '(Secondary)'}
+                              </h3>
+                              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px'}}>
+                                <div>
+                                  <div className="admin-info-label">Name</div>
+                                  <div className="admin-info-value">{nominee.name || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="admin-info-label">IC Number</div>
+                                  <div className="admin-info-value">{nominee.ic_number || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="admin-info-label">Email</div>
+                                  <div className="admin-info-value">{nominee.email || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="admin-info-label">Phone</div>
+                                  <div className="admin-info-value">{nominee.telephone || 'N/A'}</div>
+                                </div>
+                                <div style={{gridColumn: '1 / -1'}}>
+                                  <div className="admin-info-label">Address</div>
+                                  <div className="admin-info-value">{nominee.address || 'N/A'}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="admin-no-nominees" style={{textAlign: 'center', color: '#9CA3AF', padding: '40px 0', fontSize: '13px'}}>
+                          No nominees added to this application
+                        </div>
+                      )}
                     </div>
-                    <div className="admin-eligibility-item">
-                      • Documentation: Proof of ownership and identity verified.
-                    </div>
-                    <div className="admin-eligibility-item">
-                      • Risk flags: None detected.
-                    </div>
-                  </div>
-
-                  {/* Approve Button */}
-                  <button 
-                    className="admin-approve-btn"
-                    onClick={onApproveApplication}
-                  >
-                    Approve Application
-                  </button>
-
-                  {/* Nominees Section */}
-                  <div className="admin-nominees-section">
-                    <div className="admin-nominees-info">
-                      <div className="admin-info-value">Nominees</div>
-                      <div className="admin-info-subtitle">
-                        {selectedApplication.nominees?.length || 0} nominees added<br />
-                        Shares balanced
-                      </div>
-                    </div>
-                    <div className="admin-nominees-actions">
-                      <button className="admin-view-nominees-btn">View nominees</button>
-                      <button className="admin-approve-nominees-btn">Approve nominee</button>
-                    </div>
-                  </div>
+                  )}
                 </>
               ) : (
-                <div className="admin-no-selection">Select an application to view details</div>
+                <div className="admin-no-selection">
+                  {/* Empty - no message, just empty space */}
+                </div>
               )}
             </div>
           </div>
@@ -467,7 +523,7 @@ function AdminView({
 
             <div className="modal-body">
               <div className="status-update-info">
-                <p><strong>Applicant:</strong> {statusUpdateApp.user?.full_name || 'N/A'}</p>
+                <p><strong>Applicant:</strong> {statusUpdateApp.users?.full_name || 'N/A'}</p>
                 <p><strong>Current Status:</strong> <span className={`admin-status-badge admin-status-${getStatusBadgeClass(statusUpdateApp.status)}`}>
                   {getStatusDisplayText(statusUpdateApp.status)}
                 </span></p>

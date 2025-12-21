@@ -44,8 +44,8 @@ const Admin = {
         .from('applications')
         .select(`
           *,
-          user:users!applications_user_id_fkey(full_name, ic_number, email),
-          property:properties(property_type, address, indicative_market_value)
+          users!applications_user_id_fkey(full_name, ic_number, email),
+          properties(property_type, address, indicative_market_value)
         `)
         .neq('status', 'draft') // Exclude draft applications
 
@@ -55,7 +55,7 @@ const Admin = {
           // Pending includes both 'submitted' and 'underReviewed'
           query = query.in('status', ['submitted', 'underReviewed'])
         } else {
-          // For specific status: approved, rejected, terminated
+          // For specific status: submitted, approved, rejected, terminated, underReviewed
           query = query.eq('status', filters.status)
         }
       }
@@ -63,43 +63,26 @@ const Admin = {
       // Apply sorting
       const sortField = filters.sortBy || 'submitted_at'
       const sortOrder = filters.sortOrder || 'desc'
-      
-      // For sorting by user name, we need to order by the joined table
-      if (sortField === 'user.full_name') {
-        query = query.order('full_name', { 
-          ascending: sortOrder === 'asc',
-          foreignTable: 'users'
-        })
-      } else {
-        query = query.order(sortField, { ascending: sortOrder === 'asc' })
-      }
+      query = query.order(sortField, { ascending: sortOrder === 'asc' })
 
       const { data, error } = await query
 
       if (error) throw error
 
-      // Client-side search filter if needed
-      let filteredData = data
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        filteredData = data.filter(app => 
-          app.users?.full_name?.toLowerCase().includes(searchLower) ||
-          app.users?.ic_number?.toLowerCase().includes(searchLower) ||
-          app.properties?.address?.toLowerCase().includes(searchLower)
-        )
-      }
-
-      // If sorting by user name failed on server (Supabase limitation), sort client-side
-      if (sortField === 'user.full_name') {
-        filteredData.sort((a, b) => {
-          const nameA = (a.users?.full_name || '').toLowerCase()
-          const nameB = (b.users?.full_name || '').toLowerCase()
+      // Client-side search filter (case-insensitive)
+      let filteredData = data || []
+      if (filters.search && filters.search.trim()) {
+        const searchLower = filters.search.toLowerCase().trim()
+        filteredData = data.filter(app => {
+          const fullName = (app.users?.full_name || '').toLowerCase()
+          const icNumber = (app.users?.ic_number || '').toLowerCase()
+          const email = (app.users?.email || '').toLowerCase()
+          const address = (app.properties?.address || '').toLowerCase()
           
-          if (sortOrder === 'asc') {
-            return nameA.localeCompare(nameB)
-          } else {
-            return nameB.localeCompare(nameA)
-          }
+          return fullName.includes(searchLower) ||
+                 icNumber.includes(searchLower) ||
+                 email.includes(searchLower) ||
+                 address.includes(searchLower)
         })
       }
 
@@ -256,7 +239,7 @@ const Admin = {
 
   /**
    * Get reports (stub - to be implemented with actual report logic)
-   * @returns {Promise<Array>} Array of generated reports
+   * @returns {Promise<Array} Array of generated reports
    */
   async getReports(filters = {}) {
     try {
