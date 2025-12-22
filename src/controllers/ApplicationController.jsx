@@ -32,6 +32,7 @@ function ApplicationController({ editNomineeOnly = false }) {
   const [errors, setErrors] = useState({})
   const [currentUser, setCurrentUser] = useState(null)
   const [applicationId, setApplicationId] = useState(null)
+  const [flaggedCode, setFlaggedCode] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -288,10 +289,16 @@ function ApplicationController({ editNomineeOnly = false }) {
         } else {
           // Successfully loaded or created application
           setApplicationId(application?.id)
+          setFlaggedCode(application?.flagged_code || null)
           
           if (applicationData?.form_data && Object.keys(applicationData.form_data).length > 0) {
             // Has existing data - load it
             let loadedData = { ...applicationData.form_data }
+            
+            // Store original data BEFORE any modifications for edit nominee mode
+            if (editNomineeOnly) {
+              setExistingNomineeData(loadedData)
+            }
             
             // If promoting nominee 2 to nominee 1
             if (promoteNominee2 && loadedData.nominee2Name) {
@@ -346,34 +353,8 @@ function ApplicationController({ editNomineeOnly = false }) {
             setFormData(prev => ({ ...prev, ...loadedData }))
             setCurrentStep(applicationData.current_step || 1)
             
-            // If in edit nominee mode, store the existing data for later population
+            // If in edit nominee mode, just load the data as-is without blanking
             if (editNomineeOnly) {
-              setExistingNomineeData(loadedData)
-              // Clear nominee fields for blank form
-              const blankNomineeForm = {
-                nominee1Salutation: '',
-                nominee1Name: '',
-                nominee1Ic: '',
-                nominee1DobDay: '',
-                nominee1DobMonth: '',
-                nominee1DobYear: '',
-                nominee1Sex: '',
-                nominee1Race: '',
-                nominee1Malaysian: false,
-                nominee1Marital: '',
-                nominee1Relationship: '',
-                nominee1Address: '',
-                nominee1Postcode: '',
-                nominee1Email: '',
-                nominee1Telephone: '',
-                nominee1ResidencePhone: '',
-                nominee1Occupation: '',
-                nominee1EmployerName: '',
-                ackNominee_signature: '',
-                ackNominee_signature_name: '',
-                ackNominee_signature_date: ''
-              }
-              setFormData(prev => ({ ...prev, ...blankNomineeForm }))
               setShowNomineeForm(false)
             }
             console.log('✅ Loaded from Supabase - App ID:', application?.id, 'Step:', applicationData.current_step, 'Fields:', Object.keys(loadedData).length)
@@ -892,6 +873,24 @@ function ApplicationController({ editNomineeOnly = false }) {
         nominee1ResidencePhone: existingNomineeData.nominee1ResidencePhone || '',
         nominee1Occupation: existingNomineeData.nominee1Occupation || '',
         nominee1EmployerName: existingNomineeData.nominee1EmployerName || '',
+        nominee2Salutation: existingNomineeData.nominee2Salutation || '',
+        nominee2Name: existingNomineeData.nominee2Name || '',
+        nominee2Ic: existingNomineeData.nominee2Ic || '',
+        nominee2DobDay: existingNomineeData.nominee2DobDay || '',
+        nominee2DobMonth: existingNomineeData.nominee2DobMonth || '',
+        nominee2DobYear: existingNomineeData.nominee2DobYear || '',
+        nominee2Sex: existingNomineeData.nominee2Sex || '',
+        nominee2Race: existingNomineeData.nominee2Race || '',
+        nominee2Malaysian: existingNomineeData.nominee2Malaysian || false,
+        nominee2Marital: existingNomineeData.nominee2Marital || '',
+        nominee2Relationship: existingNomineeData.nominee2Relationship || '',
+        nominee2Address: existingNomineeData.nominee2Address || '',
+        nominee2Postcode: existingNomineeData.nominee2Postcode || '',
+        nominee2Email: existingNomineeData.nominee2Email || '',
+        nominee2Telephone: existingNomineeData.nominee2Telephone || '',
+        nominee2ResidencePhone: existingNomineeData.nominee2ResidencePhone || '',
+        nominee2Occupation: existingNomineeData.nominee2Occupation || '',
+        nominee2EmployerName: existingNomineeData.nominee2EmployerName || '',
         ackNominee_signature: existingNomineeData.ackNominee_signature || '',
         ackNominee_signature_name: existingNomineeData.ackNominee_signature_name || '',
         ackNominee_signature_date: existingNomineeData.ackNominee_signature_date || ''
@@ -1487,6 +1486,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       showNomineeForm={showNomineeForm}
       handlePopulateNomineeForm={handlePopulateNomineeForm}
       handleBackToMaintainApplication={handleBackToMaintainApplication}
+      flaggedCode={flaggedCode}
     />
   )
 }

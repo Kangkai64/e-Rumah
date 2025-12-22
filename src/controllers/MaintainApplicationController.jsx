@@ -4,7 +4,7 @@
 // NO imports from other controllers allowed!
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Application from '../models/Application'
 import { getCurrentUser } from '../services/authService'
 import MaintainApplicationView from '../views/MaintainApplicationView'
@@ -12,6 +12,7 @@ import MaintainApplicationView from '../views/MaintainApplicationView'
 function MaintainApplicationController() {
   const { applicationId: urlApplicationId } = useParams() // Optional from URL
   const navigate = useNavigate()
+  const location = useLocation()
   
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,6 +96,46 @@ function MaintainApplicationController() {
     
     fetchApplicationData()
   }, [currentUser])
+
+  // Refetch application data when navigating back to this page
+  useEffect(() => {
+    if (!currentUser) return
+    
+    // Refetch whenever we're on the maintain application page
+    const refetchApplicationData = async () => {
+      try {
+        console.log('🔄 Refetching application data...')
+        const { loadApplicationData } = await import('../services/applicationService')
+        const { application: appData, applicationData, error: loadError } = await loadApplicationData(currentUser.id)
+        
+        if (!loadError && appData) {
+          // Attach the form_data from application_data to the application object
+          const enrichedApplication = {
+            ...appData,
+            submitted_form_data: applicationData?.form_data || {}
+          }
+          
+          setApplication(enrichedApplication)
+          setApplicationStatus(appData.status)
+          setFlaggedCode(appData.flagged_code)
+          setFlaggedReason(appData.flagged_reason)
+          
+          // Extract approved amount from form_data
+          if (applicationData?.form_data?.approvedAmount) {
+            setApprovedAmount(parseFloat(applicationData.form_data.approvedAmount))
+          }
+          
+          buildTimeline(appData)
+          console.log('✅ Application data refreshed, nominee2Name:', applicationData?.form_data?.nominee2Name)
+        }
+      } catch (err) {
+        console.error('Error refetching application:', err)
+      }
+    }
+    
+    refetchApplicationData()
+  }, [location.pathname, currentUser])
+
 
   // Fetch documents for the application
   useEffect(() => {
