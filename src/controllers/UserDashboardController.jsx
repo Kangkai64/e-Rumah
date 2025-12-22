@@ -3,6 +3,30 @@ import { useAuth } from '../client_controller/sessionController/AuthContext'
 import User from '../models/User'
 import LoanStatementView from '../views/LoanStatementView'
 
+/**
+ * User Dashboard Controller
+ * 
+ * STATUS: ✅ Fully implemented with database integration
+ * 
+ * Features implemented:
+ * - Fetches loan overview from applications & properties tables
+ * - Calculates total eligible amount (60% of property value)
+ * - Shows property details and valuation
+ * - All data comes from real database queries
+ * 
+ * Features pending (waiting for database tables):
+ * - Disbursements list (needs loan_disbursements table)
+ * - Disbursed amount tracking (needs loan_disbursements table)
+ * - Payout schedule details (needs loan_terms table)
+ * - Next payout date (needs loan_disbursements table)
+ * - Bank account details (needs user_bank_details table)
+ * 
+ * Current behavior:
+ * - Shows RM 0 for disbursed amount (no disbursements table yet)
+ * - Shows empty disbursements list (no disbursements table yet)
+ * - Calculates estimated monthly payout (total eligible / 60 months)
+ */
+
 function UserDashboardController() {
   const { user } = useAuth()
   

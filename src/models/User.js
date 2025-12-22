@@ -74,16 +74,9 @@ class User {
                           application.properties?.indicative_market_value || 0
       const totalEligibleAmount = propertyValue * 0.60
 
-      // Get total disbursed amount from transactions
-      const { data: transactions, error: txError } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('application_id', application.id)
-        .eq('transaction_type', 'payout')
-
-      if (txError) throw txError
-
-      const disbursedToDate = transactions?.reduce((sum, tx) => sum + parseFloat(tx.amount), 0) || 0
+      // TODO: Get total disbursed amount from loan_disbursements table when it's implemented
+      // For now, set to 0 since transactions table doesn't exist yet
+      const disbursedToDate = 0
       const remainingBalance = totalEligibleAmount - disbursedToDate
 
       return {
@@ -127,48 +120,28 @@ class User {
         return []
       }
 
-      // Get disbursement transactions
-      const { data: transactions, error: txError } = await supabase
-        .from('transactions')
+      // TODO: Implement loan_disbursements table
+      // For now, return empty array since transactions table doesn't exist yet
+      return []
+
+      /* When loan_disbursements table is implemented, use this:
+      const { data: disbursements, error: txError } = await supabase
+        .from('loan_disbursements')
         .select('*')
         .eq('application_id', application.id)
-        .eq('transaction_type', 'payout')
-        .order('transaction_date', { ascending: false })
+        .order('disbursement_date', { ascending: false })
         .limit(limit)
 
       if (txError) throw txError
 
-      // Calculate remaining balance for each record
-      const { data: allTransactions } = await supabase
-        .from('transactions')
-        .select('amount, transaction_date')
-        .eq('application_id', application.id)
-        .eq('transaction_type', 'payout')
-        .order('transaction_date', { ascending: false })
-
-      let runningTotal = 0
-      const disbursements = transactions?.map(tx => {
-        const amountReceived = parseFloat(tx.amount)
-        
-        // Calculate total disbursed up to this date
-        const disbursedUpToDate = allTransactions
-          ?.filter(t => new Date(t.transaction_date) <= new Date(tx.transaction_date))
-          .reduce((sum, t) => sum + parseFloat(t.amount), 0) || 0
-
-        // Get loan overview to calculate remaining
-        const totalEligible = 250000 // This should come from loan overview calculation
-        const remaining = totalEligible - disbursedUpToDate
-
-        return {
-          date: tx.transaction_date,
-          amountReceived,
-          remaining,
-          status: 'Completed',
-          description: tx.description
-        }
-      }) || []
-
-      return disbursements
+      return disbursements?.map(d => ({
+        date: d.disbursement_date,
+        amountReceived: parseFloat(d.amount),
+        remaining: parseFloat(d.remaining_balance),
+        status: d.status,
+        description: d.description
+      })) || []
+      */
     } catch (error) {
       console.error('Error fetching disbursements:', error)
       throw error
@@ -224,7 +197,13 @@ class User {
     try {
       const { data: application, error } = await supabase
         .from('applications')
-        .select('id, application_data (form_data)')
+        .select(`
+          id,
+          properties (
+            expected_market_value,
+            indicative_market_value
+          )
+        `)
         .eq('user_id', userId)
         .eq('status', 'approved')
         .single()
@@ -241,22 +220,22 @@ class User {
         }
       }
 
-      // Extract payout preferences from application form data
-      const formData = application.application_data?.form_data || {}
-      const payoutType = formData.payoutType || 'monthly'
-      const monthlyAmount = 2500 // Calculate based on total eligible / term
-      const startDate = '2026-01-01' // Should be calculated
-      const endDate = '2030-12-31' // Should be calculated
-      const totalMonths = 60
+      // TODO: Get payout details from loan_disbursements or loan_terms table when implemented
+      // For now, calculate basic estimates
+      const propertyValue = application.properties?.expected_market_value || 
+                           application.properties?.indicative_market_value || 0
+      const totalEligibleAmount = propertyValue * 0.60
+      const totalMonths = 60 // Default 5 years
+      const monthlyAmount = totalEligibleAmount / totalMonths
 
       return {
-        payoutType,
+        payoutType: 'monthly',
         monthlyAmount,
-        startDate,
-        endDate,
+        startDate: null, // Will be set when loan is activated
+        endDate: null,
         totalMonths,
-        nextPayoutDate: '2026-01-02',
-        bankAccount: formData.bankAccount || 'Maybank **** 1234'
+        nextPayoutDate: null,
+        bankAccount: null // Will be from user's bank details
       }
     } catch (error) {
       console.error('Error fetching payout details:', error)
