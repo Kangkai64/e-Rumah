@@ -40,8 +40,8 @@ class Nominee {
   }
 
   /**
-   * 获取所有被提名人记录
-   * @param {Object} filters - 过滤条件
+   * Get all nominee records
+   * @param {Object} filters - filter conditions
    * @returns {Promise<{success: boolean, data: Array, error: any}>}
    */
   static async getAll(filters = {}) {
@@ -54,12 +54,12 @@ class Nominee {
           elder:users!nominees_elder_id_fkey(id, name, ic_number)
         `)
       
-      // 添加过滤条件
+      // Add filter conditions
       if (filters.status) {
         query = query.eq('status', filters.status)
       }
 
-      // 排序
+      // Sorting
       query = query.order('created_at', { ascending: false })
 
       const { data, error } = await query
@@ -74,8 +74,8 @@ class Nominee {
   }
 
   /**
-   * 根据 ID 获取被提名人详情
-   * @param {string} id - 被提名人 ID
+   * Get nominee details by ID
+   * @param {string} id - Nominee ID
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
   static async getById(id) {
@@ -100,8 +100,8 @@ class Nominee {
   }
 
   /**
-   * 根据申请 ID 获取被提名人
-   * @param {string} applicationId - 申请 ID
+   * Get nominees by application ID
+   * @param {string} applicationId - Application ID
    * @returns {Promise<{success: boolean, data: Array, error: any}>}
    */
   static async getByApplicationId(applicationId) {
@@ -124,9 +124,9 @@ class Nominee {
   }
 
   /**
-   * 更新被提名人状态
-   * @param {string} id - 被提名人 ID
-   * @param {string} status - 新状态
+   * Update nominee status
+   * @param {string} id - Nominee ID
+   * @param {string} status - New status
    * @returns {Promise<{success: boolean, data: Object, error: any}>}
    */
   static async updateStatus(id, status) {
@@ -145,8 +145,8 @@ class Nominee {
   }
 
   /**
-   * 搜索被提名人
-   * @param {string} searchTerm - 搜索关键词（姓名或 IC）
+   * Search nominees
+   * @param {string} searchTerm - Search keyword (name or IC)
    * @returns {Promise<{success: boolean, data: Array, error: any}>}
    */
   static async search(searchTerm) {

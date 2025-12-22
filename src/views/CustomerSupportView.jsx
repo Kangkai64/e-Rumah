@@ -647,7 +647,7 @@ export default function CustomerSupportView({
     return 'status-open'
   }
 
-  // 处理发送回复
+  // Handle sending reply
   const handleSendClick = async (contactType = 'reply') => {
     if (!replyMessage.trim() || isSending) return
 
@@ -660,12 +660,12 @@ export default function CustomerSupportView({
     setIsSending(false)
   }
 
-  // 处理打开模态框
+  // Handle opening modal
   const handleViewDetails = async () => {
     setShowModal(true)
   }
 
-  // 处理关闭模态框
+  // Handle closing modal
   const handleCloseModal = () => {
     setShowModal(false)
   }
@@ -727,12 +727,12 @@ export default function CustomerSupportView({
     }
   }, [selectedItem])
 
-  // 处理跳转到更新页面
+  // Handle navigation to update page
   const handleNavigateToUpdate = () => {
     navigate('/support/updateContact')
   }
 
-  // 快速回复模板
+  // Quick reply templates
   const insertTemplate = (template) => {
     const templates = {
       'critical_deadline': 'This is a critical deadline reminder. Please submit your documents by the specified date.',
@@ -742,7 +742,7 @@ export default function CustomerSupportView({
     setReplyMessage(templates[template] || '')
   }
 
-  // 格式化日期
+  // format date for display
   const formatDate = (dateString) => {
     const date = new Date(dateString)
     const day = String(date.getDate()).padStart(2, '0')
@@ -756,7 +756,7 @@ export default function CustomerSupportView({
     return `${day} ${month} ${year}, ${time}`
   }
 
-  // 渲染列表项
+  // render list item based on active tab
   const renderListItem = (item) => {
     const isSelected = selectedItem?.id === item.id
 
@@ -809,7 +809,7 @@ export default function CustomerSupportView({
     }
   }
 
-  // 渲染详情面板
+  // Render detail panel
   const renderDetailPanel = () => {
     if (!selectedItem) {
       return (
@@ -864,7 +864,7 @@ export default function CustomerSupportView({
             />
           </div>
 
-          {/* 回复历史 */}
+          {/* Conversation History */}
           {conversations.length > 0 && (
             <div className="detail-section">
               <p className="detail-label">REPLY HISTORY</p>
@@ -881,7 +881,7 @@ export default function CustomerSupportView({
             </div>
           )}
 
-          {/* 回复表单 - Hide if resolved */}
+          {/* Reply Form - Hide if resolved */}
           {selectedItem.status === 'resolved' ? (
             <div className="detail-section">
               <div style={{
@@ -1113,7 +1113,7 @@ export default function CustomerSupportView({
           />
         </div>
 
-        {/* 回复历史 */}
+        {/* Conversation History */}
         {conversations.length > 0 && (
           <div className="detail-section">
             <p className="detail-label">REPLY HISTORY</p>
@@ -1130,7 +1130,7 @@ export default function CustomerSupportView({
           </div>
         )}
 
-        {/* 回复表单 - Hide if resolved */}
+        {/* Reply Form - Hide if resolved */}
         {selectedItem.status === 'resolved' ? (
           <div className="detail-section">
             <div style={{
@@ -1246,12 +1246,12 @@ export default function CustomerSupportView({
   return (
     <div className="customer-support-wrapper">
       <div className="customer-support-container">
-        {/* 主标题 */}
+        {/* Main Title */}
         <div className="page-title">
           <h1>Support Workspace</h1>
         </div>
 
-        {/* 搜索和过滤栏 */}
+        {/* Search and Filter Bar */}
         <div className="cs-toolbar">
           <div className="cs-filters">
             <label className="cs-label">Status:</label>
@@ -1279,7 +1279,7 @@ export default function CustomerSupportView({
           </div>
         </div>
 
-        {/* 标签页 */}
+        {/* Tabs */}
         <div className="tabs">
           <button 
             className={`tab ${activeTab === 'inquiries' ? 'active' : ''}`}
@@ -1301,9 +1301,9 @@ export default function CustomerSupportView({
           </button>
         </div>
 
-        {/* 主内容区域：左侧列表 + 右侧详情 */}
+        {/* Main Content Area: Left List + Right Details */}
         <div className="content-area">
-          {/* 左侧列表 */}
+          {/* Left List */}
           <div className="list-panel">
             <div className="list-header">
               <span className="list-label">ELDER</span>
@@ -1321,7 +1321,7 @@ export default function CustomerSupportView({
             </div>
           </div>
 
-          {/* 右侧详情 */}
+          {/* Right Details */}
           <div className="detail-panel">
             {renderDetailPanel()}
           </div>
