@@ -362,8 +362,9 @@ export const validateStep3 = (formData) => {
   if (!formData.documents?.valuationReport?.url) {
     errors.valuationReport = 'Valuation Report is required'
   }
-  if (!formData.documents?.fireInsurance?.url) {
-    errors.fireInsuranceDoc = 'Fire Insurance Policy document is required'
+  // Fire Insurance document only required if insurance is "In force"
+  if (formData.fireInsurance === 'inForce' && !formData.documents?.fireInsurance?.url) {
+    errors.fireInsuranceDoc = 'Fire Insurance Policy document is required when insurance is In force'
   }
   
   return Object.fromEntries(Object.entries(errors).filter(([_, v]) => v !== null))
