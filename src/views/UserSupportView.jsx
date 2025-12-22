@@ -1,6 +1,6 @@
 // src/views/UserSupportView.jsx
 import React, { useState } from 'react'
-import '../components/userSupport/UserSupport.css'
+import '../client_controller/userSupport/UserSupport.css'
 
 export default function UserSupportView({
   inquiries,

@@ -27,7 +27,7 @@ import {
   REMINDER_TYPES,
   REMINDER_CATEGORIES
 } from '../models/HealthReport'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { processPDF } from '../utils/pdfCompression'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 

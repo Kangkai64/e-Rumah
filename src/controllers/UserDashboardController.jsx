@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import User from '../models/User'
 import LoanStatementView from '../views/LoanStatementView'
 

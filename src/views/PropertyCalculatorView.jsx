@@ -1,5 +1,5 @@
 import calculatorImage from '../assets/images/property_estimation/property_estimation.jpg';
-import '../components/propertyCalculator/propertyCalculator.css';
+import '../client_controller/propertyCalculator/propertyCalculator.css';
 
 const PropertyCalculatorView = ({
   formData = {},

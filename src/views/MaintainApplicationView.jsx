@@ -5,9 +5,9 @@
 // NO imports from other views allowed!
 
 import { useState } from 'react'
-import '../components/application/maintainApplication.css'
-import Button from '../components/common/Button'
-import Container from '../components/common/Container'
+import '../client_controller/application/maintainApplication.css'
+import Button from '../client_controller/common/Button'
+import Container from '../client_controller/common/Container'
 import { supabase } from '../config/supabase'
 
 function MaintainApplicationView({

@@ -3,7 +3,7 @@
 // Receives ALL data and handlers via props from AdminApplicationReviewController
 // NO business logic, NO state management (except local UI state), NO model imports
 
-import '../components/admin/AdminApplicationReviewView.css'
+import '../client_controller/admin/AdminApplicationReviewView.css'
 
 function AdminApplicationReviewView({
   application,

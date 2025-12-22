@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { signOut } from '../services/authService'
 import { useState, useRef } from 'react'
 import './Header.css'

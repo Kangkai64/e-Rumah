@@ -1,8 +1,8 @@
 // src/views/CustomerSupportView.jsx
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import '../components/customerSupport/CustomerSupport.css'
-import PDFViewer from '../components/common/PDFViewer'
+import '../client_controller/customerSupport/CustomerSupport.css'
+import PDFViewer from '../client_controller/common/PDFViewer'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)

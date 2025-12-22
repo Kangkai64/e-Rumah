@@ -3,10 +3,10 @@
 // Receives ALL data and handlers via props from AdminController
 // NO business logic, NO state management (except local UI state), NO model imports
 
-import '../components/admin/AdminView.css'
+import '../client_controller/admin/AdminView.css'
 import Header from '../layouts/Header'
 import Footer from '../layouts/Footer'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 
 function AdminView({
   statistics,

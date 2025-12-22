@@ -1,6 +1,6 @@
 // src/controllers/UserSupportController.jsx
 import { useState, useEffect } from 'react'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import UserSupport from '../models/UserSupport'
 import UserSupportView from '../views/UserSupportView'
 import { getCompanyContactInfo } from '../services/settingsService'

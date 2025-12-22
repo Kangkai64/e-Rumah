@@ -65,39 +65,122 @@ This system simplifies the process for elderly applicants and nominees, manages 
 
 ```
 src/
-├── features/          - Feature modules (each feature in its own folder)
-│   ├── auth/         - Login, register, logout
-│   ├── application/  - Application forms for elderly
-│   ├── payment/      - Payment tracking and disbursement
-│   ├── admin/        - Admin dashboard
-│   └── home/         - Homepage sections
+├── client_controller/     - Client-side view controllers and components
+│   ├── admin/            - Admin-specific views and components
+│   ├── application/      - Application form components
+│   ├── auth/             - Authentication components
+│   ├── common/           - Reusable UI components (Button, Container, PDFViewer)
+│   ├── customerSupport/  - Customer support view components
+│   ├── eligibility/      - Eligibility check components
+│   ├── eventController/  - Event handling components
+│   ├── health_report/    - Health reporting components
+│   ├── landing/          - Landing page sections
+│   ├── propertyCalculator/ - Property calculator components
+│   ├── requestController/ - Request handling components
+│   ├── sessionController/ - Session & auth context (AuthContext)
+│   ├── user/             - User-specific components
+│   └── userSupport/      - User support components
 │
-├── layouts/          - Page layouts (Header, Footer)
+├── controllers/          - Application controllers (business logic)
+│   ├── AdminController.jsx
+│   ├── AdminReportController.jsx
+│   ├── ApplicationController.jsx
+│   ├── CustomerSupportController.jsx
+│   ├── HealthReportController.jsx
+│   ├── MaintainApplicationController.jsx
+│   ├── PropertyCalculatorController.jsx
+│   ├── UserDashboardController.jsx
+│   └── UserSupportController.jsx
 │
-├── shared/           - Reusable code across the app
-│   ├── components/   - Reusable UI components (Button, Container)
-│   ├── utils/        - Helper functions (formatCurrency, calculateAge)
-│   └── hooks/        - Custom React hooks
+├── data_access_controller/ - Database access layer
+│   ├── connectionManager.js
+│   ├── dataConverter.js
+│   ├── modelController.js
+│   ├── functions/        - Database functions
+│   └── migrations/       - Database migrations
 │
-├── assets/           - Images, icons, static files
-├── App.jsx           - Main app component
-├── main.jsx          - Entry point
-└── index.css         - Global styles
+├── external_service_interface/ - External API integrations
+│   ├── APIController.js
+│   └── dataConverter.js
+│
+├── models/               - Data models
+│   ├── Admin.js
+│   ├── Application.js
+│   ├── CustomerSupportContact.js
+│   ├── EligibityRule.js
+│   ├── HealthReport.js
+│   ├── Inquiry.js
+│   ├── Loan.js
+│   ├── LoanDisbursement.js
+│   ├── Nominee.js
+│   ├── Notification.js
+│   ├── Property.js
+│   ├── SupportConversation.js
+│   ├── User.js
+│   └── UserSupport.js
+│
+├── services/             - Business services
+│   ├── applicationService.js
+│   ├── authService.js
+│   ├── corsProxyService.js
+│   ├── emailService.js
+│   ├── fileUploadService.js
+│   ├── reminderService.js
+│   └── settingsService.js
+│
+├── utils/                - Helper utilities
+│   ├── applicationValidation.js
+│   ├── enquiryFormValidation.js
+│   ├── healthReportValidation.js
+│   ├── icParser.js
+│   ├── pdfCompression.js
+│   └── pdfConverter.js
+│
+├── views/                - View components (presentation layer)
+│   ├── AdminApplicationReviewView.jsx
+│   ├── AdminReportView.jsx
+│   ├── AdminView.jsx
+│   ├── AnswerInquiryView.jsx
+│   ├── ApplicationFormView.jsx
+│   ├── CustomerSupportView.jsx
+│   ├── HealthMonitoringView.jsx
+│   ├── LoanStatementView.jsx
+│   ├── MaintainApplicationView.jsx
+│   ├── PropertyCalculatorView.jsx
+│   └── UserSupportView.jsx
+│
+├── layouts/              - Page layouts (Header, Footer)
+│   ├── Header.jsx
+│   ├── Header.css
+│   ├── Footer.jsx
+│   └── Footer.css
+│
+├── assets/               - Static assets
+│   ├── icons/           - Icon files
+│   ├── images/          - Image files
+│   └── newdatabase_reference_for_chat/ - Database references
+│
+├── config/               - Configuration files
+│   └── supabase.js      - Supabase configuration
+│
+├── App.jsx               - Main app component
+├── App.css               - Main app styles
+├── main.jsx              - Entry point
+└── index.css             - Global styles
 ```
 
-### What Each Folder Does
+### Architecture Overview
 
-**`features/`** - Each major feature gets its own folder. Inside each feature:
-- `components/` - UI components specific to that feature
-- `services/` - API calls and business logic
-- `hooks/` - Custom hooks for that feature
+The project follows a **layered MVC architecture**:
 
-**`layouts/`** - Components that appear on every page (Header, Footer)
-
-**`shared/`** - Code that's used in multiple places
-- Buttons, forms, containers
-- Helper functions like formatting dates or currency
-- Custom React hooks
+- **Views** (`views/`) - Pure presentation components
+- **Controllers** (`controllers/`) - Business logic and state management
+- **Client Controllers** (`client_controller/`) - Client-side UI components and view controllers
+- **Models** (`models/`) - Data models and schemas
+- **Services** (`services/`) - Reusable business services
+- **Data Access** (`data_access_controller/`) - Database operations
+- **External Services** (`external_service_interface/`) - API integrations
+- **Utils** (`utils/`) - Helper functions and validators
 
 This structure keeps code organized by feature, making it easy to find and update specific parts of the app.
 

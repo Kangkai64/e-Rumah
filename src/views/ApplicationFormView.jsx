@@ -4,8 +4,8 @@
 // NO imports from other views allowed!
 
 import { useRef, useEffect } from 'react'
-import '../components/application/applicationForm.css'
-import DocumentUpload from '../components/application/DocumentUpload'
+import '../client_controller/application/applicationForm.css'
+import DocumentUpload from '../client_controller/application/DocumentUpload'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)

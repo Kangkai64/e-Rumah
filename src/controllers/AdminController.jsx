@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../components/context/AuthContext'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import Admin from '../models/Admin'
 import AdminView from '../views/AdminView'
 

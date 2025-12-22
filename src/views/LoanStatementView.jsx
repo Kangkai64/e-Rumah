@@ -1,4 +1,4 @@
-import '../components/user/UserProfileView.css'
+import '../client_controller/user/UserProfileView.css'
 
 function UserProfileView({
   loading,
