@@ -4,14 +4,6 @@
 // Now includes both User and Admin views with conditional rendering based on userRole
 
 import React, { useRef, useState, useEffect, useCallback } from 'react'
-import { useAuth } from '../components/context/AuthContext'
-import {
-  getAllHealthReports,
-  approveHealthReport,
-  flagHealthReport,
-  archiveHealthReport,
-  getAdminStatistics
-} from '../models/HealthReport'
 import searchIcon from '../assets/icons/health_report_page/icon_search.svg'
 import filterIcon from '../assets/icons/health_report_page/icon_filter.svg'
 import uploadIcon from '../assets/icons/health_report_page/icon_upload_document.svg'
@@ -26,7 +18,7 @@ import ascIcon from '../assets/icons/health_report_page/icon_arrow_up.svg'
 import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
-import '../components/health_report/HealthMonitoringView.css'
+import '../client_controller/health_report/HealthMonitoringView.css'
 
 // ============================================================================
 // HELPER COMPONENTS
