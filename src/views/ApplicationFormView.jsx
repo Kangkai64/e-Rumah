@@ -1427,17 +1427,21 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           error={errors.valuationReport}
         />
 
-        <DocumentUpload
-          label="Fire Insurance Policy"
-          required
-          documentData={formData.documents?.fireInsurance}
-          onUpload={(e) => handleFileUpload(e, 'fireInsurance')}
-          onDelete={() => handleFileDelete('fireInsurance')}
-          uploading={uploadProgress?.fireInsurance}
-          accept=".pdf,.jpg,.jpeg,.png"
-          hint="Upload copy of fire insurance policy (Max 10MB)"
-          error={errors.fireInsuranceDoc}
-        />
+
+        {formData.fireInsurance === 'inForce' && (
+          <DocumentUpload
+            label="Fire Insurance Policy"
+            required
+            documentData={formData.documents?.fireInsurance}
+            onUpload={(e) => handleFileUpload(e, 'fireInsurance')}
+            onDelete={() => handleFileDelete('fireInsurance')}
+            uploading={uploadProgress?.fireInsurance}
+            accept=".pdf,.jpg,.jpeg,.png"
+            hint="Upload copy of fire insurance policy (Max 10MB)"
+            error={errors.fireInsuranceDoc}
+          />
+        )}
+
 
         {formData.propertyEncumbered === 'yes' && (
           <DocumentUpload
