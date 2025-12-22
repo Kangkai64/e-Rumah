@@ -21,6 +21,7 @@ function AdminApplicationReviewView({
   showPDFViewer,
   viewingDocumentUrl,
   viewingDocumentName,
+  loadingApplicationPDF,
   onTabChange,
   onApprove,
   onReject,
@@ -34,6 +35,8 @@ function AdminApplicationReviewView({
   onBackToDashboard,
   onViewDocument,
   onClosePDFViewer,
+  onViewApplicationPDF,
+  onDownloadApplicationPDF,
   formatCurrency,
   formatDate,
   getStatusBadgeClass,
@@ -189,6 +192,37 @@ function AdminApplicationReviewView({
                       {application.application_data?.form_data?.tenureTitle || application.properties?.tenure_title || 'N/A'}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Application Form PDF */}
+              <div className="info-section">
+                <h2>Application Form</h2>
+                <div className="application-form-section">
+                  <p className="form-description">
+                    View or download the complete submitted application form in PDF format.
+                  </p>
+                  <div className="pdf-actions">
+                    <button 
+                      className="view-pdf-btn"
+                      onClick={onViewApplicationPDF}
+                      disabled={loadingApplicationPDF}
+                    >
+                      {loadingApplicationPDF ? '⏳ Loading...' : '📄 View Application Form'}
+                    </button>
+                    <button 
+                      className="download-pdf-btn"
+                      onClick={onDownloadApplicationPDF}
+                      disabled={loadingApplicationPDF}
+                    >
+                      {loadingApplicationPDF ? '⏳ Loading...' : '⬇️ Download PDF'}
+                    </button>
+                  </div>
+                  {application.submitted_at && (
+                    <p className="submission-info">
+                      Submitted on: {formatDate(application.submitted_at)}
+                    </p>
+                  )}
                 </div>
               </div>
 

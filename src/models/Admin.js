@@ -245,33 +245,111 @@ const Admin = {
   },
 
   /**
-   * Get reports (stub - to be implemented with actual report logic)
-   * @returns {Promise<Array} Array of generated reports
+   * Get application PDF from storage
+   * @param {string} applicationId - Application ID
+   * @param {string} userId - User ID who owns the application
+   * @returns {Promise<Object>} PDF URL and metadata
+   */
+  async getApplicationPDF(applicationId, userId) {
+    try {
+      // First get the application to verify userId
+      const { data: application, error: appError } = await supabase
+        .from('applications')
+        .select('user_id')
+        .eq('id', applicationId)
+        .single()
+
+      if (appError) throw appError
+
+      // Use the application's user_id if not provided
+      const targetUserId = userId || application.user_id
+
+      if (!targetUserId) {
+        throw new Error('User ID not found for this application')
+      }
+
+      // Get PDF from application-forms bucket using Application model
+      const Application = (await import('./Application')).default
+      const result = await Application.downloadApplicationPDF(applicationId, targetUserId)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      return { 
+        success: true, 
+        url: result.url,
+        fileName: result.fileName,
+        size: result.size
+      }
+    } catch (error) {
+      console.error('Error getting application PDF:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Download application PDF directly (opens in new tab)
+   * @param {string} applicationId - Application ID
+   * @param {string} userId - User ID who owns the application
+   * @returns {Promise<Object>} Success/error result
+   */
+  async downloadApplicationPDFDirect(applicationId, userId) {
+    try {
+      const result = await this.getApplicationPDF(applicationId, userId)
+      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
+      // Open in new tab
+      window.open(result.url, '_blank')
+      
+      return { success: true }
+    } catch (error) {
+      console.error('Error downloading PDF:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Get reports (monthly and yearly)
+   * @returns {Promise<Array>} Array of generated reports
    */
   async getReports(filters = {}) {
     try {
-      // For now, return mock data
+      // For now, return mock data with monthly and yearly reports
       // In production, this would fetch from a reports table
-      const mockReports = [
-        {
-          id: '1',
-          name: 'Application Report - Nov 2025',
-          generatedOn: '2025-12-01',
-          type: 'monthly'
-        },
-        {
-          id: '2',
-          name: 'Application Report - OCT 2025',
-          generatedOn: '2025-11-28',
-          type: 'monthly'
-        },
-        {
-          id: '3',
-          name: 'Application Report - Sep 2025',
-          generatedOn: '2025-09-30',
-          type: 'monthly'
-        }
-      ]
+      const currentYear = new Date().getFullYear()
+      const currentMonth = new Date().getMonth()
+      
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      
+      const mockReports = []
+      
+      // Add monthly reports for the last 3 months
+      for (let i = 0; i < 3; i++) {
+        const monthIndex = (currentMonth - i + 12) % 12
+        const year = currentMonth - i < 0 ? currentYear - 1 : currentYear
+        
+        mockReports.push({
+          id: `monthly-${year}-${monthIndex}`,
+          name: `Monthly Application Report - ${monthNames[monthIndex]} ${year}`,
+          generatedOn: new Date(year, monthIndex, 28).toISOString(),
+          type: 'monthly',
+          year,
+          month: monthIndex
+        })
+      }
+      
+      // Add yearly report
+      mockReports.push({
+        id: `yearly-${currentYear}`,
+        name: `Annual Application Analysis Report - ${currentYear}`,
+        generatedOn: new Date().toISOString(),
+        type: 'yearly',
+        year: currentYear
+      })
 
       return { success: true, data: mockReports }
     } catch (error) {
@@ -281,16 +359,83 @@ const Admin = {
   },
 
   /**
-   * Generate new report (stub)
-   * @returns {Promise<Object} Generated report
+   * Generate yearly report
+   * @returns {Promise<Object>} Generated report data
    */
-  async generateReport() {
+  async generateYearlyReport() {
     try {
-      // Stub for report generation
-      // In production, this would generate PDF/Excel reports
-      return { success: true, message: 'Report generation initiated' }
+      // In production, this would:
+      // 1. Fetch all applications for the year
+      // 2. Generate statistics
+      // 3. Create PDF report
+      // 4. Store in reports table
+      // 5. Return report metadata
+      
+      const currentYear = new Date().getFullYear()
+      
+      // Fetch applications for the year
+      const { data: applications, error } = await supabase
+        .from('applications')
+        .select('*')
+        .gte('created_at', `${currentYear}-01-01`)
+        .lte('created_at', `${currentYear}-12-31`)
+      
+      if (error) throw error
+      
+      // Calculate statistics
+      const stats = {
+        total: applications.length,
+        approved: applications.filter(app => app.status === 'approved').length,
+        rejected: applications.filter(app => app.status === 'rejected').length,
+        pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
+        year: currentYear
+      }
+      
+      return { 
+        success: true, 
+        message: 'Yearly report generated successfully',
+        data: stats
+      }
     } catch (error) {
-      console.error('Error generating report:', error)
+      console.error('Error generating yearly report:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * View monthly report
+   * @param {string} reportId - Report ID
+   * @returns {Promise<Object>} Report data
+   */
+  async viewMonthlyReport(reportId) {
+    try {
+      // Extract year and month from reportId
+      const [, year, month] = reportId.split('-')
+      
+      // Fetch applications for the month
+      const startDate = new Date(parseInt(year), parseInt(month), 1)
+      const endDate = new Date(parseInt(year), parseInt(month) + 1, 0)
+      
+      const { data: applications, error } = await supabase
+        .from('applications')
+        .select('*')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+      
+      if (error) throw error
+      
+      const stats = {
+        total: applications.length,
+        approved: applications.filter(app => app.status === 'approved').length,
+        rejected: applications.filter(app => app.status === 'rejected').length,
+        pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
+        month: parseInt(month),
+        year: parseInt(year)
+      }
+      
+      return { success: true, data: stats }
+    } catch (error) {
+      console.error('Error viewing monthly report:', error)
       return { success: false, error: error.message }
     }
   }

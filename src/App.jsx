@@ -599,6 +599,16 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/admin/report/:reportId" element={
+            <ProtectedRoute requireRole="admin">
+              <>
+                <Header />
+                <AdminReportController mode="viewReport" />
+                <Footer />
+              </>
+            </ProtectedRoute>
+          } />
+
           <Route path="/admin/review/:applicationId" element={
             <ProtectedRoute requireRole="admin">
               <>
