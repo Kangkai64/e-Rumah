@@ -296,30 +296,77 @@ function AdminController() {
    */
   const handleGenerateReport = async () => {
     const result = await Admin.generateReport()
-    if (result.success) {
+      if (result.success) {
       alert('Report generation initiated!')
-      loadDashboardData()
-    } else {
-      alert('Error generating report: ' + result.error)
-    }
+        loadDashboardData()
+      } else {
+        alert('Error generating report: ' + result.error)
+      }
   }
 
   /**
    * Handle report actions
    */
-  const handleViewReport = (reportId) => {
-    console.log('View report:', reportId)
-    // Implement report viewing logic
+  const handleViewReport = async (reportId) => {
+    try {
+      const report = reports.find(r => r.id === reportId)
+      if (!report) {
+        alert('Report not found')
+        return
+      }
+      
+      // For monthly reports, fetch and view data
+      if (report.type === 'monthly') {
+        const result = await Admin.viewMonthlyReport(reportId)
+        if (result.success) {
+          // Navigate to report view with data
+          navigate(`/admin/report/${reportId}`, { state: { reportData: result.data, report } })
+        } else {
+          alert('Error loading report: ' + result.error)
+        }
+      }
+    } catch (err) {
+      console.error('Error viewing report:', err)
+      alert('Error viewing report: ' + err.message)
+    }
   }
 
   const handleShareReport = (reportId) => {
-    console.log('Share report:', reportId)
-    // Implement report sharing logic
+    const report = reports.find(r => r.id === reportId)
+    if (!report) {
+      alert('Report not found')
+      return
+    }
+    
+    // Create shareable link
+    const shareUrl = `${window.location.origin}/admin/report/${reportId}`
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert('Report link copied to clipboard!')
+    }).catch(err => {
+      console.error('Failed to copy:', err)
+      alert('Failed to copy link. Please try again.')
+    })
   }
 
-  const handleArchiveReport = (reportId) => {
-    console.log('Archive report:', reportId)
-    // Implement report archiving logic
+  const handleGenerateYearlyReport = async () => {
+    try {
+      setLoading(true)
+      const result = await Admin.generateYearlyReport()
+      
+      if (result.success) {
+        // Navigate to report view
+        navigate('/admin/report/yearly', { state: { reportData: result.data } })
+      } else {
+        alert('Error generating report: ' + result.error)
+      }
+    } catch (err) {
+      console.error('Error generating yearly report:', err)
+      alert('Error generating report: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   /**
@@ -395,10 +442,9 @@ function AdminController() {
       onApproveApplication={handleApproveApplication}
       onUpdateStatus={handleUpdateStatus}
       onReviewApplication={handleReviewApplication}
-      onGenerateReport={handleGenerateReport}
+      onGenerateReport={handleGenerateYearlyReport}
       onViewReport={handleViewReport}
       onShareReport={handleShareReport}
-      onArchiveReport={handleArchiveReport}
       onRecordTabChange={setActiveRecordTab}
       onDetailTabChange={setActiveDetailTab}
       onReportFilterChange={setReportFilter}

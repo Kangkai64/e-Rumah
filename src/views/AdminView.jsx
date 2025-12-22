@@ -435,15 +435,6 @@ function AdminView({
           <div className="admin-reports-section">
             <div className="admin-reports-header">
               <h2>Reports</h2>
-              <div className="admin-filter-group">
-                <span className="admin-filter-label">Filter</span>
-                <button 
-                  className="admin-filter-btn"
-                  onClick={() => onReportFilterChange('this_month')}
-                >
-                  This month
-                </button>
-              </div>
             </div>
 
             {/* Reports Table Headers */}
@@ -451,7 +442,7 @@ function AdminView({
               <div className="admin-reports-headers">
                 <div className="admin-reports-col">Report name</div>
                 <div className="admin-reports-col">Generated on</div>
-                <div className="admin-reports-col"></div>
+                <div className="admin-reports-col">Type</div>
                 <div className="admin-reports-col">Actions</div>
               </div>
 
@@ -460,7 +451,11 @@ function AdminView({
                 <div key={report.id} className="admin-reports-row">
                   <div className="admin-reports-col admin-report-name">{report.name}</div>
                   <div className="admin-reports-col">{formatDate(report.generatedOn)}</div>
-                  <div className="admin-reports-col"></div>
+                  <div className="admin-reports-col">
+                    <span className={`report-type-badge ${report.type === 'yearly' ? 'yearly' : 'monthly'}`}>
+                      {report.type === 'yearly' ? 'Yearly' : 'Monthly'}
+                    </span>
+                  </div>
                   <div className="admin-reports-col admin-reports-actions">
                     <button 
                       className="admin-report-action-btn"
@@ -474,12 +469,6 @@ function AdminView({
                     >
                       Share
                     </button>
-                    <button 
-                      className="admin-report-action-btn"
-                      onClick={() => onArchiveReport(report.id)}
-                    >
-                      Archive
-                    </button>
                   </div>
                 </div>
               ))}
@@ -488,7 +477,7 @@ function AdminView({
             {/* Reports Footer */}
             <div className="admin-reports-footer">
               <div className="admin-reports-hint">
-                Store and access reports securely for audit and Compliance.
+                Store and access reports securely for audit and compliance.
               </div>
               <button 
                 className="admin-generate-report-btn"

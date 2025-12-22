@@ -16,10 +16,13 @@ import Admin from '../models/Admin'
 import Application from '../models/Application'
 import { supabase } from '../config/supabase'
 import AdminApplicationReviewView from '../views/AdminApplicationReviewView'
+import AdminReportView from '../views/AdminReportView'
+import { useLocation } from 'react-router-dom'
 
 function AdminReportController({ mode = 'reports' }) {
-  const { applicationId } = useParams()
+  const { applicationId, reportId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, userRole } = useAuth()
   
   // Common state
@@ -55,6 +58,9 @@ function AdminReportController({ mode = 'reports' }) {
   const [showPDFViewer, setShowPDFViewer] = useState(false)
   const [viewingDocumentUrl, setViewingDocumentUrl] = useState(null)
   const [viewingDocumentName, setViewingDocumentName] = useState(null)
+  
+  // Add state for application PDF viewing
+  const [loadingApplicationPDF, setLoadingApplicationPDF] = useState(false)
 
   // Filters and search (for reports)
   const [searchKey, setSearchKey] = useState('')
@@ -72,15 +78,29 @@ function AdminReportController({ mode = 'reports' }) {
   const [flagReason, setFlagReason] = useState('')
   const [actionReport, setActionReport] = useState(null)
 
+  // Report viewing state (for mode='viewReport')
+  const [reportData, setReportData] = useState(null)
+  const [report, setReport] = useState(null)
+
   // Load data based on mode
   useEffect(() => {
     if (mode === 'review' && applicationId) {
       fetchApplicationDetails()
+    } else if (mode === 'viewReport') {
+      // Get report data from route state
+      if (location.state?.reportData) {
+        setReportData(location.state.reportData)
+        setReport(location.state.report)
+        setIsLoading(false)
+      } else {
+        // No data provided, redirect back
+        navigate('/admin/dashboard')
+      }
     } else if (mode === 'reports' && user && userRole === 'admin') {
       fetchStatistics()
       fetchReports()
     }
-  }, [mode, applicationId, user, userRole])
+  }, [mode, applicationId, location.state, user, userRole])
 
   // ============================================================================
   // APPLICATION REVIEW FUNCTIONS
@@ -308,6 +328,62 @@ function AdminReportController({ mode = 'reports' }) {
     setFlagDocumentReason(value)
   }
 
+  // Add handlers for application PDF
+  const handleViewApplicationPDF = async () => {
+    if (!application?.id || !application?.user_id) {
+      alert('Application information not available')
+      return
+    }
+
+    setLoadingApplicationPDF(true)
+    try {
+      // Use Admin model method instead of Application model
+      const result = await Admin.getApplicationPDF(
+        application.id,
+        application.user_id
+      )
+
+      if (result.success && result.url) {
+        setViewingDocumentUrl(result.url)
+        setViewingDocumentName(`Application Form - ${application.users?.full_name || 'User'}`)
+        setShowPDFViewer(true)
+      } else {
+        alert(result.error || 'Failed to load application PDF')
+      }
+    } catch (err) {
+      console.error('Error viewing application PDF:', err)
+      alert('Failed to load application PDF')
+    } finally {
+      setLoadingApplicationPDF(false)
+    }
+  }
+
+  const handleDownloadApplicationPDF = async () => {
+    if (!application?.id || !application?.user_id) {
+      alert('Application information not available')
+      return
+    }
+
+    setLoadingApplicationPDF(true)
+    try {
+      // Use Admin model method for direct download
+      const result = await Admin.downloadApplicationPDFDirect(
+        application.id,
+        application.user_id
+      )
+
+      if (!result.success) {
+        alert(result.error || 'Failed to download application PDF')
+      }
+      // If successful, window.open was already called by the model method
+    } catch (err) {
+      console.error('Error downloading application PDF:', err)
+      alert('Failed to download application PDF')
+    } finally {
+      setLoadingApplicationPDF(false)
+    }
+  }
+
   // ============================================================================
   // HEALTH REPORTS FUNCTIONS
   // ============================================================================
@@ -525,7 +601,32 @@ function AdminReportController({ mode = 'reports' }) {
     }
   }, [error])
 
+  // Handlers for report viewing
+  const handlePrint = () => {
+    window.print()
+  }
+
+  const handleDownloadPDF = () => {
+    alert('PDF download functionality will be implemented with server-side PDF generation')
+  }
+
   // Render based on mode
+  if (mode === 'viewReport') {
+    if (!reportData) {
+      return <div className="loading">Loading report...</div>
+    }
+    
+    return (
+      <AdminReportView
+        reportData={reportData}
+        report={report}
+        onPrint={handlePrint}
+        onDownloadPDF={handleDownloadPDF}
+        onBackToDashboard={handleBackToDashboard}
+      />
+    )
+  }
+
   if (mode === 'review') {
     return (
       <AdminApplicationReviewView
@@ -544,6 +645,7 @@ function AdminReportController({ mode = 'reports' }) {
         showPDFViewer={showPDFViewer}
         viewingDocumentUrl={viewingDocumentUrl}
         viewingDocumentName={viewingDocumentName}
+        loadingApplicationPDF={loadingApplicationPDF}
         onTabChange={handleTabChange}
         onApprove={handleApprove}
         onReject={handleReject}
@@ -557,6 +659,8 @@ function AdminReportController({ mode = 'reports' }) {
         onConfirmFlagDocument={handleConfirmFlagDocument}
         onCancelFlagDocument={handleCancelFlagDocument}
         onFlagDocumentReasonChange={handleFlagDocumentReasonChange}
+        onViewApplicationPDF={handleViewApplicationPDF}
+        onDownloadApplicationPDF={handleDownloadApplicationPDF}
         formatCurrency={formatCurrency}
         formatDate={formatDate}
         getStatusBadgeClass={getStatusBadgeClass}
