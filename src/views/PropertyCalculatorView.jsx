@@ -82,7 +82,9 @@ const PropertyCalculatorView = ({
             {/* Borrower Type & Age - Same Line */}
             <div className="property-calculator-form-row">
               <div className="property-calculator-form-group">
-                <label className="property-calculator-label">Borrower/Customer Type</label>
+                <label className="property-calculator-label">
+                  Borrower/<br />Customer Type
+                </label>
                 <div className="property-calculator-input-wrapper">
                   <select
                     name="borrowerType"
@@ -237,10 +239,13 @@ const PropertyCalculatorView = ({
                     name="marketValue"
                     value={formData.marketValue || ''}
                     onChange={onInputChange}
-                    placeholder="0.00"
+                    placeholder="45,000.00"
                     className="property-calculator-currency-input"
                   />
                 </div>
+                <small style={{color: '#666', fontSize: '0.85rem', marginTop: '4px', display: 'block'}}>
+                  Minimum value: RM 45,000
+                </small>
                 {errors.marketValue && (
                   <div className="property-calculator-error-message">
                     {errors.marketValue}
