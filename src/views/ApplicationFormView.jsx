@@ -1512,7 +1512,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             value={formData.nominee1Name} 
             onChange={handleChange} 
             className={errors.nominee1Name ? 'error' : ''}
-            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Name} />
@@ -1527,7 +1526,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             onChange={handleChange} 
             className={errors.nominee1Ic ? 'error' : ''}
             placeholder="Format: xxxxxx-xx-xxxx"
-            disabled={nominee2Inactive}
             required 
           />
           <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
@@ -1631,7 +1629,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             value={formData.nominee1Relationship} 
             onChange={handleChange} 
             className={errors.nominee1Relationship ? 'error' : ''}
-            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Relationship} />
@@ -1645,7 +1642,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             onChange={handleChange} 
             className={errors.nominee1Address ? 'error' : ''}
             rows="3"
-            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Address} />
@@ -1768,7 +1764,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               value={formData.nominee2Name} 
               onChange={handleChange} 
               className={errors.nominee2Name ? 'error' : ''}
-              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Name} />
@@ -1783,7 +1778,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               onChange={handleChange} 
               className={errors.nominee2Ic ? 'error' : ''}
               placeholder="Format: xxxxxx-xx-xxxx"
-              disabled={nominee1Inactive}
               required 
             />
             <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
@@ -1887,7 +1881,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               value={formData.nominee2Relationship} 
               onChange={handleChange} 
               className={errors.nominee2Relationship ? 'error' : ''}
-              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Relationship} />
@@ -1901,7 +1894,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               onChange={handleChange} 
               className={errors.nominee2Address ? 'error' : ''}
               rows="3"
-              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Address} />
