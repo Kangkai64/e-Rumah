@@ -1223,7 +1223,7 @@ function UserHealthReportView({
             </div>
             <div className="stat-card">
               <div className="stat-label">Flagged Health Report</div>
-              <div className="stat-value">{safeStatistics.flaggedHealthReport || 0}</div>
+              <div className="stat-value">{safeStatistics.flagged || 0}</div>
             </div>
           </div>
         </div>
@@ -1924,9 +1924,9 @@ function UserHealthReportView({
           <div className="results-table">
             <div className="table-header-row">
               <div className="table-header-col">Report Title</div>
-              <div className="table-header-col">User Name</div>
               <div className="table-header-col">Report Date</div>
               <div className="table-header-col">Upload Date</div>
+              <div className="table-header-col">Provider Name</div>
               <div className="table-header-col">Report Status</div>
               <div className="table-header-col">Actions</div>
             </div>
@@ -1940,13 +1940,13 @@ function UserHealthReportView({
                       <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
                     </div>
                     <div className="table-data-col">
-                      <div className="user-name">{user?.full_name || user?.email || 'N/A'}</div>
-                    </div>
-                    <div className="table-data-col">
                       {new Date(report.report_date).toLocaleDateString('en-GB')}
                     </div>
                     <div className="table-data-col">
                       {new Date(report.created_at).toLocaleDateString('en-GB')}
+                    </div>
+                    <div className="table-data-col">
+                      {report.provider_name || report.providerName || 'N/A'}
                     </div>
                     <div className="table-data-col"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
                     <div className="table-data-col table-actions">

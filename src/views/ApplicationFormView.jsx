@@ -1462,10 +1462,16 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 }
 
 // Step 4: Nominee(s) Details
-function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0, showNomineeForm = true, handlePopulateNomineeForm = null, handleBackToMaintainApplication = null }) {
+function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0, showNomineeForm = true, handlePopulateNomineeForm = null, handleBackToMaintainApplication = null, flaggedCode = null }) {
+  // Determine which nominee is inactive based on flaggedCode
+  const nominee1Inactive = flaggedCode === 'nominee1_inactive'
+  const nominee2Inactive = flaggedCode === 'nominee2_inactive'
+  
   const getNomineeMessage = () => {
     if (!editNomineeOnly) return null
     if (promoteNominee2) return '⚠️ You are promoting Nominee 2 to become Nominee 1. Please verify the information and provide a new signature.'
+    if (nominee1Inactive) return '⚠️ Nominee 1 is inactive. Please provide a new Nominee 1 information.'
+    if (nominee2Inactive) return '⚠️ Nominee 2 is inactive. Please provide new Nominee 2 information.'
     if (nomineeCount === 0) return '⚠️ You are adding your first nominee.'
     if (nomineeCount === 1) return '⚠️ You are updating Nominee 1. You can add another nominee.'
     if (nomineeCount === 2) return '⚠️ You are updating Nominee 1.'
@@ -1506,6 +1512,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             value={formData.nominee1Name} 
             onChange={handleChange} 
             className={errors.nominee1Name ? 'error' : ''}
+            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Name} />
@@ -1520,6 +1527,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             onChange={handleChange} 
             className={errors.nominee1Ic ? 'error' : ''}
             placeholder="Format: xxxxxx-xx-xxxx"
+            disabled={nominee2Inactive}
             required 
           />
           <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
@@ -1623,6 +1631,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             value={formData.nominee1Relationship} 
             onChange={handleChange} 
             className={errors.nominee1Relationship ? 'error' : ''}
+            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Relationship} />
@@ -1636,6 +1645,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             onChange={handleChange} 
             className={errors.nominee1Address ? 'error' : ''}
             rows="3"
+            disabled={nominee2Inactive}
             required 
           />
           <ErrorMessage error={errors.nominee1Address} />
@@ -1731,7 +1741,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
       </div>
 
       {formData.hasSecondNominee && (
-        <section className="form-section conditional-section" style={editNomineeOnly && !promoteNominee2 && formData.nominee2Name ? {opacity: 0.5, pointerEvents: 'none'} : {}}>
+        <section className="form-section conditional-section">
           <h3>Nominee 2 (Secondary) *</h3>
           {editNomineeOnly && !promoteNominee2 && formData.nominee2Name && (
             <div style={{padding: '0.75rem', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '1rem', color: '#856404', fontSize: '0.9rem', border: '1px solid #ffeaa7'}}>
@@ -1758,6 +1768,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               value={formData.nominee2Name} 
               onChange={handleChange} 
               className={errors.nominee2Name ? 'error' : ''}
+              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Name} />
@@ -1772,6 +1783,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               onChange={handleChange} 
               className={errors.nominee2Ic ? 'error' : ''}
               placeholder="Format: xxxxxx-xx-xxxx"
+              disabled={nominee1Inactive}
               required 
             />
             <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
@@ -1875,6 +1887,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               value={formData.nominee2Relationship} 
               onChange={handleChange} 
               className={errors.nominee2Relationship ? 'error' : ''}
+              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Relationship} />
@@ -1888,6 +1901,7 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               onChange={handleChange} 
               className={errors.nominee2Address ? 'error' : ''}
               rows="3"
+              disabled={nominee1Inactive}
               required 
             />
             <ErrorMessage error={errors.nominee2Address} />
@@ -2680,7 +2694,8 @@ export default function ApplicationFormView({
   nomineeCount = 0,
   showNomineeForm = true,
   handlePopulateNomineeForm = null,
-  handleBackToMaintainApplication = null
+  handleBackToMaintainApplication = null,
+  flaggedCode = null
 }) {
   // Force step 4 if in editNomineeOnly mode
   const displayStep = editNomineeOnly ? 4 : currentStep
@@ -2694,7 +2709,7 @@ export default function ApplicationFormView({
       case 3:
         return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 4:
-        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} promoteNominee2={promoteNominee2} nomineeCount={nomineeCount} showNomineeForm={showNomineeForm} handlePopulateNomineeForm={handlePopulateNomineeForm} handleBackToMaintainApplication={handleBackToMaintainApplication} />
+        return <Step4Nominees formData={formData} handleChange={handleChange} errors={errors} editNomineeOnly={editNomineeOnly} promoteNominee2={promoteNominee2} nomineeCount={nomineeCount} showNomineeForm={showNomineeForm} handlePopulateNomineeForm={handlePopulateNomineeForm} handleBackToMaintainApplication={handleBackToMaintainApplication} flaggedCode={flaggedCode} />
       case 5:
         return <Step5InfoDisplay formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
       case 6:

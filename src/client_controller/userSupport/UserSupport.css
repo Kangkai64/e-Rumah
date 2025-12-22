@@ -155,7 +155,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  height: 80vh;
+  height: 100vh;
 }
 
 .chat-header {
@@ -438,6 +438,9 @@
 
 .modal-header {
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
 }
 
 .modal-header h2 {
@@ -445,6 +448,7 @@
   font-weight: 600;
   color: #161519;
   margin: 0 0 0.5rem 0;
+  width: 400px;
 }
 
 .modal-header p {
@@ -508,7 +512,7 @@
   background-color: #e5e7eb;
 }
 
-.submit-btn {
+.inquiry-submit-btn {
   background-color: #A8202D;
   color: white;
   border: none;
@@ -520,11 +524,11 @@
   transition: background-color 0.2s;
 }
 
-.submit-btn:hover:not(:disabled) {
+.inquiry-submit-btn :hover:not(:disabled) {
   background-color: #8a1a24;
 }
 
-.submit-btn:disabled {
+.inquiry-submit-btn :disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

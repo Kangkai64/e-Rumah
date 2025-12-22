@@ -378,7 +378,7 @@ function MaintainApplicationView({
                           </div>
                           {isInactive && (
                             <div className="nominee-actions">
-                              {nominees.length === 2 && (
+                              {nominees.length === 2 && isNominee1 && (flaggedCode === 'nominee1_inactive') && (
                                 <button 
                                   className="btn btn-secondary"
                                   onClick={handlePromoteNominee2}

@@ -169,10 +169,10 @@
 }
 
 .summary-value {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: #1F2937;
-  line-height: 20px;
+  line-height: 50px;
 }
 
 /* Tabs */
@@ -668,6 +668,69 @@
   .pdf-viewer-body iframe {
     height: 60vh !important;
   }
+}
+
+/* Application Form Section */
+.application-form-section {
+  padding: 1rem 0;
+}
+
+.form-description {
+  margin-bottom: 1rem;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.pdf-actions {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.view-pdf-btn,
+.download-pdf-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-pdf-btn {
+  background-color: #2196f3;
+  color: white;
+}
+
+.view-pdf-btn:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.download-pdf-btn {
+  background-color: #4caf50;
+  color: white;
+}
+
+.download-pdf-btn:hover:not(:disabled) {
+  background-color: #388e3c;
+}
+
+.view-pdf-btn:disabled,
+.download-pdf-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submission-info {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #666;
+  font-style: italic;
+  font-family: 'Poppins', sans-serif;
 }
 
 /* Responsive Design */

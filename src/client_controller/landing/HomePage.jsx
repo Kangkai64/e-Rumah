@@ -1,6 +1,6 @@
 import './HomePage.css'
 import { useNavigate, Link } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../sessionController/AuthContext'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
 import iconArrowRight from '../../assets/icons/icon_arrowRight.svg'
@@ -29,6 +29,22 @@ import iconIntegrity from '../../assets/icons/main_page/icon_integrity.png'
 const HomePage = () => {
   const navigate = useNavigate()
   const { user, userRole, applicationStatus } = useAuth()
+  const [showPostcodes, setShowPostcodes] = useState(false)
+  const EXCLUDED_POSTCODES = [
+    '41100',
+    '42100',
+    '42000',
+    '45800',
+    '45600',
+    '42500',
+    '42600',
+    '45000',
+    '42700',
+    '43950',
+    '42200',
+    '41300',
+    '41050',
+  ]
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
@@ -127,9 +143,9 @@ const HomePage = () => {
               <li>Meets e-Rumah evaluation criteria</li>
             </ul>
             <div className="eligibility-buttons">
-              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>FAQs<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
-              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Excluded Postcodes<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
-              <button style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Brochure<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
+              <Link to="/faqs" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>FAQs<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
+              <button type="button" onClick={() => setShowPostcodes(true)} style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Excluded Postcodes<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
+              <Link to="https://www.datocms-assets.com/170285/1764558928-kalsis-brochure-2026.pdf" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Brochures<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
             </div>
           </div>
           <div className="eligibility-image">
@@ -301,6 +317,96 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {showPostcodes && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="excluded-postcodes-title"
+          onClick={() => setShowPostcodes(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#FFFFFF',
+              color: '#222',
+              width: 'min(90vw, 560px)',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              borderRadius: '12px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+              padding: '1.25rem 1.25rem 1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <h3 id="excluded-postcodes-title" style={{ margin: 0, color: '#A8202D' }}>Excluded Postcodes</h3>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setShowPostcodes(false)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '1.5rem',
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                  color: '#666',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <p style={{ marginTop: '0.75rem' }}>The following postcodes are currently excluded:</p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem 0.75rem' }}>
+              {EXCLUDED_POSTCODES.map((pc) => (
+                <span key={pc} style={{
+                  display: 'inline-block',
+                  padding: '0.4rem 0.6rem',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                }}>
+                  {pc}
+                </span>
+              ))}
+            </div>
+
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowPostcodes(false)}
+                style={{
+                  padding: '0.6rem 1rem',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: '2px solid #A8202D',
+                  borderRadius: '10px',
+                  background: '#A8202D',
+                  color: '#F5F5F5',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
