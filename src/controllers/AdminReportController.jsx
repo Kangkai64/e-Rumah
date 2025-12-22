@@ -157,7 +157,10 @@ function AdminReportController({ mode = 'reports' }) {
 
       // Fetch documents
       if (appData.user_id) {
-        const documentsResult = await Application.getRequiredDocuments(appData.user_id)
+        const documentsResult = await Application.getRequiredDocuments(
+          appData.user_id,
+          appData.submitted_form_data
+        )
         if (documentsResult.success) {
           setDocuments(documentsResult.data)
         }
@@ -274,7 +277,10 @@ function AdminReportController({ mode = 'reports' }) {
         alert(result.message || `Document "${flaggedDocument.displayName}" has been flagged and deleted. User will be notified.`)
         
         // Refresh documents
-        const documentsResult = await Application.getRequiredDocuments(application.user_id)
+        const documentsResult = await Application.getRequiredDocuments(
+          application.user_id,
+          application.submitted_form_data
+        )
         if (documentsResult.success) {
           setDocuments(documentsResult.data)
         }

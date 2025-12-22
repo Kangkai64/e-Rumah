@@ -742,7 +742,7 @@ const Application = {
    * @param {string} userId - The user ID
    * @returns {Promise<Object>} Array of 17 required documents
    */
-  async getRequiredDocuments(userId) {
+  async getRequiredDocuments(userId, formData = null) {
     try {
       console.log('Fetching required documents for user:', userId)
       
@@ -772,9 +772,18 @@ const Application = {
 
       console.log(`Valid files: ${validFiles.length}`)
 
+      // Filter required documents based on form data
+      let docsToProcess = REQUIRED_DOCUMENTS
+      
+      // If fireInsurance is 'notAvailable', exclude Fire Insurance document
+      if (formData?.fireInsurance === 'notAvailable') {
+        console.log('Fire Insurance not available - excluding from required documents')
+        docsToProcess = REQUIRED_DOCUMENTS.filter(doc => doc.displayName !== 'Fire Insurance')
+      }
+
       // Map required documents with their status
       const requiredDocuments = await Promise.all(
-        REQUIRED_DOCUMENTS.map(async (docSpec) => {
+        docsToProcess.map(async (docSpec) => {
           // Find file matching this prefix
           const matchingFile = validFiles.find(file => 
             file.name.toLowerCase().startsWith(docSpec.prefix.toLowerCase())
