@@ -105,7 +105,11 @@ function MaintainApplicationController() {
       setDocumentsError(null)
       try {
         // Use the required documents method to get all 17 documents
-        const result = await Application.getRequiredDocuments(currentUser.id)
+        // Pass form data to filter out documents based on user choices (e.g., fire insurance)
+        const result = await Application.getRequiredDocuments(
+          currentUser.id,
+          application.submitted_form_data
+        )
 
         if (result.success) {
           console.log('Required documents loaded:', result.data)
@@ -234,11 +238,14 @@ function MaintainApplicationController() {
   // Handle document upload success - refresh documents
   const handleDocumentUploaded = async () => {
     console.log('Document uploaded, refreshing...')
-    if (!currentUser) return
+    if (!currentUser || !application) return
     
     try {
-      // Refetch documents after upload
-      const result = await Application.getRequiredDocuments(currentUser.id)
+      // Refetch documents after upload, passing form data for filtering
+      const result = await Application.getRequiredDocuments(
+        currentUser.id,
+        application.submitted_form_data
+      )
       if (result.success) {
         setDocuments(result.data)
       }
