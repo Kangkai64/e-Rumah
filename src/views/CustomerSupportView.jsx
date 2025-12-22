@@ -1253,13 +1253,6 @@ export default function CustomerSupportView({
 
         {/* 搜索和过滤栏 */}
         <div className="cs-toolbar">
-          <input
-            type="text"
-            className="cs-search"
-            placeholder="Search elders, applications, IDs..."
-            value={searchTerm}
-            onChange={(e) => onSearch(e.target.value)}
-          />
           <div className="cs-filters">
             <label className="cs-label">Status:</label>
             <select 
