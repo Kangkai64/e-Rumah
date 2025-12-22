@@ -1,7 +1,7 @@
 import './HomePage.css'
 import { useNavigate, Link } from 'react-router-dom'
 import { useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../sessionController/AuthContext'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
 import iconArrowRight from '../../assets/icons/icon_arrowRight.svg'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'

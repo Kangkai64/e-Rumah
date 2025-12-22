@@ -2,7 +2,7 @@
 // Redirects based on user authentication and application status
 
 import { Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
+import { useAuth } from './sessionController/AuthContext'
 
 export default function ProtectedRoute({ children, requireRole = null }) {
   const { user, userRole, applicationStatus, loading } = useAuth()
