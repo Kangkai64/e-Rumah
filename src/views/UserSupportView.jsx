@@ -1,6 +1,8 @@
 // src/views/UserSupportView.jsx
 import React, { useState } from 'react'
 import '../client_controller/userSupport/UserSupport.css'
+import contactIcon from '../assets/icons/about_us_page/icon_contact.svg'
+import emailIcon from '../assets/icons/about_us_page/icon_email.svg'
 
 export default function UserSupportView({
   inquiries,
@@ -314,17 +316,21 @@ export default function UserSupportView({
         <h3>Need Immediate Assistance?</h3>
         <div className="contact-details">
           <div className="contact-item">
-            <div className="contact-icon">📧</div>
+            <img src={emailIcon} alt="Email" />
             <div className="contact-text">
               <p className="contact-label">Email</p>
-              <p className="contact-value">{contactEmail || 'support@erumah.com'}</p>
+              <a href={`mailto:${contactEmail || 'support@erumah.com'}`} className="contact-value">
+                {contactEmail || 'support@erumah.com'}
+              </a>
             </div>
           </div>
           <div className="contact-item">
-            <div className="contact-icon">📞</div>
+            <img src={contactIcon} alt="Phone" />
             <div className="contact-text">
               <p className="contact-label">Phone</p>
-              <p className="contact-value">{contactPhone || '03-1112 9429'}</p>
+              <a href={`tel:${contactPhone || '03-1112 9429'}`} className="contact-value">
+                {contactPhone || '03-1112 9429'}
+              </a>
             </div>
           </div>
         </div>
@@ -367,7 +373,7 @@ export default function UserSupportView({
                 Cancel
               </button>
               <button
-                className="submit-btn"
+                className="inquiry-submit-btn"
                 onClick={handleSubmitInquiry}
                 disabled={!newInquiryMessage.trim()}
               >

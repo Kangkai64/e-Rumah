@@ -136,7 +136,6 @@ const Header = () => {
           <nav className="main-nav">
             <Link to="/user/dashboard" className="nav-link">Dashboard</Link>
             <Link to="/user/health-reports" className="nav-link">Health Reports</Link>
-            <Link to="/user/documents" className="nav-link">Documents</Link>
             <Link to="/user/support" className="nav-link">Support</Link>
           </nav>
 
