@@ -57,6 +57,33 @@ export default function UserSupportController() {
     }
   }
 
+  // Subscribe to real-time conversation updates when an inquiry is selected
+  useEffect(() => {
+    if (!selectedInquiry?.id) return
+
+    // Subscribe to real-time updates
+    const subscription = UserSupport.subscribeToConversations(
+      selectedInquiry.id,
+      selectedInquiry.subject,
+      (newConversation) => {
+        // Add new conversation to the list
+        setConversations((prev) => {
+          // Check if conversation already exists to avoid duplicates
+          const exists = prev.some(conv => conv.id === newConversation.id)
+          if (exists) return prev
+          return [...prev, newConversation]
+        })
+      }
+    )
+
+    // Cleanup subscription on unmount or when selectedInquiry changes
+    return () => {
+      if (subscription) {
+        UserSupport.unsubscribeFromConversations(subscription)
+      }
+    }
+  }, [selectedInquiry?.id, selectedInquiry?.subject])
+
   const handleCreateInquiry = async ({ subject, message }) => {
     if (!user?.id) return { success: false, error: 'User not authenticated' }
 

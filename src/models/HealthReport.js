@@ -1038,26 +1038,23 @@ export const archiveHealthReport = async (reportId, adminId) => {
  */
 export const getAllHealthReports = async (filters = {}) => {
   try {
-    // Fetch health reports with user information (via applications and direct user relationship)
+    // Use admin view to include flattened user details for easier searching
     let query = supabase
-      .from('health_reports')
-      .select(`
-        *,
-        applications!health_reports_application_id_fkey(
-          user_id,
-          users!applications_user_id_fkey(id, full_name, email, ic_number, phone)
-        ),
-        users!health_reports_user_id_fkey(id, full_name, email, ic_number, phone)
-      `)
+      .from('admin_health_report_view')
+      .select('*')
 
-    // Apply search filter (restrict to base columns to avoid PostgREST parse errors with nested relations)
+    // Apply search filter across report and user fields
     const rawSearchKey = filters.searchKey?.trim()
     if (rawSearchKey) {
       const safeSearch = rawSearchKey.replace(/,/g, ' ')
       query = query.or(
         `report_type.ilike.%${safeSearch}%,` +
         `report_title.ilike.%${safeSearch}%,` +
-        `notes.ilike.%${safeSearch}%`
+        `notes.ilike.%${safeSearch}%,` +
+        `user_full_name.ilike.%${safeSearch}%,` +
+        `user_email.ilike.%${safeSearch}%,` +
+        `ic_number.ilike.%${safeSearch}%,` +
+        `phone.ilike.%${safeSearch}%`
       )
     }
 
@@ -1075,44 +1072,40 @@ export const getAllHealthReports = async (filters = {}) => {
       query = query.lte('report_date', filters.endDate)
     }
 
-    // Apply due status filter
-    if (filters.dueStatus) {
-      const now = new Date()
-      if (filters.dueStatus === 'overdue') {
-        // This is complex - we'll handle it in the frontend filtering
-      } else if (filters.dueStatus === 'approaching') {
-        // This is complex - we'll handle it in the frontend filtering
-      }
-    }
-
     // Apply archive filter - show only non-archived reports unless specifically requested
     if (filters.showArchived === false) {
       query = query.neq('health_report_status', 'Archived')
     }
 
-    // Apply sorting
+    // Apply sorting (map legacy keys to view columns for compatibility)
+    const sortColumnMap = {
+      id: 'health_report_id',
+      created_at: 'report_created_at'
+    }
     if (filters.sortBy) {
+      const sortColumn = sortColumnMap[filters.sortBy] || filters.sortBy
       const order = filters.sortOrder || 'desc'
-      query = query.order(filters.sortBy, { ascending: order === 'asc' })
+      query = query.order(sortColumn, { ascending: order === 'asc' })
     } else {
-      query = query.order('created_at', { ascending: false })
+      query = query.order('report_created_at', { ascending: false })
     }
 
     const { data, error } = await query
 
     if (error) throw error
 
-    // Post-process to normalize user data and handle both direct and application-linked users
+    // Normalize to keep previous shape expectations
     let processedData = data.map(report => ({
       ...report,
-      // Normalize user data - prefer direct user relationship, fallback to application user
-      userData: report.users || (report.applications?.users ? {
-        id: report.applications.users.id,
-        full_name: report.applications.users.full_name,
-        email: report.applications.users.email,
-        ic_number: report.applications.users.ic_number,
-        phone: report.applications.users.phone
-      } : null)
+      id: report.health_report_id,
+      created_at: report.report_created_at,
+      userData: {
+        id: report.user_id,
+        full_name: report.user_full_name,
+        email: report.user_email,
+        ic_number: report.ic_number,
+        phone: report.phone
+      }
     }))
 
     // Client-side search across nested user fields (since server-side OR excludes nested relations)
@@ -1124,7 +1117,9 @@ export const getAllHealthReports = async (filters = {}) => {
           report.report_title,
           report.notes,
           report.userData?.full_name,
-          report.userData?.email
+          report.userData?.email,
+          report.userData?.ic_number,
+          report.userData?.phone
         ]
 
         return haystack.some(val =>
@@ -1139,7 +1134,7 @@ export const getAllHealthReports = async (filters = {}) => {
         const now = new Date()
         const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
         const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)
-        
+
         if (filters.dueStatus === 'overdue') {
           return monthsOverdue >= 3
         } else if (filters.dueStatus === 'approaching') {

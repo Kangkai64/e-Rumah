@@ -6,7 +6,7 @@ import Nominee from '../models/Nominee'
 import Application from '../models/Application'
 import SupportConversation from '../models/SupportConversation'
 import HealthReport from '../models/HealthReport'
-import CustomerSupportView from '../views/customerSupportView'
+import CustomerSupportView from '../views/CustomerSupportView'
 import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
 
 export default function CustomerSupportController() {
@@ -219,6 +219,41 @@ export default function CustomerSupportController() {
       if (success) setConversations(data || [])
     }
   }
+
+  // Subscribe to real-time conversation updates when a chat is open
+  useEffect(() => {
+    if (!selectedItem?.id) return
+
+    // Determine entity type
+    let entityType = ''
+    if (activeTab === 'inquiries') entityType = 'inquiry'
+    else if (activeTab === 'nominees') entityType = 'nominee'
+    else if (activeTab === 'healthReports') entityType = 'health_report'
+
+    if (!entityType) return
+
+    // Subscribe to real-time updates
+    const subscription = SupportConversation.subscribeToConversations(
+      entityType,
+      selectedItem.id,
+      (newConversation) => {
+        // Add new conversation to the list
+        setConversations((prev) => {
+          // Check if conversation already exists to avoid duplicates
+          const exists = prev.some(conv => conv.id === newConversation.id)
+          if (exists) return prev
+          return [...prev, newConversation]
+        })
+      }
+    )
+
+    // Cleanup subscription on unmount or when selectedItem changes
+    return () => {
+      if (subscription) {
+        SupportConversation.unsubscribeFromConversations(subscription)
+      }
+    }
+  }, [selectedItem?.id, activeTab])
 
   // 5. Send Reply
   const getCurrentUserId = async () => {
