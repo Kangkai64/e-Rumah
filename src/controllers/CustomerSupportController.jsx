@@ -220,28 +220,39 @@ export default function CustomerSupportController() {
     }
   }
 
-  // Auto-refresh conversations when a chat is open
+  // Subscribe to real-time conversation updates when a chat is open
   useEffect(() => {
     if (!selectedItem?.id) return
 
-    // Set up auto-refresh interval - refresh every 3 seconds
-    const refreshInterval = setInterval(async () => {
-      let entityType = ''
-      if (activeTab === 'inquiries') entityType = 'inquiry'
-      else if (activeTab === 'nominees') entityType = 'nominee'
-      else if (activeTab === 'healthReports') entityType = 'health_report'
+    // Determine entity type
+    let entityType = ''
+    if (activeTab === 'inquiries') entityType = 'inquiry'
+    else if (activeTab === 'nominees') entityType = 'nominee'
+    else if (activeTab === 'healthReports') entityType = 'health_report'
 
-      if (entityType) {
-        try {
-          const { data, success } = await SupportConversation.getByEntity(entityType, selectedItem.id)
-          if (success) setConversations(data || [])
-        } catch (error) {
-          console.error('Error auto-refreshing conversations:', error)
-        }
+    if (!entityType) return
+
+    // Subscribe to real-time updates
+    const subscription = SupportConversation.subscribeToConversations(
+      entityType,
+      selectedItem.id,
+      (newConversation) => {
+        // Add new conversation to the list
+        setConversations((prev) => {
+          // Check if conversation already exists to avoid duplicates
+          const exists = prev.some(conv => conv.id === newConversation.id)
+          if (exists) return prev
+          return [...prev, newConversation]
+        })
       }
-    }, 3000) // Refresh every 3 seconds
+    )
 
-    return () => clearInterval(refreshInterval)
+    // Cleanup subscription on unmount or when selectedItem changes
+    return () => {
+      if (subscription) {
+        SupportConversation.unsubscribeFromConversations(subscription)
+      }
+    }
   }, [selectedItem?.id, activeTab])
 
   // 5. Send Reply

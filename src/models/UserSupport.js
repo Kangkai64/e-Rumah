@@ -192,6 +192,71 @@ class UserSupport {
       return { success: false, error: error.message }
     }
   }
+
+  /**
+   * Subscribe to real-time changes for conversations of a specific inquiry
+   * @param {string} inquiryId - Inquiry ID
+   * @param {string} subject - Inquiry subject to determine entity_type
+   * @param {Function} callback - Callback function to handle new conversations
+   * @returns {Object} Subscription object with unsubscribe method
+   */
+  static subscribeToConversations(inquiryId, subject, callback) {
+    try {
+      // Map subject to entity_type
+      let entityType = 'inquiry'
+      if (subject === 'health_report') entityType = 'health_report'
+      else if (subject === 'nominee') entityType = 'nominee'
+
+      // Subscribe to INSERT events on support_conversations table
+      const subscription = supabase
+        .channel(`user_conversations:${entityType}:${inquiryId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'support_conversations',
+            filter: `entity_type=eq.${entityType},entity_id=eq.${inquiryId}`
+          },
+          async (payload) => {
+            // Fetch the full conversation data with sender info
+            const { data, error } = await supabase
+              .from('support_conversations')
+              .select(`
+                *,
+                sender:sender_id (
+                  id,
+                  full_name,
+                  email,
+                  type
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single()
+
+            if (!error && data) {
+              callback(data)
+            }
+          }
+        )
+        .subscribe()
+
+      return subscription
+    } catch (error) {
+      console.error('Error subscribing to conversations:', error)
+      return null
+    }
+  }
+
+  /**
+   * Unsubscribe from conversations
+   * @param {Object} subscription - Subscription object returned from subscribeToConversations
+   */
+  static unsubscribeFromConversations(subscription) {
+    if (subscription) {
+      supabase.removeChannel(subscription)
+    }
+  }
 }
 
 export default UserSupport
