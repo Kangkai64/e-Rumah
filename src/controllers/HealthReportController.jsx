@@ -53,7 +53,6 @@ function HealthReportController() {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
-  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false)
   const [activeTab, setActiveTab] = useState('archived')
   const [showFilters, setShowFilters] = useState(false)
   const [showSort, setShowSort] = useState(false)
@@ -206,16 +205,6 @@ function HealthReportController() {
     initialize()
   }, [navigate, user])
 
-  // Auto-dismiss success overlay after 3 seconds
-  useEffect(() => {
-    if (showSuccessOverlay) {
-      const timer = setTimeout(() => {
-        setShowSuccessOverlay(false)
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [showSuccessOverlay])
-
   // Fetch reports
   const fetchReports = useCallback(async (userId) => {
     try {
@@ -294,6 +283,14 @@ function HealthReportController() {
     }
   }, [currentUser, fetchReports])
 
+  // Handle clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchKey('')
+    if (currentUser) {
+      fetchReports(currentUser.id)
+    }
+  }, [currentUser, fetchReports])
+
   // Handle filter
   const handleFilter = useCallback(() => {
     if (currentUser) {
@@ -333,11 +330,22 @@ function HealthReportController() {
       // Search filter - search across multiple fields
       if (searchKey && typeof searchKey === 'string' && searchKey.trim()) {
         const searchTerm = searchKey.toLowerCase().trim()
+        const userHaystack = [
+          report.userData?.full_name,
+          report.userData?.email,
+          report.userData?.ic_number,
+          report.userData?.phone,
+          report.user_full_name,
+          report.user_email,
+          report.ic_number,
+          report.phone
+        ]
         const matchesSearch = 
           (report.report_type && report.report_type.toLowerCase().includes(searchTerm)) ||
           (report.notes && report.notes.toLowerCase().includes(searchTerm)) ||
           (report.report_title && report.report_title.toLowerCase().includes(searchTerm)) ||
-          (report.provider_name && report.provider_name.toLowerCase().includes(searchTerm))
+          (report.provider_name && report.provider_name.toLowerCase().includes(searchTerm)) ||
+          userHaystack.some(val => val && val.toString().toLowerCase().includes(searchTerm))
         
         if (!matchesSearch) return false
       }
@@ -709,7 +717,6 @@ function HealthReportController() {
     try {
       await navigator.clipboard.writeText(shareUrl)
       setSuccessMessage(successMsg)
-      setShowSuccessOverlay(true)
     } catch (clipboardErr) {
       const textArea = document.createElement('textarea')
       textArea.value = shareUrl
@@ -721,10 +728,8 @@ function HealthReportController() {
       try {
         document.execCommand('copy')
         setSuccessMessage(successMsg)
-        setShowSuccessOverlay(true)
       } catch (execErr) {
         setSuccessMessage('Link: ' + shareUrl)
-        setShowSuccessOverlay(true)
       }
 
       document.body.removeChild(textArea)
@@ -776,12 +781,10 @@ function HealthReportController() {
           link.click()
           document.body.removeChild(link)
           setSuccessMessage('Report download started')
-          setShowSuccessOverlay(true)
         } else if (shareForm.shareOption === 'link' && result.data?.shareUrl) {
           await copyShareLink(result.data.shareUrl)
         } else {
           setSuccessMessage(result.message || 'Report shared successfully')
-          setShowSuccessOverlay(true)
         }
 
         if (selectedReport?.id) {
@@ -815,7 +818,6 @@ function HealthReportController() {
 
       if (result.success) {
         setSuccessMessage('Share link revoked')
-        setShowSuccessOverlay(true)
 
         if (selectedReport?.id) {
           await loadShareLinks(selectedReport.id)
@@ -1081,7 +1083,6 @@ function HealthReportController() {
     setIsLoading(true)
     setError(null)
     setSuccessMessage(null)
-    setShowSuccessOverlay(false)
 
     try {
       // Combine date and time
@@ -1174,10 +1175,9 @@ function HealthReportController() {
           }
         }
 
-        // Set success message and show overlay
+        // Set success message
         const message = editingReminder ? 'Reminder updated successfully' : 'Reminder created successfully'
         setSuccessMessage(message)
-        setShowSuccessOverlay(true)
         
         // Reload reminders data
         loadReminders()
@@ -1574,11 +1574,6 @@ function HealthReportController() {
 
       // Show success message
       setSuccessMessage('Document reuploaded successfully. The report has been reset for re-review.')
-      setShowSuccessOverlay(true)
-      setTimeout(() => {
-        setShowSuccessOverlay(false)
-        setSuccessMessage(null)
-      }, 3000)
 
       // Clear reupload state
       setReuploadFileData(null)
@@ -1629,7 +1624,6 @@ function HealthReportController() {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(null)
-        setShowSuccessOverlay(false)
       }, 5000)
       return () => clearTimeout(timer)
     }
@@ -1672,7 +1666,6 @@ function HealthReportController() {
       alerts={alerts}
       errorMessage={error}
       successMessage={successMessage}
-      showSuccessOverlay={showSuccessOverlay}
       isDragging={isDragging}
       showArchivedModal={showArchivedModal}
       isUploading={isUploading}
@@ -1705,6 +1698,7 @@ function HealthReportController() {
       onAdminSort={handleSort}
       onReportSelect={handleReportSelect}
       onSearch={handleSearch}
+      onClearSearch={handleClearSearch}
       onSearchKeyChange={setSearchKey}
       onFilter={handleFilter}
       onFileSelect={handleFileSelect}

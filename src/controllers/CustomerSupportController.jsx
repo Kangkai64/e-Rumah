@@ -6,7 +6,7 @@ import Nominee from '../models/Nominee'
 import Application from '../models/Application'
 import SupportConversation from '../models/SupportConversation'
 import HealthReport from '../models/HealthReport'
-import CustomerSupportView from '../views/customerSupportView'
+import CustomerSupportView from '../views/CustomerSupportView'
 import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
 
 export default function CustomerSupportController() {
@@ -219,6 +219,30 @@ export default function CustomerSupportController() {
       if (success) setConversations(data || [])
     }
   }
+
+  // Auto-refresh conversations when a chat is open
+  useEffect(() => {
+    if (!selectedItem?.id) return
+
+    // Set up auto-refresh interval - refresh every 3 seconds
+    const refreshInterval = setInterval(async () => {
+      let entityType = ''
+      if (activeTab === 'inquiries') entityType = 'inquiry'
+      else if (activeTab === 'nominees') entityType = 'nominee'
+      else if (activeTab === 'healthReports') entityType = 'health_report'
+
+      if (entityType) {
+        try {
+          const { data, success } = await SupportConversation.getByEntity(entityType, selectedItem.id)
+          if (success) setConversations(data || [])
+        } catch (error) {
+          console.error('Error auto-refreshing conversations:', error)
+        }
+      }
+    }, 3000) // Refresh every 3 seconds
+
+    return () => clearInterval(refreshInterval)
+  }, [selectedItem?.id, activeTab])
 
   // 5. Send Reply
   const getCurrentUserId = async () => {

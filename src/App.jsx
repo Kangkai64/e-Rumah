@@ -488,7 +488,6 @@ function App() {
               <>
                 <Header />
                 <UserDashboardController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -498,20 +497,6 @@ function App() {
               <>
                 <Header />
                 <MaintainApplicationController />
-                <Footer />
-              </>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/user/documents" element={
-            <ProtectedRoute requireRole="user">
-              <>
-                <Header />
-                <div style={{ minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
-                  <h1>Documents</h1>
-                  <p>Your documents will appear here.</p>
-                </div>
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -521,7 +506,6 @@ function App() {
               <>
                 <Header />
                 <UserSupportController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -547,7 +531,6 @@ function App() {
               <>
                 <Header />
                 <MaintainApplicationController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -565,17 +548,6 @@ function App() {
               <>
                 <Header />
                 <HealthReportController />
-                <Footer />
-              </>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/application/:applicationId/health-reports" element={
-            <ProtectedRoute>
-              <>
-                <Header />
-                <HealthReportController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -595,7 +567,6 @@ function App() {
             <ProtectedRoute requireRole="admin">
                 <Header />
                 <AdminController />
-                <Footer />
             </ProtectedRoute>
           } />
 
@@ -604,7 +575,6 @@ function App() {
               <>
                 <Header />
                 <AdminReportController mode="viewReport" />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -614,7 +584,6 @@ function App() {
               <>
                 <Header />
                 <AdminReportController mode="review" />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -624,7 +593,6 @@ function App() {
               <>
                 <Header />
                 <HealthReportController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />
@@ -638,7 +606,6 @@ function App() {
               <>
                 <Header />
                 <CustomerSupportController />
-                <Footer />
               </>
             </ProtectedRoute>
           } />

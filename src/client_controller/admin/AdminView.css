@@ -9,9 +9,7 @@
 }
 
 .admin-body {
-  flex: 1;
-  padding-top: 232px; /* Account for header */
-  padding-bottom: 366px; /* Account for footer */
+  padding: 2rem;
 }
 
 .admin-container {

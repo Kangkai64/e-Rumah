@@ -144,7 +144,21 @@ const Header = () => {
               <span>My Application</span>
               <img src={applyNowIcon} alt="My Application" className="apply-now-icon" />
             </Link>
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
+            <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn">
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -165,9 +179,21 @@ const Header = () => {
             <Link to="/admin/health-reports" className="nav-link">Health Report Review</Link>
           </nav>
 
-          <div className="header-actions">
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
-          </div>
+          <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn">
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
+                </div>
+              )}
+            </div>
         </div>
       </header>
     )
@@ -185,9 +211,21 @@ const Header = () => {
           <nav className="main-nav">
           </nav>
 
-          <div className="header-actions">
-            <button onClick={handleLogout} className="logout-btn">Logout</button>
-          </div>
+          <div 
+              className="user-icon-container"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button className="user-icon-btn">
+                <img src={profileIcon} alt="Profile" className="profile-icon" />
+              </button>
+              
+              {showProfileDropdown && (
+                <div className="profile-dropdown">
+                  <button onClick={handleLogout} className="dropdown-item">Logout</button>
+                </div>
+              )}
+            </div>
         </div>
       </header>
     )

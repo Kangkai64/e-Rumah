@@ -2495,7 +2495,7 @@ function AdminHealthReportDashboardView({
                 <img src={searchIcon} alt="Search" className="search-icon" style={{ filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)', marginLeft: '12px' }} />
                 <input
                   type="text"
-                  placeholder="Search health reports, titles"
+                  placeholder="Search health reports, user name/email/IC/phone"
                   value={searchKey || ''}
                   onChange={(e) => {
                     e.preventDefault();
