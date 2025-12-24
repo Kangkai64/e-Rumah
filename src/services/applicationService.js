@@ -568,3 +568,74 @@ export const submitApplicationComplete = async (applicationId, formData) => {
     return { success: false, error }
   }
 }
+
+/**
+ * Check if NRIC already exists in the users table using Secure RPC
+ * @param {string} nric - NRIC to check
+ * @param {string} currentUserId - Current User ID to exclude (optional)
+ * @returns {Promise<{exists: boolean, error: any}>}
+ */
+export const checkDuplicateNRIC = async (nric, currentUserId = null) => {
+  try {
+    if (!nric) return { exists: false, error: null }
+    
+    console.log('🔍 Checking duplicate NRIC (RPC):', { nric, exclude: currentUserId })
+
+    // Call the secure RPC function
+    const { data: exists, error } = await supabase
+      .rpc('check_duplicate_ic', {
+        nric_to_check: nric,
+        exclude_user_id: currentUserId
+      })
+
+    if (error) {
+      // console.error('❌ Error checking duplicate NRIC (RPC):', error)
+      return { exists: false, error }
+    }
+    
+    // if (exists) {
+    //   console.warn('⚠️ Duplicate NRIC found via RPC')
+    // } else {
+    //   console.log('✅ No duplicate NRIC found')
+    // }
+
+    return { exists: !!exists, error: null }
+  } catch (error) {
+    console.error('Unexpected error checking duplicate NRIC:', error)
+    return { exists: false, error }
+  }
+}
+
+/**
+ * Check if Nominee NRIC already exists in nominees table using Secure RPC
+ * @param {string} nric - NRIC to check
+ * @param {string} currentApplicationId - Current Application ID to exclude (optional)
+ * @returns {Promise<{exists: boolean, error: any}>}
+ */
+export const checkDuplicateNomineeNRIC = async (nric, currentApplicationId = null) => {
+  try {
+    if (!nric) return { exists: false, error: null }
+    
+    console.log('🔍 Checking duplicate Nominee NRIC (RPC):', { nric, excludeApp: currentApplicationId })
+
+    const { data: exists, error } = await supabase
+      .rpc('check_duplicate_nominee_ic', {
+        nric_to_check: nric,
+        exclude_application_id: currentApplicationId
+      })
+
+    if (error) {
+      console.error('❌ Error checking Nominee duplicate (RPC):', error)
+      return { exists: false, error }
+    }
+    
+    if (exists) {
+      console.warn('⚠️ Duplicate Nominee NRIC found')
+    }
+
+    return { exists: !!exists, error: null }
+  } catch (error) {
+    console.error('Unexpected error checking Nominee duplicate:', error)
+    return { exists: false, error }
+  }
+}

@@ -200,6 +200,42 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
 // STEP COMPONENTS (All inline - no separate files)
 // ============================================================================
 
+// Read-only Field for Auto-filled values
+function ReadOnlyField({ label, value, helpText = "Extracted from NRIC" }) {
+  return (
+    <div className="form-group">
+      <label>{label}</label>
+      <div style={{
+        padding: '10px 12px',
+        backgroundColor: '#f8f9fa',
+        border: '1px solid #e9ecef',
+        borderRadius: '6px',
+        color: '#495057',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        fontSize: '1rem',
+        marginTop: '0.25rem'
+      }}>
+        <span style={{fontWeight: 500, letterSpacing: '0.5px'}}>{value}</span>
+        <span style={{
+          fontSize: '0.75rem', 
+          backgroundColor: '#e3f2fd', 
+          color: '#0d47a1', 
+          padding: '2px 8px', 
+          borderRadius: '12px',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          <span style={{fontSize: '1rem', lineHeight: 0}}>✓</span> {helpText}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // Step 1: Personal Information
 function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
   return (
@@ -304,32 +340,17 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
         <ErrorMessage error={errors.nricNo} />
       </div>
 
-      <div className="form-group">
-        <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-        <div style={{display: 'flex', gap: '0.5rem'}}>
-          <select name="dobDay" value={formData.dobDay} onChange={handleChange} style={{width: '70px'}} className={errors.dob ? 'error' : ''} required>
-            <option value="">DD</option>
-            {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-          </select>
-          <select name="dobMonth" value={formData.dobMonth} onChange={handleChange} style={{width: '70px'}} className={errors.dob ? 'error' : ''} required>
-            <option value="">MM</option>
-            {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-          </select>
-          <select name="dobYear" value={formData.dobYear} onChange={handleChange} style={{width: '90px'}} className={errors.dob ? 'error' : ''} required>
-            <option value="">YYYY</option>
-            {Array.from({length: 100}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-          </select>
-        </div>
-        <ErrorMessage error={errors.dob} />
-      </div>
+      <ReadOnlyField 
+        label="Date of Birth" 
+        value={!!formData.nricNo && formData.dobDay ? `${formData.dobDay}/${formData.dobMonth}/${formData.dobYear}` : '—'} 
+        helpText={!!formData.nricNo ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+      />
 
-      <div className="form-group">
-        <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-        <div className="radio-group">
-          <label className="radio-label"><input type="radio" name="sex" value="Male" checked={formData.sex === 'Male'} onChange={handleChange} required /> Male</label>
-          <label className="radio-label"><input type="radio" name="sex" value="Female" checked={formData.sex === 'Female'} onChange={handleChange} /> Female</label>
-        </div>
-      </div>
+      <ReadOnlyField 
+        label="Sex" 
+        value={!!formData.nricNo && formData.sex ? formData.sex : '—'} 
+        helpText={!!formData.nricNo ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+      />
 
       <div className="form-group">
         <label>Race</label>
@@ -358,13 +379,11 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
         )}
       </div>
 
-      <div className="form-group">
-        <label className={`checkbox-label ${errors.malaysian ? 'error' : ''}`}>
-          <input type="checkbox" name="malaysian" checked={formData.malaysian} onChange={handleChange} required />
-          <span>Malaysian *</span>
-        </label>
-        {errors.malaysian && <ErrorMessage error={errors.malaysian} />}
-      </div>
+      <ReadOnlyField 
+        label="Citizenship Status" 
+        value={!!formData.nricNo && formData.citizenshipType ? (formData.citizenshipType === 'PR' ? 'Permanent Resident (PR)' : 'Malaysian Citizen') : '—'} 
+        helpText={!!formData.nricNo && formData.citizenshipType ? (formData.citizenshipType === 'PR' ? 'Foreign Born (Code 60-99)' : 'Malaysia Born (Code 01-59)') : 'Enter NRIC to auto-fill'}
+      />
 
       <div className="form-group">
         <label>Marital Status</label>
@@ -787,32 +806,17 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             <ErrorMessage error={errors.jIc} />
           </div>
 
-          <div className="form-group">
-            <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="jDobDay" value={formData.jDobDay} onChange={handleChange} style={{width: '70px'}} className={errors.jDob ? 'error' : ''} required>
-                <option value="">DD</option>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-              </select>
-              <select name="jDobMonth" value={formData.jDobMonth} onChange={handleChange} style={{width: '70px'}} className={errors.jDob ? 'error' : ''} required>
-                <option value="">MM</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-              </select>
-              <select name="jDobYear" value={formData.jDobYear} onChange={handleChange} style={{width: '90px'}} className={errors.jDob ? 'error' : ''} required>
-                <option value="">YYYY</option>
-                {Array.from({length: 100}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
-            <ErrorMessage error={errors.jDob} />
-          </div>
+          <ReadOnlyField 
+            label="Date of Birth" 
+            value={!!formData.jIc && formData.jDobDay ? `${formData.jDobDay}/${formData.jDobMonth}/${formData.jDobYear}` : '—'} 
+            helpText={!!formData.jIc ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
 
-          <div className="form-group">
-            <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-            <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="jSex" value="Male" checked={formData.jSex === 'Male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="jSex" value="Female" checked={formData.jSex === 'Female'} onChange={handleChange} /> Female</label>
-            </div>
-          </div>
+          <ReadOnlyField 
+            label="Sex" 
+            value={!!formData.jIc && formData.jSex ? formData.jSex : '—'} 
+            helpText={!!formData.jIc ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
 
           <div className="form-group">
             <label>Race</label>
@@ -841,13 +845,11 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             )}
           </div>
 
-          <div className="form-group">
-            <label className={`checkbox-label ${errors.jMalaysian ? 'error' : ''}`}>
-              <input type="checkbox" name="jMalaysian" checked={formData.jMalaysian} onChange={handleChange} required />
-              <span>Malaysian *</span>
-            </label>
-            {errors.jMalaysian && <ErrorMessage error={errors.jMalaysian} />}
-          </div>
+          <ReadOnlyField 
+            label="Citizenship Status" 
+            value={!!formData.jIc && formData.jCitizenshipType ? (formData.jCitizenshipType === 'PR' ? 'Permanent Resident (PR)' : 'Malaysian Citizen') : '—'} 
+            helpText={!!formData.jIc && formData.jCitizenshipType ? (formData.jCitizenshipType === 'PR' ? 'Foreign Born (Code 60-99)' : 'Malaysia Born (Code 01-59)') : 'Enter NRIC to auto-fill'}
+          />
 
           <div className="form-group">
             <label>Marital Status *</label>
@@ -1532,31 +1534,23 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           <ErrorMessage error={errors.nominee1Ic} />
         </div>
 
-        <div className="form-group">
-          <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-          <div style={{display: 'flex', gap: '0.5rem'}}>
-            <select name="nominee1DobDay" value={formData.nominee1DobDay} onChange={handleChange} style={{width: '70px'}} required>
-              <option value="">DD</option>
-              {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-            </select>
-            <select name="nominee1DobMonth" value={formData.nominee1DobMonth} onChange={handleChange} style={{width: '70px'}} required>
-              <option value="">MM</option>
-              {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-            </select>
-            <select name="nominee1DobYear" value={formData.nominee1DobYear} onChange={handleChange} style={{width: '90px'}} required>
-              <option value="">YYYY</option>
-              {Array.from({length: 100}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-            </select>
-          </div>
-        </div>
+        <ReadOnlyField 
+            label="Date of Birth" 
+            value={!!formData.nominee1Ic && formData.nominee1DobDay ? `${formData.nominee1DobDay}/${formData.nominee1DobMonth}/${formData.nominee1DobYear}` : '—'} 
+            helpText={!!formData.nominee1Ic ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
 
-        <div className="form-group">
-          <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-          <div className="radio-group">
-            <label className="radio-label"><input type="radio" name="nominee1Sex" value="Male" checked={formData.nominee1Sex === 'Male'} onChange={handleChange} required /> Male</label>
-            <label className="radio-label"><input type="radio" name="nominee1Sex" value="Female" checked={formData.nominee1Sex === 'Female'} onChange={handleChange} /> Female</label>
-          </div>
-        </div>
+        <ReadOnlyField 
+            label="Sex" 
+            value={!!formData.nominee1Ic && formData.nominee1Sex ? formData.nominee1Sex : '—'} 
+            helpText={!!formData.nominee1Ic ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
+
+        <ReadOnlyField 
+            label="Citizenship Status" 
+            value={!!formData.nominee1Ic && formData.nominee1CitizenshipType ? (formData.nominee1CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : 'Malaysian Citizen') : '—'} 
+            helpText={!!formData.nominee1Ic && formData.nominee1CitizenshipType ? (formData.nominee1CitizenshipType === 'PR' ? 'Foreign Born (Code 60-99)' : 'Malaysia Born (Code 01-59)') : 'Enter NRIC to auto-fill'}
+          />
 
         <div className="form-group">
           <label>Race</label>
@@ -1784,31 +1778,23 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             <ErrorMessage error={errors.nominee2Ic} />
           </div>
 
-          <div className="form-group">
-            <label>Date of Birth (DD/MM/YYYY) * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="nominee2DobDay" value={formData.nominee2DobDay} onChange={handleChange} style={{width: '70px'}} required>
-                <option value="">DD</option>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-              </select>
-              <select name="nominee2DobMonth" value={formData.nominee2DobMonth} onChange={handleChange} style={{width: '70px'}} required>
-                <option value="">MM</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-              </select>
-              <select name="nominee2DobYear" value={formData.nominee2DobYear} onChange={handleChange} style={{width: '90px'}} required>
-                <option value="">YYYY</option>
-                {Array.from({length: 100}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
-          </div>
+          <ReadOnlyField 
+            label="Date of Birth" 
+            value={!!formData.nominee2Ic && formData.nominee2DobDay ? `${formData.nominee2DobDay}/${formData.nominee2DobMonth}/${formData.nominee2DobYear}` : '—'} 
+            helpText={!!formData.nominee2Ic ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
 
-          <div className="form-group">
-            <label>Sex * <span style={{color: '#666', fontSize: '0.85rem'}}>(Auto-filled from IC)</span></label>
-            <div className="radio-group">
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Male" checked={formData.nominee2Sex === 'Male'} onChange={handleChange} required /> Male</label>
-              <label className="radio-label"><input type="radio" name="nominee2Sex" value="Female" checked={formData.nominee2Sex === 'Female'} onChange={handleChange} /> Female</label>
-            </div>
-          </div>
+          <ReadOnlyField 
+            label="Sex" 
+            value={!!formData.nominee2Ic && formData.nominee2Sex ? formData.nominee2Sex : '—'} 
+            helpText={!!formData.nominee2Ic ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
+          />
+
+          <ReadOnlyField 
+            label="Citizenship Status" 
+            value={!!formData.nominee2Ic && formData.nominee2CitizenshipType ? (formData.nominee2CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : 'Malaysian Citizen') : '—'} 
+            helpText={!!formData.nominee2Ic && formData.nominee2CitizenshipType ? (formData.nominee2CitizenshipType === 'PR' ? 'Foreign Born (Code 60-99)' : 'Malaysia Born (Code 01-59)') : 'Enter NRIC to auto-fill'}
+          />
 
           <div className="form-group">
             <label>Race</label>
@@ -2609,6 +2595,7 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.nominee1DobDay, formData.nominee1DobMonth, formData.nominee1DobYear)}</div>
           <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee1Sex)}</div>
           <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee1Race)}</div>
+          <div className="review-field"><strong>Citizenship Status:</strong> {formData.nominee1CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : (formData.nominee1CitizenshipType === 'Citizen' ? 'Malaysian Citizen' : '—')}</div>
           <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee1Malaysian)}</div>
           <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee1Marital)}</div>
           <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee1Relationship)}</div>
@@ -2632,6 +2619,7 @@ function Step7Review({ formData }) {
               <div className="review-field"><strong>Date of Birth:</strong> {formatDate(formData.nominee2DobDay, formData.nominee2DobMonth, formData.nominee2DobYear)}</div>
               <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee2Sex)}</div>
               <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee2Race)}</div>
+              <div className="review-field"><strong>Citizenship Status:</strong> {formData.nominee2CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : (formData.nominee2CitizenshipType === 'Citizen' ? 'Malaysian Citizen' : '—')}</div>
               <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee2Malaysian)}</div>
               <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee2Marital)}</div>
               <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee2Relationship)}</div>
