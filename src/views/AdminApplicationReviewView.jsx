@@ -12,6 +12,8 @@ function AdminApplicationReviewView({
   error,
   activeTab,
   approvalLoading,
+  approvedAmount,
+  onApprovedAmountChange,
   showRejectModal,
   rejectionReason,
   showFlagDocumentModal,
@@ -374,6 +376,25 @@ function AdminApplicationReviewView({
             </div>
           )}
         </div>
+
+        {/* Approved Amount Section - For Under Review Status */}
+        {application.status === 'underReviewed' && (
+          <div className="approved-amount-section">
+            <h3>Set Approved Amount</h3>
+            <div className="approved-amount-input-group">
+              <label htmlFor="approvedAmount">Approved Amount (RM)</label>
+              <input
+                id="approvedAmount"
+                type="number"
+                placeholder="Enter approved amount"
+                value={approvedAmount}
+                onChange={(e) => onApprovedAmountChange(e.target.value)}
+                step="0.01"
+                min="0"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         {application.status !== 'rejected' && (

@@ -27,7 +27,9 @@ function MaintainApplicationView({
   downloadingPDF = false,
   pdfError = null,
   onDownloadPDF = null,
-  onTerminateApplication
+  onTerminateApplication,
+  showRejectTerminationReason = true,
+  onDismissRejectReason = null
 }) {
   const [selectedMissingDoc, setSelectedMissingDoc] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -237,6 +239,38 @@ function MaintainApplicationView({
               <p>Your request to terminate this application is currently being reviewed by our admin team. You will be notified once a decision has been made.</p>
               <p className="termination-date">Submitted on: {new Date(application.termination_submitted_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
             </div>
+          </div>
+        )}
+
+        {/* Terminated Status Banner */}
+        {applicationStatus === 'terminated' && (
+          <div className="terminated-status-banner">
+            <div className="terminated-icon">⚠️</div>
+            <div className="terminated-message">
+              <h3>Application Terminated</h3>
+              <p>Your application has been terminated. You are required to pay back the approved amount of <strong>RM {formatCurrency(approvedAmount)}</strong> to our organization before you can apply again.</p>
+              {application?.termination_update_at && (
+                <p className="terminated-date">Terminated on: {new Date(application.termination_update_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Termination Rejection Reason Message */}
+        {applicationStatus === 'approved' && application?.reject_termination_reason && showRejectTerminationReason && (
+          <div className="rejection-reason-banner">
+            <div className="rejection-icon">ℹ️</div>
+            <div className="rejection-message">
+              <h3>Termination Request Rejected</h3>
+              <p><strong>Reason:</strong> {application.reject_termination_reason}</p>
+              <p className="rejection-note">Your request to terminate this application has been rejected by the admin team.</p>
+            </div>
+            <button 
+              className="rejection-close-btn"
+              onClick={onDismissRejectReason}
+            >
+              OK
+            </button>
           </div>
         )}
 
@@ -516,28 +550,29 @@ function MaintainApplicationView({
           {/* Right Column - Approved Amount & Actions */}
           <div className="maintain-application-right">
             {/* Approved Amount Section */}
-            {(applicationStatus === 'approved' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
+            {(applicationStatus === 'approved' || applicationStatus === 'terminated' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
               <>
-                <section className="maintain-application-section approved-section">
-                  <h2>APPROVED AMOUNT</h2>
-                  <div className="approved-card">
+                <section className={`maintain-application-section ${applicationStatus === 'terminated' ? 'payback-section' : 'approved-section'}`}>
+                  <h2>{applicationStatus === 'terminated' ? 'PAYBACK AMOUNT' : 'APPROVED AMOUNT'}</h2>
+                  <div className={`approved-card ${applicationStatus === 'terminated' ? 'payback-card' : ''}`}>
                     <div className="approved-item primary-item">
-                      <span className="label">MONTHLY PAYOUT</span>
+                      <span className="label">{applicationStatus === 'terminated' ? 'AMOUNT TO PAYBACK' : 'TOTAL APPROVED'}</span>
                       <span className="amount">RM {formatCurrency(approvedAmount)}</span>
-                      <span className="date">Starting Dec 2025</span>
                     </div>
                     <div className="approved-item">
-                      <span className="label">TOTAL APPROVED</span>
-                      <span className="amount">RM {formatCurrency(approvedAmount * 12)}</span>
-                    </div>
-                    <div className="approved-item">
-                      <span className="label">PROPERTY VALUE</span>
+                      <span className="label">PURCHASE PRICE</span>
                       <span className="amount">RM {formatCurrency(formData.purchasePrice)}</span>
                     </div>
                   </div>
+                  {applicationStatus === 'terminated' && (
+                    <button className="btn-payback" disabled>
+                      Pay Now
+                    </button>
+                  )}
                 </section>
 
-                {/* Actions Section */}
+                {/* Actions Section - Hide when terminated */}
+                {applicationStatus !== 'terminated' && (
                 <section className="maintain-application-section actions-box-section">
                   <h3 className="actions-title">Actions</h3>
                   <div className="actions-section">
@@ -571,6 +606,7 @@ function MaintainApplicationView({
                     </button>
                   </div>
                 </section>
+                )}
               </>
             )}
 
@@ -578,7 +614,7 @@ function MaintainApplicationView({
             <section className="maintain-application-section need-help-section">
               <h3>Need Help?</h3>
               <p>If you have questions about your application, please contact our support team.</p>
-              <a href="/contact-support" className="support-link">Contact Support →</a>
+              <a href="/user/support" className="support-link">Contact Support →</a>
             </section>
           </div>
         </div>

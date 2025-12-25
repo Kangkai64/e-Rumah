@@ -24,6 +24,13 @@ function AdminView({
   newStatus,
   statusRemarks,
   updatingStatus,
+  approvedAmount,
+  onApprovedAmountChange,
+  showTerminationModal,
+  terminationAction,
+  onApproveTermination,
+  onRejectTermination,
+  onCancelTermination,
   onSearchChange,
   onSearch,
   onFilterFieldChange,
@@ -253,9 +260,19 @@ function AdminView({
                         {formatDate(app.submitted_at)}
                       </div>
                       <div className="admin-table-col">
-                        <span className={`admin-status-badge admin-status-${getStatusBadgeClass(app.status)}`}>
-                          {getStatusDisplayText(app.status)}
-                        </span>
+                        {app.status === 'terminated' ? (
+                          <span className={`admin-status-badge admin-status-${getStatusBadgeClass('terminated')}`}>
+                            Terminated
+                          </span>
+                        ) : app.termination_submitted_at ? (
+                          <span className="admin-status-badge status-badge-termination">
+                            Termination
+                          </span>
+                        ) : (
+                          <span className={`admin-status-badge admin-status-${getStatusBadgeClass(app.status)}`}>
+                            {getStatusDisplayText(app.status)}
+                          </span>
+                        )}
                       </div>
                       <div className="admin-table-col admin-table-actions">
                         <button 
@@ -377,14 +394,73 @@ function AdminView({
                         )}
                       </div>
 
-                      {/* Approve Button */}
-                      <button 
-                        className="admin-approve-btn"
-                        onClick={onApproveApplication}
-                        disabled={selectedApplication?.status === 'approved'}
-                      >
-                        {selectedApplication?.status === 'approved' ? 'Already Approved' : 'Approve Application'}
-                      </button>
+                      {/* Approved Amount Input - For Under Review Status (but NOT when termination is pending) */}
+                      {selectedApplication?.status === 'underReviewed' && !selectedApplication?.termination_submitted_at && (
+                        <div className="admin-approved-amount-section">
+                          <label className="admin-info-label">Set Approved Amount (RM)</label>
+                          <div className="admin-approved-amount-input-wrapper">
+                            <input
+                              type="number"
+                              placeholder="Enter approved amount"
+                              value={approvedAmount}
+                              onChange={(e) => onApprovedAmountChange(e.target.value)}
+                              step="0.01"
+                              min="0"
+                              className="admin-approved-amount-input"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Termination Request Section - When termination is submitted but not yet terminated */}
+                      {selectedApplication?.termination_submitted_at && selectedApplication?.status !== 'terminated' && (
+                        <div className="admin-termination-section">
+                          <div className="admin-termination-banner">
+                            <h3>Termination Request Pending</h3>
+                            <p>
+                              <strong>Reason:</strong> {selectedApplication?.termination_reason || 'N/A'}
+                            </p>
+                            <p className="admin-termination-date">
+                              Submitted: {formatDate(selectedApplication.termination_submitted_at)}
+                            </p>
+                          </div>
+                          <div className="admin-termination-actions">
+                            <button 
+                              className="admin-reject-termination-btn"
+                              onClick={() => onRejectTermination(selectedApplication.id)}
+                            >
+                              Reject Termination
+                            </button>
+                            <button 
+                              className="admin-approve-termination-btn"
+                              onClick={() => onApproveTermination(selectedApplication.id)}
+                            >
+                              Approve Termination
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Application Terminated Section - When status is terminated */}
+                      {selectedApplication?.status === 'terminated' && (
+                        <div className="admin-terminated-section">
+                          <div className="admin-terminated-banner">
+                            <h3>Application Terminated</h3>
+                            <p>This application has been terminated and cannot be modified.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Approve Button - Hide when termination is pending or terminated */}
+                      {!selectedApplication?.termination_submitted_at && selectedApplication?.status !== 'terminated' && (
+                        <button 
+                          className="admin-approve-btn"
+                          onClick={onApproveApplication}
+                          disabled={selectedApplication?.status === 'approved'}
+                        >
+                          {selectedApplication?.status === 'approved' ? 'Already Approved' : 'Approve Application'}
+                        </button>
+                      )}
                     </>
                   ) : (
                     /* Nominees Tab */
