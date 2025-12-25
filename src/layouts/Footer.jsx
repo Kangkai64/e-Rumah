@@ -36,11 +36,11 @@ const Footer = () => {
           <div className="footer-column">
             <h4 className="footer-heading">EXPLORE</h4>
             <ul className="footer-links">
-              <li><a href="#home">Home</a></li>
-              <li><a href="#eligibility">Eligibility Criteria</a></li>
-              <li><a href="#about">About Us</a></li>
-              <li><a href="#faqs">FAQs</a></li>
-              <li><a href="#apply">How to Apply</a></li>
+              <li><a href="/">Home</a></li>
+              <li><a href="/#eligibility">Eligibility Criteria</a></li>
+              <li><a href="/about">About Us</a></li>
+              <li><a href="/faqs">FAQs</a></li>
+              <li><a href="/step-by-step">How to Apply</a></li>
               <li><Link to="/property-calculator">Estimate My Property</Link></li>
             </ul>
           </div>

@@ -606,8 +606,85 @@ function AdminReportController({ mode = 'reports' }) {
     window.print()
   }
 
-  const handleDownloadPDF = () => {
-    alert('PDF download functionality will be implemented with server-side PDF generation')
+  const handleDownloadPDF = async () => {
+    if (!reportData || !report) {
+      alert('Report data not available')
+      return
+    }
+
+    try {
+      // Dynamically import html2canvas and jsPDF
+      const { default: html2canvas } = await import('html2canvas')
+      const { default: jsPDF } = await import('jspdf')
+
+      // Get the report container element
+      const reportElement = document.querySelector('.report-container')
+      
+      if (!reportElement) {
+        alert('Report element not found')
+        return
+      }
+
+      // Hide the no-print elements temporarily
+      const noPrintElements = document.querySelectorAll('.no-print')
+      noPrintElements.forEach(el => {
+        el.style.display = 'none'
+      })
+
+      // Capture the report as an image
+      const canvas = await html2canvas(reportElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+
+      // Restore the no-print elements
+      noPrintElements.forEach(el => {
+        el.style.display = ''
+      })
+
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      
+      // Calculate dimensions to fit on page
+      const imgWidth = pageWidth - 20
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      let heightLeft = imgHeight
+      let position = 10
+
+      // Add pages for each section of the image
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight - 20
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight + 10
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight - 20
+      }
+
+      // Generate filename
+      const fileName = report?.name 
+        ? `${report.name}.pdf` 
+        : `Analysis_Report_${new Date().toISOString().slice(0, 10)}.pdf`
+
+      // Download PDF
+      pdf.save(fileName)
+
+    } catch (err) {
+      console.error('Error downloading PDF:', err)
+      alert('Failed to download report PDF: ' + err.message)
+    }
   }
 
   // Render based on mode

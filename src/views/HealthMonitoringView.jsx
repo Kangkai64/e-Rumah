@@ -19,6 +19,7 @@ import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 import '../client_controller/health_report/HealthMonitoringView.css'
+import { parseICNumber, getCurrentDate } from '../utils/icParser'
 
 // ============================================================================
 // HELPER COMPONENTS
@@ -169,6 +170,7 @@ function DragDropArea({
 function UploadModal({
   show,
   uploadForm,
+  minReportDate,
   isDragging,
   errors,
   onCancel,
@@ -237,6 +239,7 @@ function UploadModal({
               type="date"
               id="reportDate"
               value={uploadForm.reportDate}
+              min={minReportDate}
               onChange={(e) => onUploadFormChange('reportDate', e.target.value)}
               required
             />
@@ -829,6 +832,7 @@ function UserHealthReportView({
 
   // File input ref for programmatic file selection
   const fileInputRef = useRef(null);
+  const dateCloseTimerRef = useRef(null);
 
   // Enhanced drag handlers for full-page detection
   const handleDragEnter = (e) => {
@@ -874,17 +878,21 @@ function UserHealthReportView({
   };
 
   // Helper functions for date picker
-  const getUserJoinDate = () => {
-    // Default to 10 years ago if no user join date is available
-    if (user && user.created_at) {
-      const joinDate = new Date(user.created_at);
-      joinDate.setFullYear(joinDate.getFullYear() - 10);
-      return joinDate.toISOString().split('T')[0];
+  const getUserBirthDate = useCallback(() => {
+    const icNumber = user?.ic_number || user?.icNumber || '';
+    const parsed = parseICNumber(icNumber);
+
+    if (parsed?.isValid && parsed?.birthDate?.year && parsed?.birthDate?.month && parsed?.birthDate?.day) {
+      const { year, month, day } = parsed.birthDate;
+      const derived = `${year}-${month}-${day}`;
+      return derived;
     }
-    const tenYearsAgo = new Date();
-    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
-    return tenYearsAgo.toISOString().split('T')[0];
-  };
+
+    const oldestAllowed = new Date();
+    oldestAllowed.setFullYear(oldestAllowed.getFullYear() - 120);
+    const fallback = oldestAllowed.toISOString().split('T')[0];
+    return fallback;
+  }, [user]);
 
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
@@ -906,15 +914,17 @@ function UserHealthReportView({
     setSelectedDates(newDates);
 
     // Update filters using the filter change handler
-    if (onFilterChange) {
-      onFilterChange(dateField, value);
+    safeOnFilterChange(dateField, value);
+
+    if (dateCloseTimerRef.current) {
+      clearTimeout(dateCloseTimerRef.current);
     }
 
-    // Only close the date picker if a complete date is selected
-    // Check if the value is a complete date (YYYY-MM-DD format)
-    if (value && value.length === 10 && value.includes('-')) {
-      setShowDatePicker(prev => ({ ...prev, [type]: false }));
-    }
+    dateCloseTimerRef.current = setTimeout(() => {
+      if (value && value.length === 10 && value.includes('-')) {
+        setShowDatePicker(prev => ({ ...prev, [type]: false }));
+      }
+    }, 800);
   };
 
   // Close date picker when clicking outside
@@ -930,6 +940,12 @@ function UserHealthReportView({
 
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  useEffect(() => () => {
+    if (dateCloseTimerRef.current) {
+      clearTimeout(dateCloseTimerRef.current);
+    }
   }, []);
 
   // Add window-level event listeners for better drag detection
@@ -1270,6 +1286,7 @@ function UserHealthReportView({
                     type="date"
                     id="reportDate"
                     value={multiUploadForm?.reportDate || ''}
+                    min={getUserBirthDate()}
                     onChange={(e) => onMultiUploadFormChange?.('reportDate', e.target.value)}
                     style={{
                       width: '100%',
@@ -1781,7 +1798,7 @@ function UserHealthReportView({
 
               <div className="filter-row">
                 <div className="filter-group">
-                  <label>Date Range</label>
+                  <label>Report Date Range</label>
                   <div className="date-inputs">
                     <div className="date-input-wrapper" style={{ position: 'relative' }}>
                       <div className="date-input">
@@ -1803,7 +1820,7 @@ function UserHealthReportView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={getUserJoinDate()}
+                            min={getUserBirthDate()}
                             max={getTodayDate()}
                             value={filters?.startDate || ''}
                             onChange={(e) => handleDateSelect('start', e.target.value)}
@@ -1840,7 +1857,7 @@ function UserHealthReportView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={filters?.startDate || getUserJoinDate()}
+                            min={filters?.startDate || getUserBirthDate()}
                             max={getTodayDate()}
                             value={filters?.endDate || ''}
                             onChange={(e) => handleDateSelect('end', e.target.value)}
@@ -1989,6 +2006,7 @@ function UserHealthReportView({
         {showUploadModal && (
           <UploadModal
             uploadForm={uploadForm}
+            minReportDate={getUserBirthDate()}
             onCancel={onCancelUploadModal}
             onFormChange={onUploadFormChange}
             onSubmit={onUploadSubmit}
@@ -2337,6 +2355,7 @@ function AdminHealthReportDashboardView({
 }) {
   // Local UI-only state (date picker toggles)
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false })
+  const dateCloseTimerRef = useRef(null)
 
   // Safe fallbacks to avoid undefined access
   const safeOnSearchChange = onSearchChange || (() => { })
@@ -2378,21 +2397,18 @@ function AdminHealthReportDashboardView({
     const dateField = type === 'start' ? 'startDate' : 'endDate'
     safeOnFilterChange(dateField, value)
 
-    if (value && value.length === 10 && value.includes('-')) {
-      setShowDatePicker((prev) => ({ ...prev, [type]: false }))
+    if (dateCloseTimerRef.current) {
+      clearTimeout(dateCloseTimerRef.current)
     }
+
+    dateCloseTimerRef.current = setTimeout(() => {
+      if (value && value.length === 10 && value.includes('-')) {
+        setShowDatePicker((prev) => ({ ...prev, [type]: false }))
+      }
+    }, 800)
   }, [safeOnFilterChange])
 
-  const getUserJoinDate = useCallback(() => {
-    if (user?.created_at) {
-      const joinDate = new Date(user.created_at)
-      joinDate.setFullYear(joinDate.getFullYear() - 10)
-      return joinDate.toISOString().split('T')[0]
-    }
-    const tenYearsAgo = new Date()
-    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10)
-    return tenYearsAgo.toISOString().split('T')[0]
-  }, [user])
+  const getEarliestAllowedDate = useCallback(() => '1900-01-01', [])
 
   const getTodayDate = useCallback(() => new Date().toISOString().split('T')[0], [])
 
@@ -2408,6 +2424,12 @@ function AdminHealthReportDashboardView({
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  useEffect(() => () => {
+    if (dateCloseTimerRef.current) {
+      clearTimeout(dateCloseTimerRef.current)
+    }
   }, [])
 
   // Loading state
@@ -2495,7 +2517,7 @@ function AdminHealthReportDashboardView({
                 <img src={searchIcon} alt="Search" className="search-icon" style={{ filter: 'invert(0.4) sepia(0) saturate(0) hue-rotate(0deg) brightness(0.6)', marginLeft: '12px' }} />
                 <input
                   type="text"
-                  placeholder="Search health reports, titles"
+                  placeholder="Search health reports, user name/email/IC/phone"
                   value={searchKey || ''}
                   onChange={(e) => {
                     e.preventDefault();
@@ -2627,7 +2649,7 @@ function AdminHealthReportDashboardView({
 
               <div className="filter-row">
                 <div className="filter-group">
-                  <label>Date Range</label>
+                  <label>Report Date Range</label>
                   <div className="date-inputs">
                     <div className="date-input-wrapper" style={{ position: 'relative' }}>
                       <div className="date-input">
@@ -2649,7 +2671,7 @@ function AdminHealthReportDashboardView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={getUserJoinDate()}
+                            min={getEarliestAllowedDate()}
                             max={getTodayDate()}
                             value={filters?.startDate || ''}
                             onChange={(e) => handleDateSelect('start', e.target.value)}
@@ -2686,7 +2708,7 @@ function AdminHealthReportDashboardView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={filters?.startDate || getUserJoinDate()}
+                            min={filters?.startDate || getEarliestAllowedDate()}
                             max={getTodayDate()}
                             value={filters?.endDate || ''}
                             onChange={(e) => handleDateSelect('end', e.target.value)}

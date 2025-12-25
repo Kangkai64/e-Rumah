@@ -1,0 +1,137 @@
+USE CASE CONSTRAINTS [C]
+Verified against Codebase (Controller, Service, View, Validation) on 2025-12-23
+
+C1. APPLICANT ELIGIBILITY & PERSONAL INFORMATION (Step 1)
+---------------------------------------------------------
+[Mandatory Fields]
+- Name (as per NRIC)
+- NRIC No. (Format: xxxxxx-xx-xxxx)
+- Date of Birth (Auto-filled from IC, must be reviewed)
+- Sex (Auto-filled from IC)
+- Malaysian Citizenship (Must be checked/True)
+- Marital Status
+- Residential Address (Max 60 chars)
+- Postcode (5 digits)
+- Email (Valid format)
+- Residence Phone (Format: xxx-xxxxxxx)
+- Mobile Phone (H/P) (Format: xxx-xxxxxxx)
+- Occupation
+- Employer Name
+- Employer Address
+- Employer Postcode
+- Purpose of Application
+- Number of Dependents (Default is '0', but field is mandatory)
+
+[Optional Fields]
+- Race
+- Dependents' Ages (Only required if Number of Dependents > 0)
+
+[Strict Validation Logic]
+- Age Rule: Applicant must be at least 55 years old (calculated from DOB).
+- Citizenship Rule: Field must be explicitly checked.
+- Phone Rule: Both Residence and Mobile phones are enforced by validation logic, even if UI implies flexibility.
+
+C2. JOINT APPLICANT (Step 2 - Conditional)
+------------------------------------------
+[Condition]
+- Required only if "Do you have a Joint Applicant?" is checked in Step 1.
+
+[Mandatory Fields (If Joint Applicant exists)]
+- Salutation
+- Name (as per NRIC)
+- NRIC No.
+- Date of Birth & Sex (Auto-filled)
+- Malaysian Citizenship (Must be checked)
+- Marital Status
+- Relationship to Applicant
+- Residential Address & Postcode
+- Email
+- Residence Phone & Mobile Phone
+- Occupation & Employer Details
+
+[Optional Fields]
+- Race
+
+[Strict Validation Logic]
+- Citizenship Rule: Joint Applicant must also be Malaysian.
+- Banking Rule: If Joint Applicant exists, Account Type MUST be "Joint Account Saving" or "Joint Account Current".
+
+C3. BANKING INFORMATION (Step 2)
+--------------------------------
+[Mandatory Fields]
+- Bank Name
+- Account Type (Savings / Current / Joint Savings / Joint Current)
+- Account Number
+
+C4. PROPERTY INFORMATION (Step 3)
+---------------------------------
+[Mandatory Fields]
+- Property Type
+- Property Address
+- Postcode
+- Indicative Market Value
+- Tenure Title (Freehold / Leasehold)
+- Property Encumbered (Yes / No)
+- Fire Insurance Status (In Force / Not Available)
+- Fire Insurance Renewal Option
+
+[Strict Validation Logic]
+- Location Rule: Property must be in Kuala Lumpur (Valid postcodes: 41100, 42100, 42000, 45800, 45600, 42500, 42600, 45000, 42700, 43950, 42200, 41300, 41050).
+- Encumbrance Rule: Property MUST be free from encumbrances. Selecting "Yes" for "Property Encumbered" triggers a hard blocking error.
+- Leasehold Rule: If Tenure is Leasehold, "Expiry Date" is mandatory. Remaining lease must be >= 90 years.
+
+C5. FIRE INSURANCE DETAILS (Step 3 - Conditional)
+-------------------------------------------------
+[Condition]
+- Dependent on "Fire & Home Insurance" selection.
+
+[If "In Force"]
+- Insurance Company (Mandatory)
+- Period Validity (Mandatory)
+- Document: Copy of Policy (Mandatory)
+
+[If "Not Available"]
+- Fields disabled. Organization (Cagamas) will purchase policy.
+
+C6. NOMINEE INFORMATION (Step 4)
+--------------------------------
+[Nominee 1 - Mandatory]
+- Name, NRIC, DOB, Sex, Marital Status
+- Relationship to Applicant
+- Address, Postcode, Email
+- Residence Phone & Mobile Phone
+- Malaysian Citizenship (Must be checked)
+- Race is Optional.
+
+[Nominee 2 - Optional]
+- Only required if "Add Second Nominee" checkbox is selected.
+- If selected, all Nominee 2 fields become Mandatory (same requirements as Nominee 1).
+
+C7. DOCUMENT CHECKLIST (Step 5)
+-------------------------------
+[System Generated Requirements]
+1. Applicant NRIC (Required)
+2. Birth Certificate (Required)
+3. Payslips (Latest 3 months - Required)
+4. Bank Statements (Latest 6 months - Required)
+5. EPF Statement (Required)
+6. Grant / Title Deed (Required)
+7. Sale & Purchase Agreement (Required)
+8. Valuation Report (Required)
+
+[Conditional Documents]
+9. Joint Applicant NRIC (Required if Joint Applicant exists)
+10. Marriage Certificate (Required if Married + Joint Applicant)
+11. Fire Insurance Policy (Required if Insurance is "In Force")
+12. Property Loan Statement (Required if Encumbered - though encumbrance blocks submission)
+
+C8. SIGNATURES & DECLARATION (Step 5 & 6)
+-----------------------------------------
+[Step 5 - Declaration]
+- Applicant Signature (Mandatory)
+- Joint Applicant Signature (Mandatory if Joint Applicant exists)
+
+[Step 6 - Acknowledgement]
+- Nominee Name, NRIC, Address (Auto-filled)
+- Nominee Consent Checkbox (Mandatory)
+- Nominee Signature (Mandatory)

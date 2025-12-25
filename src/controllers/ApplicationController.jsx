@@ -15,7 +15,9 @@ import {
   loadApplicationData, 
   saveApplicationData, 
   saveToLocalStorage,
-  loadFromLocalStorage 
+  loadFromLocalStorage,
+  checkDuplicateNRIC,
+  checkDuplicateNomineeNRIC
 } from '../services/applicationService'
 import { uploadDocument, deleteDocument } from '../services/fileUploadService'
 import { supabase } from '../config/supabase'
@@ -530,25 +532,6 @@ function ApplicationController({ editNomineeOnly = false }) {
     }
   }, [formData, currentStep, debouncedSave, isLoading])
 
-  // Old localStorage-only code (kept for reference, now handled above)
-  // useEffect(() => {
-  //   const savedStep = localStorage.getItem('ssbCurrentStep')
-  //   if (savedStep) {
-  //     setCurrentStep(parseInt(savedStep))
-  //   }
-  //   window.scrollTo(0, 0)
-  // }, [])
-
-  // Old: Save draft whenever formData changes (now handled by auto-save above)
-  // useEffect(() => {
-  //   Application.saveDraft(formData)
-  // }, [formData])
-
-  // Old: Save current step (now handled by auto-save above)
-  // useEffect(() => {
-  //   localStorage.setItem('ssbCurrentStep', currentStep.toString())
-  // }, [currentStep])
-
   /**
    * Handle form field changes with auto-fill logic
    */
@@ -580,6 +563,18 @@ function ApplicationController({ editNomineeOnly = false }) {
           updates.dobMonth = parsed.birthDate.month
           updates.dobYear = parsed.birthDate.year
           updates.sex = parsed.sex
+          
+          // Auto-check Malaysian checkbox
+          updates.malaysian = true
+          
+          // Set Citizenship Type (Citizen vs PR)
+          // If born in Malaysia (01-59) -> Citizen
+          // If born outside (60-99) -> PR / Foreign Born
+          if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
+            updates.citizenshipType = 'PR'
+          } else {
+            updates.citizenshipType = 'Citizen'
+          }
         }
       }
 
@@ -591,10 +586,20 @@ function ApplicationController({ editNomineeOnly = false }) {
           updates.jDobMonth = parsed.birthDate.month
           updates.jDobYear = parsed.birthDate.year
           updates.jSex = parsed.sex
+
+          // Auto-check Malaysian checkbox
+          updates.jMalaysian = true
+
+          // Set Citizenship Type
+          if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
+            updates.jCitizenshipType = 'PR'
+          } else {
+            updates.jCitizenshipType = 'Citizen'
+          }
         }
       }
 
-      // Auto-fill: Parse IC number and fill birthdate + sex for nominee 1
+      // Auto-fill: Parse IC number and fill birthdate + sex + citizenship for nominee 1
       if (name === 'nominee1Ic' && value) {
         const parsed = parseICNumber(value)
         if (parsed.isValid && parsed.birthDate) {
@@ -602,10 +607,17 @@ function ApplicationController({ editNomineeOnly = false }) {
           updates.nominee1DobMonth = parsed.birthDate.month
           updates.nominee1DobYear = parsed.birthDate.year
           updates.nominee1Sex = parsed.sex
+          
+          // Set Citizenship Type for Nominee 1
+          if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
+            updates.nominee1CitizenshipType = 'PR'
+          } else {
+            updates.nominee1CitizenshipType = 'Citizen'
+          }
         }
       }
 
-      // Auto-fill: Parse IC number and fill birthdate + sex for nominee 2
+      // Auto-fill: Parse IC number and fill birthdate + sex + citizenship for nominee 2
       if (name === 'nominee2Ic' && value) {
         const parsed = parseICNumber(value)
         if (parsed.isValid && parsed.birthDate) {
@@ -613,6 +625,13 @@ function ApplicationController({ editNomineeOnly = false }) {
           updates.nominee2DobMonth = parsed.birthDate.month
           updates.nominee2DobYear = parsed.birthDate.year
           updates.nominee2Sex = parsed.sex
+          
+          // Set Citizenship Type for Nominee 2
+          if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
+            updates.nominee2CitizenshipType = 'PR'
+          } else {
+            updates.nominee2CitizenshipType = 'Citizen'
+          }
         }
       }
 
@@ -1004,8 +1023,51 @@ function ApplicationController({ editNomineeOnly = false }) {
     // Normal validation for other steps
     const stepErrors = validateStep(currentStep, formData)
     
+    // Check for duplicate NRICs (Step 1 only)
+    if (currentStep === 1 && Object.keys(stepErrors).length === 0) {
+      if (formData.nricNo) {
+        // We await here, so handleNext must be async (it already is)
+        // Pass currentUser.id to exclude own record
+        const { exists } = await checkDuplicateNRIC(formData.nricNo, currentUser?.id)
+        if (exists) {
+          stepErrors.nricNo = 'This NRIC is already registered to another user account.'
+        }
+      }
+    }
+
+    // Check for duplicate Joint Applicant NRIC (Step 2 only)
+    if (currentStep === 2 && Object.keys(stepErrors).length === 0) {
+      if (formData.isJointApplicant && formData.jIc) {
+        // For joint applicant, we check against ALL users (do not exclude current user)
+        const { exists } = await checkDuplicateNRIC(formData.jIc, null)
+        if (exists) {
+          stepErrors.jIc = 'This NRIC is already registered to another user account.'
+        }
+      }
+    }
+
+    // Check for duplicate Nominee NRICs (Step 4 only)
+    if (currentStep === 4 && Object.keys(stepErrors).length === 0) {
+      if (formData.nominee1Ic) {
+        // Exclude current application ID to allow editing existing nominees in this application
+        const { exists } = await checkDuplicateNomineeNRIC(formData.nominee1Ic, applicationId)
+        if (exists) {
+          stepErrors.nominee1Ic = 'This NRIC is already used as a nominee in another application.'
+        }
+      }
+
+      if (formData.nominee2Ic) {
+        const { exists } = await checkDuplicateNomineeNRIC(formData.nominee2Ic, applicationId)
+        if (exists) {
+          stepErrors.nominee2Ic = 'This NRIC is already used as a nominee in another application.'
+        }
+      }
+    }
+    
     if (Object.keys(stepErrors).length > 0) {
+
       setErrors(stepErrors)
+      // ... same scroll logic ...
       // After setting errors, scroll to the first error field smoothly.
       setTimeout(() => {
         try {
@@ -1038,6 +1100,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     }
     
     setErrors({})
+
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1)
       window.scrollTo(0, 0)
@@ -1049,6 +1112,7 @@ function ApplicationController({ editNomineeOnly = false }) {
    */
   const handleBack = () => {
     if (currentStep > 1) {
+      setErrors({}) // Clear errors when going back to avoid confusion
       setCurrentStep(currentStep - 1)
       window.scrollTo(0, 0)
     }

@@ -5,6 +5,52 @@
 import { supabase } from '../config/supabase'
 import { corsProxyUpdate } from '../services/corsProxyService'
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+// Upsert helper that uses CORS proxy for updates (avoids direct upsert CORS issues)
+const upsertReportRecord = async (payload) => {
+  const { report_type, year, month } = payload
+
+  // Check if record exists for period
+  const { data: existing, error: selectError } = await supabase
+    .from('reports')
+    .select('id')
+    .eq('report_type', report_type)
+    .eq('year', year)
+    .eq('month', month ?? -1)
+    .maybeSingle()
+
+  if (selectError) throw selectError
+
+  // Update via proxy when record exists
+  if (existing?.id) {
+    const updateResult = await corsProxyUpdate('reports', existing.id, {
+      name: payload.name,
+      report_type,
+      year,
+      month: month ?? -1,
+      generated_at: payload.generated_at || new Date().toISOString(),
+      total: payload.total ?? 0,
+      approved: payload.approved ?? 0,
+      rejected: payload.rejected ?? 0,
+      pending: payload.pending ?? 0
+    })
+
+    if (!updateResult.success) throw new Error(updateResult.error)
+    return { success: true, data: { id: existing.id } }
+  }
+
+  // Insert new record (requires normal Supabase insert; proxy only supports updates)
+  const { data: inserted, error: insertError } = await supabase
+    .from('reports')
+    .insert([{ ...payload, month: month ?? -1 }])
+    .select('id')
+    .single()
+
+  if (insertError) throw insertError
+  return { success: true, data: inserted }
+}
+
 const Admin = {
   /**
    * Get dashboard statistics
@@ -12,18 +58,37 @@ const Admin = {
    */
   async getDashboardStats() {
     try {
-      // Get count by status
-      const { data: applications, error } = await supabase
-        .from('applications')
-        .select('status')
-      
-      if (error) throw error
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const endOfMonth = new Date(startOfMonth)
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1)
+      endOfMonth.setMilliseconds(-1)
+
+      const [applicationsResult, reportsResult] = await Promise.all([
+        supabase
+          .from('applications')
+          .select('status'),
+        supabase
+          .from('reports')
+          .select('*', { count: 'exact', head: true })
+          .gte('generated_at', startOfMonth.toISOString())
+          .lte('generated_at', endOfMonth.toISOString())
+      ])
+
+      if (applicationsResult.error) throw applicationsResult.error
+      if (reportsResult.error) throw reportsResult.error
+
+      const applications = applicationsResult.data || []
+      const reportsGenerated = reportsResult.count || 0
 
       const stats = {
         pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
         approved: applications.filter(app => app.status === 'approved').length,
         rejected: applications.filter(app => app.status === 'rejected').length,
-        total: applications.length
+        total: applications.filter(app => app.status !== 'draft').length,
+        reportsGenerated
       }
 
       return { success: true, data: stats }
@@ -318,40 +383,37 @@ const Admin = {
    */
   async getReports(filters = {}) {
     try {
-      // For now, return mock data with monthly and yearly reports
-      // In production, this would fetch from a reports table
-      const currentYear = new Date().getFullYear()
-      const currentMonth = new Date().getMonth()
-      
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      
-      const mockReports = []
-      
-      // Add monthly reports for the last 3 months
-      for (let i = 0; i < 3; i++) {
-        const monthIndex = (currentMonth - i + 12) % 12
-        const year = currentMonth - i < 0 ? currentYear - 1 : currentYear
-        
-        mockReports.push({
-          id: `monthly-${year}-${monthIndex}`,
-          name: `Monthly Application Report - ${monthNames[monthIndex]} ${year}`,
-          generatedOn: new Date(year, monthIndex, 28).toISOString(),
-          type: 'monthly',
-          year,
-          month: monthIndex
-        })
+      let query = supabase
+        .from('reports')
+        .select('*')
+        .order('generated_at', { ascending: false })
+
+      if (filters.type) {
+        query = query.eq('report_type', filters.type)
       }
-      
-      // Add yearly report
-      mockReports.push({
-        id: `yearly-${currentYear}`,
-        name: `Annual Application Analysis Report - ${currentYear}`,
-        generatedOn: new Date().toISOString(),
-        type: 'yearly',
-        year: currentYear
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      const mapped = (data || []).map(report => {
+        const isYearly = report.report_type === 'yearly'
+        const monthIndex = report.month ?? -1
+        const monthName = isYearly || monthIndex < 0 ? null : MONTH_NAMES[monthIndex] || 'Unknown'
+
+        return {
+          id: report.id,
+          name: report.name || (isYearly
+            ? `Annual Application Analysis Report - ${report.year}`
+            : `Monthly Application Report - ${monthName} ${report.year}`),
+          generatedOn: report.generated_at,
+          type: report.report_type,
+          year: report.year,
+          month: monthIndex >= 0 ? monthIndex : null
+        }
       })
 
-      return { success: true, data: mockReports }
+      return { success: true, data: mapped }
     } catch (error) {
       console.error('Error fetching reports:', error)
       return { success: false, error: error.message }
@@ -384,12 +446,24 @@ const Admin = {
       
       // Calculate statistics
       const stats = {
-        total: applications.length,
+        total: applications.filter(app => app.status !== 'draft').length,
         approved: applications.filter(app => app.status === 'approved').length,
         rejected: applications.filter(app => app.status === 'rejected').length,
         pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
         year: currentYear
       }
+
+      await upsertReportRecord({
+        name: `Annual Application Analysis Report - ${currentYear}`,
+        report_type: 'yearly',
+        year: currentYear,
+        month: -1,
+        generated_at: new Date().toISOString(),
+        total: stats.total,
+        approved: stats.approved,
+        rejected: stats.rejected,
+        pending: stats.pending
+      })
       
       return { 
         success: true, 
@@ -404,17 +478,38 @@ const Admin = {
 
   /**
    * View monthly report
-   * @param {string} reportId - Report ID
+   * @param {string} reportName - Report Name (format: "monthly-YYYY-MM")
    * @returns {Promise<Object>} Report data
    */
-  async viewMonthlyReport(reportId) {
+  async viewMonthlyReport(reportName) {
     try {
-      // Extract year and month from reportId
-      const [, year, month] = reportId.split('-')
+      // Extract year and month from reportName
+      // Format: "Monthly Application Report - Jan 2024"
+      const parts = reportName.split(' - ')
+      if (parts.length < 2) {
+        throw new Error('Invalid report name format')
+      }
       
-      // Fetch applications for the month
-      const startDate = new Date(parseInt(year), parseInt(month), 1)
-      const endDate = new Date(parseInt(year), parseInt(month) + 1, 0)
+      const datePart = parts[1] // "Jan 2024"
+      const dateParts = datePart.split(' ')
+      const monthName = dateParts[0]
+      const year = dateParts[1]
+      
+      // Get month index from month name
+      const parsedMonth = MONTH_NAMES.indexOf(monthName)
+      const parsedYear = parseInt(year)
+      
+      if (parsedMonth === -1 || isNaN(parsedYear)) {
+        throw new Error('Invalid year or month in report name')
+      }
+
+      const startDate = new Date(parsedYear, parsedMonth, 1)
+      const endDate = new Date(parsedYear, parsedMonth + 1, 0)
+      
+      // Validate dates are valid
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Invalid time value: Could not create valid dates from year and month')
+      }
       
       const { data: applications, error } = await supabase
         .from('applications')
@@ -425,17 +520,273 @@ const Admin = {
       if (error) throw error
       
       const stats = {
-        total: applications.length,
+        total: applications.filter(app => app.status !== 'draft').length,
         approved: applications.filter(app => app.status === 'approved').length,
         rejected: applications.filter(app => app.status === 'rejected').length,
         pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
-        month: parseInt(month),
-        year: parseInt(year)
+        month: parsedMonth,
+        year: parsedYear
       }
+
+      await upsertReportRecord({
+        name: `Monthly Application Report - ${MONTH_NAMES[parsedMonth] || 'Unknown'} ${parsedYear}`,
+        report_type: 'monthly',
+        year: parsedYear,
+        month: parsedMonth,
+        generated_at: new Date().toISOString(),
+        total: stats.total,
+        approved: stats.approved,
+        rejected: stats.rejected,
+        pending: stats.pending
+      })
       
       return { success: true, data: stats }
     } catch (error) {
       console.error('Error viewing monthly report:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Generate monthly report for the current month
+   * @returns {Promise<Object>} Generated report stats
+   */
+  async generateMonthlyReport() {
+    try {
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
+
+      const startDate = new Date(currentYear, currentMonth, 1)
+      const endDate = new Date(currentYear, currentMonth + 1, 0)
+
+      const { data: applications, error } = await supabase
+        .from('applications')
+        .select('*')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+
+      if (error) throw error
+
+      const stats = {
+        total: applications.filter(app => app.status !== 'draft').length,
+        approved: applications.filter(app => app.status === 'approved').length,
+        rejected: applications.filter(app => app.status === 'rejected').length,
+        pending: applications.filter(app => app.status === 'submitted' || app.status === 'underReviewed').length,
+        month: currentMonth,
+        year: currentYear
+      }
+
+      await upsertReportRecord({
+        name: `Monthly Application Report - ${MONTH_NAMES[currentMonth] || 'Unknown'} ${currentYear}`,
+        report_type: 'monthly',
+        year: currentYear,
+        month: currentMonth,
+        generated_at: new Date().toISOString(),
+        total: stats.total,
+        approved: stats.approved,
+        rejected: stats.rejected,
+        pending: stats.pending
+      })
+
+      return { success: true, data: { ...stats, reportId: `monthly-${currentYear}-${currentMonth}` } }
+    } catch (error) {
+      console.error('Error generating monthly report:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Generate and download analysis report as PDF
+   * @param {Object} reportData - Report statistics data
+   * @param {Object} report - Report metadata
+   * @returns {Promise<Object>} Download result
+   */
+  async downloadAnalysisReportPDF(reportData, report) {
+    try {
+      // Dynamically import jsPDF and html2canvas
+      const { default: jsPDF } = await import('jspdf')
+      const { default: html2canvas } = await import('html2canvas')
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 15
+      let yPosition = margin
+
+      // Helper function to add text with wrapping
+      const addWrappedText = (text, x, y, maxWidth, options = {}) => {
+        const { fontSize = 10, fontStyle = 'normal', color = [0, 0, 0] } = options
+        pdf.setFontSize(fontSize)
+        pdf.setTextColor(...color)
+        if (fontStyle !== 'normal') pdf.setFont(undefined, fontStyle)
+        const lines = pdf.splitTextToSize(text, maxWidth)
+        pdf.text(lines, x, y)
+        if (fontStyle !== 'normal') pdf.setFont(undefined, 'normal')
+        return y + (lines.length * 5)
+      }
+
+      // Title
+      yPosition = addWrappedText(
+        'APPLICATION ANALYSIS REPORT',
+        margin,
+        yPosition,
+        pageWidth - (2 * margin),
+        { fontSize: 18, fontStyle: 'bold', color: [41, 128, 185] }
+      )
+      yPosition += 5
+
+      // Report type and date
+      const reportType = report?.type === 'yearly' ? 'Annual' : 'Monthly'
+      const reportTitle = report?.name || 'Report'
+      yPosition = addWrappedText(
+        reportTitle,
+        margin,
+        yPosition,
+        pageWidth - (2 * margin),
+        { fontSize: 12, fontStyle: 'bold', color: [52, 73, 94] }
+      )
+      yPosition += 3
+
+      // Generated date
+      const generatedDate = report?.generatedOn 
+        ? new Date(report.generatedOn).toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          })
+        : new Date().toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          })
+      yPosition = addWrappedText(
+        `Generated: ${generatedDate}`,
+        margin,
+        yPosition,
+        pageWidth - (2 * margin),
+        { fontSize: 9, color: [127, 140, 141] }
+      )
+      yPosition += 8
+
+      // Summary Section
+      yPosition = addWrappedText(
+        'SUMMARY',
+        margin,
+        yPosition,
+        pageWidth - (2 * margin),
+        { fontSize: 12, fontStyle: 'bold', color: [41, 128, 185] }
+      )
+      yPosition += 2
+
+      // Draw horizontal line
+      pdf.setDrawColor(41, 128, 185)
+      pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+      yPosition += 4
+
+      // Statistics table data
+      const stats = [
+        { label: 'Total Applications', value: reportData?.total || 0 },
+        { label: 'Approved', value: reportData?.approved || 0 },
+        { label: 'Rejected', value: reportData?.rejected || 0 },
+        { label: 'Pending', value: reportData?.pending || 0 }
+      ]
+
+      // Draw statistics
+      const colWidth = (pageWidth - (2 * margin)) / 2
+      let statsYPosition = yPosition
+
+      stats.forEach((stat, index) => {
+        const isLeft = index % 2 === 0
+        const xPos = isLeft ? margin : margin + colWidth
+        
+        // Label
+        pdf.setFontSize(10)
+        pdf.setTextColor(52, 73, 94)
+        pdf.text(stat.label, xPos + 5, statsYPosition)
+        
+        // Value
+        pdf.setFontSize(14)
+        pdf.setTextColor(41, 128, 185)
+        pdf.setFont(undefined, 'bold')
+        pdf.text(stat.value.toString(), xPos + 5, statsYPosition + 6)
+        pdf.setFont(undefined, 'normal')
+
+        if (!isLeft) {
+          statsYPosition += 15
+        }
+      })
+
+      yPosition = statsYPosition + 5
+
+      // Approval Rate Section (if we have data)
+      if (reportData?.total > 0) {
+        yPosition += 5
+
+        yPosition = addWrappedText(
+          'APPROVAL METRICS',
+          margin,
+          yPosition,
+          pageWidth - (2 * margin),
+          { fontSize: 12, fontStyle: 'bold', color: [41, 128, 185] }
+        )
+        yPosition += 2
+
+        // Draw horizontal line
+        pdf.setDrawColor(41, 128, 185)
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+        yPosition += 4
+
+        const approvalRate = ((reportData.approved / reportData.total) * 100).toFixed(2)
+        const rejectionRate = ((reportData.rejected / reportData.total) * 100).toFixed(2)
+        const pendingRate = ((reportData.pending / reportData.total) * 100).toFixed(2)
+
+        const metrics = [
+          { label: 'Approval Rate', value: `${approvalRate}%` },
+          { label: 'Rejection Rate', value: `${rejectionRate}%` },
+          { label: 'Pending Rate', value: `${pendingRate}%` }
+        ]
+
+        metrics.forEach((metric) => {
+          yPosition = addWrappedText(
+            `${metric.label}: ${metric.value}`,
+            margin + 5,
+            yPosition,
+            pageWidth - (2 * margin) - 10,
+            { fontSize: 10, color: [52, 73, 94] }
+          )
+          yPosition += 3
+        })
+      }
+
+      yPosition += 5
+
+      // Footer
+      const pageCount = pdf.getNumberOfPages()
+      pdf.setFontSize(8)
+      pdf.setTextColor(149, 165, 166)
+      pdf.text(
+        `Generated on ${new Date().toLocaleString('en-GB')} | Page 1 of ${pageCount}`,
+        margin,
+        pageHeight - 10
+      )
+
+      // Generate filename
+      const fileName = report?.name 
+        ? `${report.name}.pdf` 
+        : `Analysis_Report_${new Date().toISOString().slice(0, 10)}.pdf`
+
+      // Download PDF
+      pdf.save(fileName)
+
+      return { success: true, message: 'Report downloaded successfully' }
+    } catch (error) {
+      console.error('Error generating PDF:', error)
       return { success: false, error: error.message }
     }
   }
