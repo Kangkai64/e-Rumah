@@ -20,6 +20,7 @@ import {
   approveHealthReport,
   flagHealthReport,
   archiveHealthReport,
+  reuploadHealthReport,
   getHealthReportsByApplication,
   updateHealthReportStatus,
   updateHealthReportDueStatus,
@@ -1511,56 +1512,14 @@ function HealthReportController() {
         return
       }
 
-      // Get current session for authentication
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError || !session) {
-        setError('Authentication failed. Please log in again.')
-        setIsUploading(false)
-        return
-      }
-
-      // Use CORS proxy function for update
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/revoke-share-proxy`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            table: 'health_reports',
-            id: reuploadReportId,
-            patch: {
-              report_file_url: uploadResult.url,
-              health_report_status: 'Pending',
-              updated_at: new Date().toISOString()
-            }
-          })
-        }
+      const result = await reuploadHealthReport(
+        reuploadReportId,
+        uploadResult.url,
+        { status: 'Pending' }
       )
 
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type')
-        let errorMessage = `HTTP Error: ${res.status}`
-        
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await res.json()
-            errorMessage = errorData.error || errorMessage
-          } catch (e) {
-            // Continue with default error message
-          }
-        }
-
-        setError('File uploaded but failed to save record to database. Please contact support.')
-        setIsUploading(false)
-        return
-      }
-
-      const result = await res.json()
       if (!result.success) {
-        setError('File uploaded but failed to save record to database. Please contact support.')
+        setError(result.error || 'File uploaded but failed to save record to database. Please contact support.')
         setIsUploading(false)
         return
       }

@@ -34,6 +34,12 @@ function AdminView({
   onUpdateStatus,
   onReviewApplication,
   onGenerateReport,
+  showReportModal,
+  reportGenerationType,
+  reportGenerating,
+  onReportTypeChange,
+  onCloseReportModal,
+  onConfirmReportGenerate,
   onViewReport,
   onShareReport,
   onArchiveReport,
@@ -447,31 +453,35 @@ function AdminView({
               </div>
 
               {/* Reports Rows */}
-              {reports.map((report) => (
-                <div key={report.id} className="admin-reports-row">
-                  <div className="admin-reports-col admin-report-name">{report.name}</div>
-                  <div className="admin-reports-col">{formatDate(report.generatedOn)}</div>
-                  <div className="admin-reports-col">
-                    <span className={`report-type-badge ${report.type === 'yearly' ? 'yearly' : 'monthly'}`}>
-                      {report.type === 'yearly' ? 'Yearly' : 'Monthly'}
-                    </span>
+              {reports.length === 0 ? (
+                <div className="admin-no-records">No reports generated yet.</div>
+              ) : (
+                reports.map((report) => (
+                  <div key={report.id} className="admin-reports-row">
+                    <div className="admin-reports-col admin-report-name">{report.name}</div>
+                    <div className="admin-reports-col">{formatDate(report.generatedOn)}</div>
+                    <div className="admin-reports-col">
+                      <span className={`report-type-badge ${report.type === 'yearly' ? 'yearly' : 'monthly'}`}>
+                        {report.type === 'yearly' ? 'Yearly' : 'Monthly'}
+                      </span>
+                    </div>
+                    <div className="admin-reports-col admin-reports-actions">
+                      <button 
+                        className="admin-report-action-btn"
+                        onClick={() => onViewReport(report.id)}
+                      >
+                        View
+                      </button>
+                      <button 
+                        className="admin-report-action-btn"
+                        onClick={() => onShareReport(report.id)}
+                      >
+                        Share
+                      </button>
+                    </div>
                   </div>
-                  <div className="admin-reports-col admin-reports-actions">
-                    <button 
-                      className="admin-report-action-btn"
-                      onClick={() => onViewReport(report.id)}
-                    >
-                      View
-                    </button>
-                    <button 
-                      className="admin-report-action-btn"
-                      onClick={() => onShareReport(report.id)}
-                    >
-                      Share
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Reports Footer */}
@@ -489,6 +499,55 @@ function AdminView({
           </div>
         </div>
       </div>
+
+      {showReportModal && (
+        <div className="modal-overlay" onClick={onCloseReportModal}>
+          <div className="modal report-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Select report type</h3>
+              <button className="close-button" onClick={onCloseReportModal} disabled={reportGenerating}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="report-type-options">
+                <label className="report-type-option">
+                  <input
+                    type="radio"
+                    name="reportType"
+                    value="monthly"
+                    checked={reportGenerationType === 'monthly'}
+                    onChange={() => onReportTypeChange('monthly')}
+                    disabled={reportGenerating}
+                  />
+                  <span>
+                    Monthly report (current month)
+                  </span>
+                </label>
+                <label className="report-type-option">
+                  <input
+                    type="radio"
+                    name="reportType"
+                    value="yearly"
+                    checked={reportGenerationType === 'yearly'}
+                    onChange={() => onReportTypeChange('yearly')}
+                    disabled={reportGenerating}
+                  />
+                  <span>
+                    Yearly report (current year)
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={onCloseReportModal} disabled={reportGenerating}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={onConfirmReportGenerate} disabled={reportGenerating}>
+                {reportGenerating ? 'Generating...' : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status Update Modal */}
       {showStatusModal && statusUpdateApp && (

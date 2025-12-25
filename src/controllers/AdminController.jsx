@@ -15,7 +15,7 @@ function AdminController() {
     pending: 0,
     approved: 0,
     rejected: 0,
-    reportsGenerated: 48
+    reportsGenerated: 0
   })
   const [applications, setApplications] = useState([])
   const [selectedApplication, setSelectedApplication] = useState(null)
@@ -30,6 +30,11 @@ function AdminController() {
     sortBy: 'submitted_at',
     sortOrder: 'desc'
   })
+
+  // Report generation modal state
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportGenerationType, setReportGenerationType] = useState('monthly')
+  const [reportGenerating, setReportGenerating] = useState(false)
 
   // Tab states
   const [activeRecordTab, setActiveRecordTab] = useState('applications')
@@ -83,7 +88,6 @@ function AdminController() {
       if (statsResult.success) {
         setStatistics({
           ...statsResult.data,
-          reportsGenerated: 48 // Mock data
         })
       }
 
@@ -292,19 +296,6 @@ function AdminController() {
   }
 
   /**
-   * Handle generate report
-   */
-  const handleGenerateReport = async () => {
-    const result = await Admin.generateReport()
-      if (result.success) {
-      alert('Report generation initiated!')
-        loadDashboardData()
-      } else {
-        alert('Error generating report: ' + result.error)
-      }
-  }
-
-  /**
    * Handle report actions
    */
   const handleViewReport = async (reportId) => {
@@ -317,10 +308,18 @@ function AdminController() {
       
       // For monthly reports, fetch and view data
       if (report.type === 'monthly') {
-        const result = await Admin.viewMonthlyReport(reportId)
+        const result = await Admin.viewMonthlyReport(report.name)
         if (result.success) {
           // Navigate to report view with data
           navigate(`/admin/report/${reportId}`, { state: { reportData: result.data, report } })
+        } else {
+          alert('Error loading report: ' + result.error)
+        }
+      } else if (report.type === 'yearly') {
+        const result = await Admin.generateYearlyReport()
+        if (result.success) {
+          navigate('/admin/report/yearly', { state: { reportData: result.data, report } })
+          await loadDashboardData()
         } else {
           alert('Error loading report: ' + result.error)
         }
@@ -350,22 +349,45 @@ function AdminController() {
     })
   }
 
-  const handleGenerateYearlyReport = async () => {
+  const handleOpenReportGenerator = () => {
+    setShowReportModal(true)
+    setReportGenerationType('monthly')
+  }
+
+  const handleCloseReportGenerator = () => {
+    setShowReportModal(false)
+    setReportGenerationType('monthly')
+  }
+
+  const handleConfirmReportGenerate = async () => {
     try {
-      setLoading(true)
-      const result = await Admin.generateYearlyReport()
-      
-      if (result.success) {
-        // Navigate to report view
-        navigate('/admin/report/yearly', { state: { reportData: result.data } })
+      setReportGenerating(true)
+
+      if (reportGenerationType === 'yearly') {
+        const result = await Admin.generateYearlyReport()
+        if (result.success) {
+          navigate('/admin/report/yearly', { state: { reportData: result.data } })
+          await loadDashboardData()
+        } else {
+          alert('Error generating report: ' + result.error)
+        }
       } else {
-        alert('Error generating report: ' + result.error)
+        const result = await Admin.generateMonthlyReport()
+        if (result.success) {
+          const { year, month, reportId } = result.data
+          const reportName = `Monthly Application Report - ${new Date(year, month, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
+          navigate(`/admin/report/${reportId}`, { state: { reportData: result.data, report: { id: reportId, name: reportName, type: 'monthly', generatedOn: new Date().toISOString() } } })
+          await loadDashboardData()
+        } else {
+          alert('Error generating report: ' + result.error)
+        }
       }
     } catch (err) {
-      console.error('Error generating yearly report:', err)
+      console.error('Error generating report:', err)
       alert('Error generating report: ' + err.message)
     } finally {
-      setLoading(false)
+      setReportGenerating(false)
+      handleCloseReportGenerator()
     }
   }
 
@@ -442,9 +464,15 @@ function AdminController() {
       onApproveApplication={handleApproveApplication}
       onUpdateStatus={handleUpdateStatus}
       onReviewApplication={handleReviewApplication}
-      onGenerateReport={handleGenerateYearlyReport}
+      onGenerateReport={handleOpenReportGenerator}
       onViewReport={handleViewReport}
       onShareReport={handleShareReport}
+      showReportModal={showReportModal}
+      reportGenerationType={reportGenerationType}
+      reportGenerating={reportGenerating}
+      onReportTypeChange={setReportGenerationType}
+      onCloseReportModal={handleCloseReportGenerator}
+      onConfirmReportGenerate={handleConfirmReportGenerate}
       onRecordTabChange={setActiveRecordTab}
       onDetailTabChange={setActiveDetailTab}
       onReportFilterChange={setReportFilter}

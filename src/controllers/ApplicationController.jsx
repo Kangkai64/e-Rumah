@@ -532,25 +532,6 @@ function ApplicationController({ editNomineeOnly = false }) {
     }
   }, [formData, currentStep, debouncedSave, isLoading])
 
-  // Old localStorage-only code (kept for reference, now handled above)
-  // useEffect(() => {
-  //   const savedStep = localStorage.getItem('ssbCurrentStep')
-  //   if (savedStep) {
-  //     setCurrentStep(parseInt(savedStep))
-  //   }
-  //   window.scrollTo(0, 0)
-  // }, [])
-
-  // Old: Save draft whenever formData changes (now handled by auto-save above)
-  // useEffect(() => {
-  //   Application.saveDraft(formData)
-  // }, [formData])
-
-  // Old: Save current step (now handled by auto-save above)
-  // useEffect(() => {
-  //   localStorage.setItem('ssbCurrentStep', currentStep.toString())
-  // }, [currentStep])
-
   /**
    * Handle form field changes with auto-fill logic
    */

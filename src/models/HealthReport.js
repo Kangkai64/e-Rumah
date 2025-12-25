@@ -1642,6 +1642,41 @@ export const updateHealthReportDueStatus = async (reportId, dueStatus) => {
 }
 
 /**
+ * Replace an existing health report file and reset its status
+ * @param {string} reportId - Health report ID
+ * @param {string} fileUrl - Newly uploaded file URL
+ * @param {Object} options - Optional overrides
+ * @param {string} [options.status='Pending'] - Status to set after reupload
+ * @returns {Promise<Object>} Updated health report
+ */
+export const reuploadHealthReport = async (reportId, fileUrl, options = {}) => {
+  try {
+    if (!reportId) {
+      return { success: false, error: 'Report ID is required for reupload' }
+    }
+
+    if (!fileUrl) {
+      return { success: false, error: 'File URL is required for reupload' }
+    }
+
+    const status = options.status || 'Pending'
+    const timestamp = new Date().toISOString()
+
+    const result = await corsProxyUpdate('health_reports', reportId, {
+      report_file_url: fileUrl,
+      health_report_status: status,
+      updated_at: timestamp
+    })
+
+    if (!result.success) throw new Error(result.error)
+    return { success: true, data: result.data, message: 'Health report file replaced successfully' }
+  } catch (error) {
+    console.error('Error reuploading health report:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Get admin dashboard statistics
  * @returns {Promise<Object>} Statistics object with counts
  */
