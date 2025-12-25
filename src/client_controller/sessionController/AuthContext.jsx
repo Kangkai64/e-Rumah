@@ -7,6 +7,7 @@ import { supabase } from '../../config/supabase'
 
 const AuthContext = createContext({})
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -48,7 +49,7 @@ export function AuthProvider({ children }) {
       
       const fetchPromise = supabase
         .from('users')
-        .select('role, type')
+        .select('role, type, id, email, full_name, ic_number, phone')
         .eq('id', authUser.id)
         .maybeSingle()
 

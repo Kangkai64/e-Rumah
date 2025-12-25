@@ -17,8 +17,15 @@
  * @returns {Object} { birthDate: {day, month, year}, sex: 'Male'|'Female'|null, placeOfBirth: {code: string, isMalaysiaBorn: boolean}, isValid: boolean }
  */
 export function parseICNumber(icNumber) {
-  if (!icNumber) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+  const emptyReturn = { 
+    birthDate: { day: null, month: null, year: null }, 
+    sex: null, 
+    placeOfBirth: { code: null, isMalaysiaBorn: null }, 
+    isValid: false 
+  }
+
+  if (!icNumber || typeof icNumber !== 'string') {
+    return emptyReturn
   }
 
   // Remove dashes and spaces
@@ -26,7 +33,7 @@ export function parseICNumber(icNumber) {
 
   // Malaysian IC should be 12 digits
   if (cleanIC.length !== 12 || !/^\d{12}$/.test(cleanIC)) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   // Extract date components (YYMMDD)
@@ -40,7 +47,7 @@ export function parseICNumber(icNumber) {
   
   // Validate Place of Birth code (00 is invalid)
   if (pbCodeInt < 1) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   const isMalaysiaBorn = pbCodeInt >= 1 && pbCodeInt <= 59
@@ -48,16 +55,22 @@ export function parseICNumber(icNumber) {
   // Extract gender digit (last digit)
   const genderDigit = parseInt(cleanIC.substring(11, 12))
 
-  // Determine full year (assuming threshold: 00-25 = 2000s, 26-99 = 1900s)
+  // Determine century based on current year and age constraints
   const currentYear = new Date().getFullYear()
   const currentCentury = Math.floor(currentYear / 100) * 100
-  const yearInt = parseInt(year)
-  let fullYear
-
-  if (yearInt <= 25) {
-    fullYear = currentCentury + yearInt // 2000-2025
-  } else {
-    fullYear = (currentCentury - 100) + yearInt // 1926-1999
+  const previousCentury = currentCentury - 100
+  
+  // Try current century first
+  let fullYear = parseInt(currentCentury) + parseInt(year)
+  
+  // If this would make them born in the future or too young (< 55), use previous century
+  if (fullYear > currentYear || (currentYear - fullYear) < 55) {
+    fullYear = parseInt(previousCentury) + parseInt(year)
+  }
+  
+  // If they'd be over 120 years old, use current century instead
+  if ((currentYear - fullYear) > 120) {
+    fullYear = parseInt(currentCentury) + parseInt(year)
   }
 
   // Validate month and day
@@ -65,23 +78,23 @@ export function parseICNumber(icNumber) {
   const dayInt = parseInt(day)
 
   if (monthInt < 1 || monthInt > 12) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   if (dayInt < 1 || dayInt > 31) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   // Validate day based on month (check for valid day in that specific month)
   const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
   if (dayInt > daysInMonth[monthInt - 1]) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   // Additional validation: Check if the date is actually valid
   const testDate = new Date(fullYear, monthInt - 1, dayInt)
   if (testDate.getMonth() !== monthInt - 1 || testDate.getDate() !== dayInt) {
-    return { birthDate: null, sex: null, placeOfBirth: null, isValid: false }
+    return emptyReturn
   }
 
   // Determine sex (odd = male, even = female)

@@ -182,7 +182,21 @@ function HealthReportController() {
           navigate('/login')
           return
         }
-        setCurrentUser(user)
+
+        // Fetch full user profile including ic_number from users table
+        const { data: userProfile, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (userError || !userProfile) {
+          // Fallback to auth user if profile not found
+          setCurrentUser(user)
+        } else {
+          // Merge auth user with profile data
+          setCurrentUser({ ...user, ...userProfile })
+        }
 
         // Fetch health reports
         await fetchReports(user.id)
