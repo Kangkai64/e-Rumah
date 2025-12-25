@@ -301,6 +301,29 @@ const Application = {
   },
 
   /**
+   * Clear rejection reason and termination fields after user dismisses the notice
+   * @param {string} applicationId - The application ID
+   * @returns {Promise<Object>} Update result
+   */
+  async clearRejectionReason(applicationId) {
+    try {
+      const result = await corsProxyUpdate('applications', applicationId, {
+        reject_termination_reason: null,
+        termination_reason: null,
+        termination_submitted_at: null,
+        termination_update_at: null,
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error clearing rejection reason:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
    * Delete application
    * @param {string} applicationId - The application ID
    * @returns {Promise<Object>} Deletion result

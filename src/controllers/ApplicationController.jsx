@@ -35,6 +35,7 @@ function ApplicationController({ editNomineeOnly = false }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [applicationId, setApplicationId] = useState(null)
   const [flaggedCode, setFlaggedCode] = useState(null)
+  const [applicationStatus, setApplicationStatus] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -292,6 +293,7 @@ function ApplicationController({ editNomineeOnly = false }) {
           // Successfully loaded or created application
           setApplicationId(application?.id)
           setFlaggedCode(application?.flagged_code || null)
+          setApplicationStatus(application?.status || null)
           
           if (applicationData?.form_data && Object.keys(applicationData.form_data).length > 0) {
             // Has existing data - load it
@@ -385,6 +387,11 @@ function ApplicationController({ editNomineeOnly = false }) {
 
     initializeApplication()
   }, [])
+
+  // Log applicationStatus changes for debugging
+  useEffect(() => {
+    console.log('🔍 Application Status:', applicationStatus, 'Loading:', isLoading)
+  }, [applicationStatus, isLoading])
 
   // ==========================================
   // AUTO-FILL: Steps 5, 6, 7 when data is available

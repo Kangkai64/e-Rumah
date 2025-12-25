@@ -48,8 +48,8 @@
 }
 
 .status-badge.status-terminated {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .status-badge.status-default {
@@ -96,6 +96,108 @@
   font-size: 0.85rem;
   color: #b45309;
   font-style: italic;
+}
+
+/* Terminated Status Banner */
+.terminated-status-banner {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  border-left: 4px solid #dc2626;
+}
+
+.terminated-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.terminated-message {
+  flex: 1;
+}
+
+.terminated-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.terminated-message p {
+  margin: 0.5rem 0;
+  color: #991b1b;
+  font-size: 0.95rem;
+}
+
+.terminated-message .terminated-date {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #b91c1c;
+  font-style: italic;
+}
+
+/* Rejection Reason Banner */
+.rejection-reason-banner {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  border-left: 4px solid #dc2626;
+}
+
+.rejection-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.rejection-message {
+  flex: 1;
+}
+
+.rejection-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #7f1d1d;
+}
+
+.rejection-message p {
+  margin: 0.5rem 0;
+  color: #7f1d1d;
+  font-size: 0.95rem;
+}
+
+.rejection-message .rejection-note {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #991b1b;
+  font-style: italic;
+}
+
+.rejection-close-btn {
+  flex-shrink: 0;
+  padding: 0.75rem 1.5rem;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.rejection-close-btn:hover {
+  background-color: #b91c1c;
 }
 
 /* Content Layout - Two Columns */
@@ -507,6 +609,70 @@
   font-size: 0.75rem;
   color: #9ca3af;
   font-weight: 500;
+}
+
+.payback-notice {
+  background-color: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 0.375rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.payback-notice p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #92400e;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* Payback Amount Section (Terminated) */
+.payback-section {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.payback-section h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #dc2626;
+  letter-spacing: 0.05em;
+  margin: 0 0 1.25rem 0;
+  text-transform: uppercase;
+}
+
+.payback-card {
+  border: 2px solid #dc2626 !important;
+}
+
+.payback-card .primary-item {
+  background-color: #fef2f2 !important;
+  border-bottom: 2px solid #dc2626 !important;
+}
+
+.payback-card .amount {
+  color: #dc2626 !important;
+}
+
+.btn-payback {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  margin-top: 1rem;
+  opacity: 0.8;
+}
+
+.btn-payback:hover {
+  background: #b91c1c;
 }
 
 /* Actions Section */

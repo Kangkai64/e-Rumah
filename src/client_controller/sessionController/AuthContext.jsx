@@ -93,7 +93,7 @@ export function AuthProvider({ children }) {
           .from('applications')
           .select('status')
           .eq('user_id', authUser.id)
-          .in('status', ['submitted', 'underReviewed', 'approved'])
+          .in('status', ['submitted', 'underReviewed', 'approved', 'terminated'])
           .maybeSingle()
 
         const result = await Promise.race([
@@ -106,11 +106,15 @@ export function AuthProvider({ children }) {
 
         // Only update status if query succeeded (not timed out)
         if (!result.timedOut) {
-          const isComplete = result.data ? 'complete' : 'incomplete'
-          console.log('📊 Application status:', isComplete, '- App data:', result.data)
-          setApplicationStatus(isComplete)
+          // Track terminated status separately so route protection can block new applications
+          let appStatus = 'incomplete'
+          if (result.data) {
+            appStatus = result.data.status === 'terminated' ? 'terminated' : 'complete'
+          }
+          console.log('📊 Application status:', appStatus, '- App data:', result.data)
+          setApplicationStatus(appStatus)
           // Cache the application status in localStorage
-          localStorage.setItem('applicationStatus', isComplete)
+          localStorage.setItem('applicationStatus', appStatus)
         } else {
           // Use cached status on timeout
           const cachedStatus = localStorage.getItem('applicationStatus')

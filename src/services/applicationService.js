@@ -140,7 +140,7 @@ export const saveApplicationData = async (applicationId, formData, currentStep) 
  */
 export const loadApplicationData = async (userId) => {
   try {
-    // Fetch the last submitted/underReviewed/approved application for this user
+    // Fetch the last submitted/underReviewed/approved/terminated application for this user
     const { data: application, error: fetchError } = await supabase
       .from('applications')
       .select(`
@@ -148,7 +148,7 @@ export const loadApplicationData = async (userId) => {
         application_data(*)
       `)
       .eq('user_id', userId)
-      .in('status', ['submitted', 'underReviewed', 'approved'])
+      .in('status', ['submitted', 'underReviewed', 'approved', 'terminated'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single()

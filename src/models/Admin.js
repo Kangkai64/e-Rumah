@@ -202,12 +202,20 @@ const Admin = {
    */
   async approveApplication(applicationId, approvalData = {}) {
     try {
-      const result = await corsProxyUpdate('applications', applicationId, {
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          remarks: approvalData.remarks || null,
-          updated_at: new Date().toISOString()
-        })
+      const updateData = {
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        remarks: approvalData.remarks || null,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Include approved_amount if provided and not empty
+      if (approvalData.approved_amount && !isNaN(parseFloat(approvalData.approved_amount))) {
+        updateData.approved_amount = parseFloat(approvalData.approved_amount)
+      }
+      
+      console.log('Approving application with data:', updateData)
+      const result = await corsProxyUpdate('applications', applicationId, updateData)
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
@@ -259,12 +267,43 @@ const Admin = {
         updates.reviewed_at = new Date().toISOString()
       }
 
+      // Clear termination fields when terminating application
+      if (status === 'terminated') {
+        updates.termination_update_at = new Date().toISOString()
+        updates.termination_submitted_at = null
+      }
+
       const result = await corsProxyUpdate('applications', applicationId, updates)
 
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
     } catch (error) {
       console.error('Error updating application status:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Reject termination request
+   * @param {string} applicationId - Application ID
+   * @param {string} rejectionReason - Reason for rejection
+   * @returns {Promise<Object>} Updated application
+   */
+  async rejectTermination(applicationId, rejectionReason) {
+    try {
+      // Clear termination fields, set status back to approved, and save rejection reason
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'approved',
+        termination_reason: null,
+        termination_submitted_at: null,
+        reject_termination_reason: rejectionReason,
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error rejecting termination:', error)
       return { success: false, error: error.message }
     }
   },

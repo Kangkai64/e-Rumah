@@ -48,6 +48,15 @@ function AdminController() {
   const [statusRemarks, setStatusRemarks] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
+  // Approved amount state
+  const [approvedAmount, setApprovedAmount] = useState('')
+
+  // Termination modal state
+  const [showTerminationModal, setShowTerminationModal] = useState(false)
+  const [terminationAction, setTerminationAction] = useState(null) // 'approve' or 'reject'
+  const [terminationAppId, setTerminationAppId] = useState(null)
+  const [processingTermination, setProcessingTermination] = useState(false)
+
   const navigate = useNavigate()
 
   // Load dashboard data on mount and when auth changes
@@ -177,13 +186,82 @@ function AdminController() {
    */
   const handleApproveApplication = async () => {
     if (!selectedApplication) return
+    
+    if (selectedApplication.status === 'underReviewed' && !approvedAmount) {
+      alert('Please enter the approved amount')
+      return
+    }
 
-    const result = await Admin.approveApplication(selectedApplication.id)
+    const result = await Admin.approveApplication(selectedApplication.id, {
+      approved_amount: approvedAmount ? parseFloat(approvedAmount) : null
+    })
     if (result.success) {
       alert('Application approved successfully!')
+      setApprovedAmount('') // Reset the field
       loadDashboardData() // Refresh data
     } else {
       alert('Error approving application: ' + result.error)
+    }
+  }
+
+  /**
+   * Handle approved amount change
+   */
+  const handleApprovedAmountChange = (value) => {
+    setApprovedAmount(value)
+  }
+
+  /**
+   * Handle approve termination
+   */
+  const handleApproveTermination = async (applicationId) => {
+    if (!applicationId) return
+    
+    if (!window.confirm('Are you sure you want to approve the termination request for this application?')) {
+      return
+    }
+
+    setProcessingTermination(true)
+    try {
+      const result = await Admin.updateApplicationStatus(applicationId, 'terminated')
+      if (result.success) {
+        alert('Termination approved successfully!')
+        loadDashboardData()
+      } else {
+        alert('Error approving termination: ' + result.error)
+      }
+    } catch (err) {
+      console.error('Error approving termination:', err)
+      alert('Error approving termination: ' + err.message)
+    } finally {
+      setProcessingTermination(false)
+    }
+  }
+
+  /**
+   * Handle reject termination
+   */
+  const handleRejectTermination = async (applicationId) => {
+    if (!applicationId) return
+    
+    const reason = window.prompt('Please provide a reason for rejecting the termination request:')
+    if (reason === null) return // User cancelled
+
+    setProcessingTermination(true)
+    try {
+      // Update to clear termination fields, set remarks, and set status back to approved
+      const result = await Admin.rejectTermination(applicationId, reason)
+      if (result.success) {
+        alert('Termination rejected successfully! Application status restored to Approved.')
+        loadDashboardData()
+      } else {
+        alert('Error rejecting termination: ' + result.error)
+      }
+    } catch (err) {
+      console.error('Error rejecting termination:', err)
+      alert('Error rejecting termination: ' + err.message)
+    } finally {
+      setProcessingTermination(false)
     }
   }
 
@@ -455,6 +533,13 @@ function AdminController() {
       newStatus={newStatus}
       statusRemarks={statusRemarks}
       updatingStatus={updatingStatus}
+      approvedAmount={approvedAmount}
+      onApprovedAmountChange={handleApprovedAmountChange}
+      showTerminationModal={showTerminationModal}
+      terminationAction={terminationAction}
+      onApproveTermination={handleApproveTermination}
+      onRejectTermination={handleRejectTermination}
+      onCancelTermination={() => setShowTerminationModal(false)}
       onSearchChange={handleSearchChange}
       onSearch={handleSearch}
       onFilterFieldChange={handleFilterFieldChange}

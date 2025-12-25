@@ -32,7 +32,7 @@ export default function ProtectedRoute({ children, requireRole = null }) {
 
   // Wait for userRole to be determined before making routing decisions
   // This prevents premature redirects while role is being fetched
-  if (userRole === null) {
+  if (userRole === null || applicationStatus === null) {
     return (
       <div style={{ 
         minHeight: '100vh', 
@@ -55,12 +55,19 @@ export default function ProtectedRoute({ children, requireRole = null }) {
     if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />
     if (userRole === 'support') return <Navigate to="/support/dashboard" replace />
     if (userRole === 'user') {
+      // Terminated or complete users go to dashboard, incomplete go to application
       return applicationStatus === 'incomplete' 
         ? <Navigate to="/application" replace />
         : <Navigate to="/user/dashboard" replace />
     }
     // Fallback for unknown roles
     return <Navigate to="/login" replace />
+  }
+
+  // For terminated users - block access to /application (they cannot apply again until paid)
+  if (userRole === 'user' && applicationStatus === 'terminated' && location.pathname === '/application') {
+    console.log('🚫 Terminated user cannot access application form')
+    return <Navigate to="/user/application" replace />
   }
 
   // For regular users with incomplete application (only check for 'user' role)
@@ -73,8 +80,8 @@ export default function ProtectedRoute({ children, requireRole = null }) {
     }
   }
 
-  // For regular users with complete application trying to access /application
-  if (userRole === 'user' && applicationStatus === 'complete' && location.pathname === '/application') {
+  // For regular users with complete or terminated application trying to access /application
+  if (userRole === 'user' && (applicationStatus === 'complete' || applicationStatus === 'terminated') && location.pathname === '/application') {
     return <Navigate to="/user/dashboard" replace />
   }
 

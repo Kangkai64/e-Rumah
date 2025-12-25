@@ -20,7 +20,6 @@ function MaintainApplicationController() {
   const [application, setApplication] = useState(null)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [approvedAmount, setApprovedAmount] = useState(null)
-  const [monthlyPayout, setMonthlyPayout] = useState(null)
   const [flaggedCode, setFlaggedCode] = useState(null)
   const [flaggedReason, setFlaggedReason] = useState(null)
   const [timeline, setTimeline] = useState([])
@@ -29,6 +28,7 @@ function MaintainApplicationController() {
   const [documentsError, setDocumentsError] = useState(null)
   const [downloadingPDF, setDownloadingPDF] = useState(false)
   const [pdfError, setPdfError] = useState(null)
+  const [showRejectTerminationReason, setShowRejectTerminationReason] = useState(true)
   
   // Fetch current user
   useEffect(() => {
@@ -80,15 +80,9 @@ function MaintainApplicationController() {
         setFlaggedCode(appData.flagged_code)
         setFlaggedReason(appData.flagged_reason)
         
-        // Calculate approved amount from property value (60% of market value)
-        // This follows the same logic as UserDashboard
-        if (appData.properties) {
-          const propertyValue = appData.properties.expected_market_value || appData.properties.indicative_market_value || 0
-          const eligibleAmount = propertyValue * 0.60
-          const monthlyPayout = eligibleAmount / 60 // 60 months (5 years)
-          
-          setApprovedAmount(eligibleAmount)
-          setMonthlyPayout(monthlyPayout)
+        // Use approved_amount from the application record
+        if (appData.approved_amount !== null && appData.approved_amount !== undefined) {
+          setApprovedAmount(appData.approved_amount)
         }
         
         buildTimeline(appData)
@@ -127,14 +121,9 @@ function MaintainApplicationController() {
           setFlaggedCode(appData.flagged_code)
           setFlaggedReason(appData.flagged_reason)
           
-          // Calculate approved amount from property value (60% of market value)
-          if (appData.properties) {
-            const propertyValue = appData.properties.expected_market_value || appData.properties.indicative_market_value || 0
-            const eligibleAmount = propertyValue * 0.60
-            const monthlyPayout = eligibleAmount / 60
-            
-            setApprovedAmount(eligibleAmount)
-            setMonthlyPayout(monthlyPayout)
+          // Use approved_amount from the application record
+          if (appData.approved_amount !== null && appData.approved_amount !== undefined) {
+            setApprovedAmount(appData.approved_amount)
           }
           
           buildTimeline(appData)
@@ -287,6 +276,32 @@ function MaintainApplicationController() {
       setDownloadingPDF(false)
     }
   }
+
+  // Handle dismiss reject termination reason
+  const handleDismissRejectReason = async () => {
+    try {
+      // Clear the rejection reason and termination fields from database
+      const result = await Application.clearRejectionReason(application.id)
+      if (result.success) {
+        setShowRejectTerminationReason(false)
+        // Refresh application data to ensure consistency
+        const { loadApplicationData } = await import('../services/applicationService')
+        const { application: appData, applicationData, error: loadError } = await loadApplicationData(currentUser.id)
+        if (!loadError && appData) {
+          const enrichedApplication = {
+            ...appData,
+            submitted_form_data: applicationData?.form_data || {}
+          }
+          setApplication(enrichedApplication)
+        }
+      } else {
+        console.error('Error clearing rejection reason:', result.error)
+      }
+    } catch (error) {
+      console.error('Error in handleDismissRejectReason:', error)
+      setShowRejectTerminationReason(false)
+    }
+  }
   
   // Handle document upload success - refresh documents
   const handleDocumentUploaded = async () => {
@@ -314,7 +329,6 @@ function MaintainApplicationController() {
       application={application}
       applicationStatus={applicationStatus}
       approvedAmount={approvedAmount}
-      monthlyPayout={monthlyPayout}
       flaggedCode={flaggedCode}
       flaggedReason={flaggedReason}
       timeline={timeline}
@@ -327,6 +341,8 @@ function MaintainApplicationController() {
       pdfError={pdfError}
       onDownloadPDF={handleDownloadPDF}
       onTerminateApplication={handleTerminateApplication}
+      showRejectTerminationReason={showRejectTerminationReason}
+      onDismissRejectReason={handleDismissRejectReason}
     />
   )
 }

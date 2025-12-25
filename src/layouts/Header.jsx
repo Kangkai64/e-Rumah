@@ -124,8 +124,8 @@ const Header = () => {
     )
   }
 
-  // User Header (logged in with complete application)
-  if (userRole === 'user' && applicationStatus === 'complete') {
+  // User Header (logged in with complete or terminated application)
+  if (userRole === 'user' && (applicationStatus === 'complete' || applicationStatus === 'terminated')) {
     return (
       <header className="site-header">
         <div className="header-container">
