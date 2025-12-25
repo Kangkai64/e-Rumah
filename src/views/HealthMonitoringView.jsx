@@ -19,7 +19,7 @@ import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 import '../client_controller/health_report/HealthMonitoringView.css'
-import { parseICNumber, getCurrentDate } from '../utils/icParser'
+import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
 
 // ============================================================================
 // HELPER COMPONENTS
@@ -160,134 +160,6 @@ function DragDropArea({
               <div className="drag-drop-subtext">or click to select</div>
             </>
           )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Upload Modal Component
-function UploadModal({
-  show,
-  uploadForm,
-  minReportDate,
-  isDragging,
-  errors,
-  onCancel,
-  onUploadFormChange,
-  onDragEnter,
-  onDragLeave,
-  onDragOver,
-  onDrop,
-  onFileSelect,
-  onSubmit,
-  applicationId // Current applicationId from URL
-}) {
-  if (!show) return null
-
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content upload-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Upload Health Report</h3>
-          <button className="close-button" onClick={onCancel}>×</button>
-        </div>
-
-        <div className="modal-body">
-          <p className="upload-subtitle">PDF, JPG up to 10MB</p>
-
-          <DragDropArea
-            isDragging={isDragging}
-            onDragEnter={onDragEnter}
-            onDragLeave={onDragLeave}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onFileSelect={onFileSelect}
-            file={uploadForm.file}
-          />
-
-          {/* Show current application context if accessing from application page */}
-          {applicationId && (
-            <div className="form-group">
-              <div className="info-box">
-                <strong>Application Context:</strong> This health report will be associated with Application ID: {applicationId}
-              </div>
-            </div>
-          )}
-
-          <div className="form-group">
-            <label htmlFor="reportType">Report Type *</label>
-            <select
-              id="reportType"
-              value={uploadForm.reportType}
-              onChange={(e) => onUploadFormChange('reportType', e.target.value)}
-              required
-            >
-              <option value="">Select report type</option>
-              <option value="Medical Report">Medical Report</option>
-              <option value="Lab Test">Lab Test</option>
-              <option value="Prescription">Prescription</option>
-              <option value="Vaccination Record">Vaccination Record</option>
-              <option value="Doctor's Visit Summary">Doctor's Visit Summary</option>
-            </select>
-            {errors.reportType && <span className="error-text">{errors.reportType}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="reportDate">Report Date *</label>
-            <input
-              type="date"
-              id="reportDate"
-              value={uploadForm.reportDate}
-              min={minReportDate}
-              onChange={(e) => onUploadFormChange('reportDate', e.target.value)}
-              required
-            />
-            {errors.reportDate && <span className="error-text">{errors.reportDate}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="reportTitle">Report Title *</label>
-            <input
-              type="text"
-              id="reportTitle"
-              placeholder="Enter a descriptive title for your report"
-              value={uploadForm.reportTitle}
-              onChange={(e) => onUploadFormChange('reportTitle', e.target.value)}
-              required
-            />
-            {errors.reportTitle && <span className="error-text">{errors.reportTitle}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="providerName">Healthcare Provider *</label>
-            <input
-              type="text"
-              id="providerName"
-              placeholder="Name of the healthcare provider or facility"
-              value={uploadForm.providerName}
-              onChange={(e) => onUploadFormChange('providerName', e.target.value)}
-              required
-            />
-            {errors.providerName && <span className="error-text">{errors.providerName}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="notes">Notes (Optional)</label>
-            <textarea
-              id="notes"
-              placeholder="Additional notes about this report"
-              value={uploadForm.notes}
-              onChange={(e) => onUploadFormChange('notes', e.target.value)}
-              rows="3"
-            ></textarea>
-            {errors.notes && <span className="error-text">{errors.notes}</span>}
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={onSubmit}>Upload Report</button>
         </div>
       </div>
     </div>
@@ -559,6 +431,8 @@ function ReminderModal({
             <label htmlFor="reminderDate">Date *</label>
             <input
               type="date"
+              min={new Date().toISOString().split('T')[0]}
+              max={new Date(new Date().setFullYear(new Date().getFullYear() + 5)).toISOString().split('T')[0]}
               id="reminderDate"
               value={reminderForm?.reminder_date || ''}
               onChange={(e) => onFormChange?.('reminder_date', e.target.value)}
@@ -642,6 +516,7 @@ function ReminderModal({
                 1 day before
               </label>
             </div>
+            {errors?.reminder_frequencies && <span className="error-text">{errors.reminder_frequencies}</span>}
           </div>
 
           <div className="form-group">
@@ -688,7 +563,6 @@ function UserHealthReportView({
   filters,
   sortBy,
   sortOrder,
-  showUploadModal,
   showShareModal,
   showPDFViewer,
   viewingReportUrl,
@@ -717,7 +591,6 @@ function UserHealthReportView({
 
   // Handlers
   onUploadClick,
-  onCancelUploadModal,
   onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
@@ -809,7 +682,6 @@ function UserHealthReportView({
   // Disable background scrolling when any overlay/modal is open
   useEffect(() => {
     const hasOpenOverlay = Boolean(
-      showUploadModal ||
       showShareModal ||
       showReminderModal ||
       showPDFViewer ||
@@ -826,7 +698,7 @@ function UserHealthReportView({
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [showUploadModal, showShareModal, showReminderModal, showPDFViewer, showSuccessOverlay, showSuccessModal]);
+  }, [showShareModal, showReminderModal, showPDFViewer, showSuccessOverlay, showSuccessModal]);
 
   // (moved state declarations above to avoid TDZ in effects)
 
@@ -878,21 +750,6 @@ function UserHealthReportView({
   };
 
   // Helper functions for date picker
-  const getUserBirthDate = useCallback(() => {
-    const icNumber = user?.ic_number || user?.icNumber || '';
-    const parsed = parseICNumber(icNumber);
-
-    if (parsed?.isValid && parsed?.birthDate?.year && parsed?.birthDate?.month && parsed?.birthDate?.day) {
-      const { year, month, day } = parsed.birthDate;
-      const derived = `${year}-${month}-${day}`;
-      return derived;
-    }
-
-    const oldestAllowed = new Date();
-    oldestAllowed.setFullYear(oldestAllowed.getFullYear() - 120);
-    const fallback = oldestAllowed.toISOString().split('T')[0];
-    return fallback;
-  }, [user]);
 
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
@@ -1278,6 +1135,7 @@ function UserHealthReportView({
                     <option value="Medical Image">Medical Image</option>
                     <option value="Others">Others</option>
                   </select>
+                  {errors?.reportType && <span className="error-text" style={{ display: 'block', marginTop: '0.5rem' }}>{errors.reportType}</span>}
                 </div>
 
                 <div className="form-group" style={{ flex: 1.5 }}>
@@ -1286,7 +1144,7 @@ function UserHealthReportView({
                     type="date"
                     id="reportDate"
                     value={multiUploadForm?.reportDate || ''}
-                    min={getUserBirthDate()}
+                    min={deriveUserBirthDate(user)}
                     onChange={(e) => onMultiUploadFormChange?.('reportDate', e.target.value)}
                     style={{
                       width: '100%',
@@ -1298,6 +1156,7 @@ function UserHealthReportView({
                     }}
                     required
                   />
+                  {errors?.reportDate && <span className="error-text" style={{ display: 'block', marginTop: '0.5rem' }}>{errors.reportDate}</span>}
                 </div>
               </div>
 
@@ -1321,6 +1180,7 @@ function UserHealthReportView({
                     }}
                     required
                   />
+                  {errors?.customReportType && <span className="error-text" style={{ display: 'block', marginTop: '0.5rem' }}>{errors.customReportType}</span>}
                 </div>
               )}
 
@@ -1343,6 +1203,7 @@ function UserHealthReportView({
                   }}
                   required
                 />
+                {errors?.reportTitle && <span className="error-text" style={{ display: 'block', marginTop: '0.5rem' }}>{errors.reportTitle}</span>}
               </div>
 
               {/* Provider Name field */}
@@ -1364,6 +1225,7 @@ function UserHealthReportView({
                   }}
                   required
                 />
+                {errors?.providerName && <span className="error-text" style={{ display: 'block', marginTop: '0.5rem' }}>{errors.providerName}</span>}
               </div>
 
               {/* Show current application context if accessing from application page */}
@@ -1451,10 +1313,34 @@ function UserHealthReportView({
             <button
               className="btn btn-primary btn-submit"
               onClick={handleSubmit}
-              disabled={selectedFiles.length === 0 || isConverting}
+              disabled={
+                selectedFiles.length === 0 || 
+                isConverting || 
+                !multiUploadForm?.reportType || 
+                !multiUploadForm?.reportDate || 
+                !multiUploadForm?.reportTitle?.trim() || 
+                !multiUploadForm?.providerName?.trim() ||
+                (multiUploadForm?.reportType === 'Others' && !multiUploadForm?.customReportType?.trim())
+              }
               style={{
-                opacity: selectedFiles.length === 0 || isConverting ? 0.6 : 1,
-                cursor: selectedFiles.length === 0 || isConverting ? 'not-allowed' : 'pointer'
+                opacity: (
+                  selectedFiles.length === 0 || 
+                  isConverting || 
+                  !multiUploadForm?.reportType || 
+                  !multiUploadForm?.reportDate || 
+                  !multiUploadForm?.reportTitle?.trim() || 
+                  !multiUploadForm?.providerName?.trim() ||
+                  (multiUploadForm?.reportType === 'Others' && !multiUploadForm?.customReportType?.trim())
+                ) ? 0.6 : 1,
+                cursor: (
+                  selectedFiles.length === 0 || 
+                  isConverting || 
+                  !multiUploadForm?.reportType || 
+                  !multiUploadForm?.reportDate || 
+                  !multiUploadForm?.reportTitle?.trim() || 
+                  !multiUploadForm?.providerName?.trim() ||
+                  (multiUploadForm?.reportType === 'Others' && !multiUploadForm?.customReportType?.trim())
+                ) ? 'not-allowed' : 'pointer'
               }}
             >
               {isConverting ? 'Converting...' : `Submit (${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''})`}
@@ -1752,6 +1638,31 @@ function UserHealthReportView({
               >
                 Up to Date
               </button>
+              {/* Health Report Status Filters */}
+              <button
+                className={`filter-btn ${activeTab === 'pending' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('pending')}
+              >
+                Pending
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'reviewed' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('reviewed')}
+              >
+                Reviewed
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'flagged' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('flagged')}
+              >
+                Flagged
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'Archived' ? 'active' : ''}`}
+                onClick={() => onTabFilter?.('archived')}
+              >
+                Archived
+              </button>
             </div>
           </div>
 
@@ -1820,7 +1731,7 @@ function UserHealthReportView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={getUserBirthDate()}
+                            min={deriveUserBirthDate(user)}
                             max={getTodayDate()}
                             value={filters?.startDate || ''}
                             onChange={(e) => handleDateSelect('start', e.target.value)}
@@ -1857,7 +1768,7 @@ function UserHealthReportView({
                         <div className="date-picker-dropdown">
                           <input
                             type="date"
-                            min={filters?.startDate || getUserBirthDate()}
+                            min={filters?.startDate || deriveUserBirthDate(user)}
                             max={getTodayDate()}
                             value={filters?.endDate || ''}
                             onChange={(e) => handleDateSelect('end', e.target.value)}
@@ -2001,18 +1912,6 @@ function UserHealthReportView({
             </div>
           </div>
         </div>
-
-        {/* Upload Modal */}
-        {showUploadModal && (
-          <UploadModal
-            uploadForm={uploadForm}
-            minReportDate={getUserBirthDate()}
-            onCancel={onCancelUploadModal}
-            onFormChange={onUploadFormChange}
-            onSubmit={onUploadSubmit}
-            applicationId={applicationId}
-          />
-        )}
 
         {/* Share Modal */}
         {showShareModal && (
@@ -2603,6 +2502,31 @@ function AdminHealthReportDashboardView({
               >
                 Up to Date
               </button>
+              {/* Health Report Status Filters */}
+              <button
+                className={`filter-btn ${activeTab === 'pending' ? 'active' : ''}`}
+                onClick={() => safeOnTabFilter('pending')}
+              >
+                Pending
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'reviewed' ? 'active' : ''}`}
+                onClick={() => safeOnTabFilter('reviewed')}
+              >
+                Reviewed
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'flagged' ? 'active' : ''}`}
+                onClick={() => safeOnTabFilter('flagged')}
+              >
+                Flagged
+              </button>
+              <button
+                className={`filter-btn ${activeTab === 'archived' ? 'active' : ''}`}
+                onClick={() => safeOnTabFilter('archived')}
+              >
+                Archived
+              </button>
             </div>
           </div>
 
@@ -2854,7 +2778,7 @@ function AdminHealthReportDashboardView({
                     justifyContent: 'center',
                     alignItems: 'center'
                   }}>
-                    No health reports found. Upload your first report to get started.
+                    No health reports found.
                   </div>
                 </div>
               )}
@@ -2880,7 +2804,7 @@ function AdminHealthReportDashboardView({
               <button className="btn btn-secondary" onClick={onCancelAdminAction}>
                 Cancel
               </button>
-              <button className="btn btn-primary" onClick={onApproveConfirm}>
+              <button className="btn btn-approve-action" onClick={onApproveConfirm}>
                 Approve Report
               </button>
             </div>
@@ -3047,7 +2971,6 @@ export default function HealthMonitoringView({
   filters,
   sortBy,
   sortOrder,
-  showUploadModal,
   showShareModal,
   showPDFViewer,
   viewingReportUrl,
@@ -3072,7 +2995,6 @@ export default function HealthMonitoringView({
 
   // User handlers
   onUploadClick,
-  onCancelUploadModal,
   onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
@@ -3210,7 +3132,6 @@ export default function HealthMonitoringView({
       filters={filters}
       sortBy={sortBy}
       sortOrder={sortOrder}
-      showUploadModal={showUploadModal}
       showShareModal={showShareModal}
       showPDFViewer={showPDFViewer}
       viewingReportUrl={viewingReportUrl}
@@ -3235,7 +3156,6 @@ export default function HealthMonitoringView({
       editingReminder={editingReminder}
       selectedReminderCategory={selectedReminderCategory}
       onUploadClick={onUploadClick}
-      onCancelUploadModal={onCancelUploadModal}
       onClosePDFViewer={onClosePDFViewer}
       onUploadFormChange={onUploadFormChange}
       onMultiUploadFormChange={onMultiUploadFormChange}

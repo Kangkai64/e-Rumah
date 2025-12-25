@@ -31,6 +31,8 @@ import {
 import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { processPDF } from '../utils/pdfCompression'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
+import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
+import { corsProxyFunctionInvoke } from '../services/corsProxyService'
 
 function HealthReportController() {
   const navigate = useNavigate()
@@ -85,7 +87,7 @@ function HealthReportController() {
     reportType: '',
     startDate: '',
     endDate: '',
-    uploadStatus: '',
+    healthReportStatus: '',
     dueStatus: '',
     providerName: ''
   })
@@ -228,7 +230,7 @@ function HealthReportController() {
         reportType: filters.reportType || undefined,
         startDate: filters.startDate || undefined,
         endDate: filters.endDate || undefined,
-        uploadStatus: filters.uploadStatus || undefined,
+        healthReportStatus: filters.health_report_status || undefined,
         dueStatus: filters.dueStatus || undefined,
         providerName: filters.providerName || undefined,
         sortBy,
@@ -403,6 +405,18 @@ function HealthReportController() {
         case 'up-to-date':
           filtered = filtered.filter(r => r.due_status === 'Up to Date')
           break
+        case 'pending':
+          filtered = filtered.filter(r => r.health_report_status === 'Pending')
+          break
+        case 'reviewed':
+          filtered = filtered.filter(r => r.health_report_status === 'Reviewed')
+          break
+        case 'flagged':
+          filtered = filtered.filter(r => r.health_report_status === 'Flagged')
+          break
+        case 'archived':
+          filtered = filtered.filter(r => r.health_report_status === 'Archived')
+          break
         default:
           break
       }
@@ -461,29 +475,48 @@ function HealthReportController() {
     try {
       setIsUploading(true)
       setError(null)
+      setErrors({})
       
       // Get user's application ID if not provided in URL
       const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
 
       // Validate form
+      const validationErrors = {}
+      
       if (!uploadForm.file) {
-        setError('Please select a file')
-        return
+        validationErrors.file = 'Please select a file'
       }
       if (!uploadForm.reportType) {
-        setError('Please select report type')
-        return
+        validationErrors.reportType = 'Please select report type'
       }
       if (!uploadForm.reportDate) {
-        setError('Please select report date')
-        return
+        validationErrors.reportDate = 'Please select report date'
+      } else {
+        // Guard: report date must not be earlier than the user's birth date (server-side enforcement)
+        const birthDateStr = deriveUserBirthDate(currentUser)
+        const birthDate = birthDateStr ? new Date(birthDateStr) : null
+        const reportDate = new Date(uploadForm.reportDate)
+
+        if (!birthDate || Number.isNaN(birthDate.getTime())) {
+          validationErrors.reportDate = 'Unable to validate birth date. Please update your profile.'
+        } else if (Number.isNaN(reportDate.getTime())) {
+          validationErrors.reportDate = 'Report date is invalid'
+        } else if (reportDate < birthDate) {
+          validationErrors.reportDate = 'Report date cannot be earlier than your birth date'
+        }
       }
+      
       if (!uploadForm.reportTitle) {
-        setError('Please enter report title')
-        return
+        validationErrors.reportTitle = 'Please enter report title'
       }
       if (!uploadForm.providerName) {
-        setError('Please enter healthcare provider name')
+        validationErrors.providerName = 'Please enter healthcare provider name'
+      }
+
+      // If there are validation errors, set them and return
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors)
+        setIsUploading(false)
         return
       }
 
@@ -540,32 +573,56 @@ function HealthReportController() {
       const uploadResults = [];
       const healthReportRecords = [];
 
+      // Validate all required fields first
+      const validationErrors = {}
+
       // Determine report type
       const reportType = multiUploadForm.reportType === 'Others'
         ? multiUploadForm.customReportType
         : multiUploadForm.reportType;
 
-      if (!reportType) {
-        return {
-          success: false,
-          error: 'Please select a report type or specify custom type for "Others"'
-        };
+      if (!multiUploadForm.reportType) {
+        validationErrors.reportType = 'Please select a report type'
+      } else if (multiUploadForm.reportType === 'Others' && !multiUploadForm.customReportType?.trim()) {
+        validationErrors.customReportType = 'Please specify custom report type'
       }
 
-      // Validate required fields
-      if (!multiUploadForm.reportTitle) {
-        return {
-          success: false,
-          error: 'Please enter report title'
-        };
+      if (!multiUploadForm.reportDate) {
+        validationErrors.reportDate = 'Please select a report date'
+      } else {
+        // Guard: report date must not be earlier than the user's birth date
+        const birthDateStr = deriveUserBirthDate(currentUser)
+        const birthDate = birthDateStr ? new Date(birthDateStr) : null
+        const reportDate = new Date(multiUploadForm.reportDate)
+
+        if (!birthDate || Number.isNaN(birthDate.getTime())) {
+          validationErrors.reportDate = 'Unable to validate birth date. Please update your profile.'
+        } else if (Number.isNaN(reportDate.getTime())) {
+          validationErrors.reportDate = 'Report date is invalid'
+        } else if (reportDate < birthDate) {
+          validationErrors.reportDate = 'Report date cannot be earlier than your birth date'
+        }
       }
 
-      if (!multiUploadForm.providerName) {
+      if (!multiUploadForm.reportTitle?.trim()) {
+        validationErrors.reportTitle = 'Please enter report title'
+      }
+
+      if (!multiUploadForm.providerName?.trim()) {
+        validationErrors.providerName = 'Please enter healthcare provider name'
+      }
+
+      // If there are validation errors, set them and return
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors)
         return {
           success: false,
-          error: 'Please enter healthcare provider name'
-        };
+          error: 'Please fill in all required fields correctly'
+        }
       }
+
+      // Clear any previous errors
+      setErrors({})
 
       // Upload each file to Supabase Storage
       for (let i = 0; i < files.length; i++) {
@@ -1046,6 +1103,9 @@ function HealthReportController() {
   // Open reminder modal for creation
   const handleCreateReminder = useCallback(() => {
     setEditingReminder(null)
+    setError(null)
+    setSuccessMessage(null)
+    setErrors({})
     setReminderForm({
       reminder_title: '',
       reminder_type: 'Next health check',
@@ -1066,6 +1126,9 @@ function HealthReportController() {
   // Open reminder modal for editing
   const handleEditReminder = useCallback((reminder) => {
     setEditingReminder(reminder)
+    setError(null)
+    setSuccessMessage(null)
+    setErrors({})
     
     // Parse date and time from reminder_date
     const reminderDate = new Date(reminder.reminder_date)
@@ -1094,14 +1157,57 @@ function HealthReportController() {
   const handleSubmitReminder = useCallback(async () => {
     if (!currentUser?.id) return
 
-    // Clear previous messages and show loading state
-    setIsLoading(true)
+    // Clear previous messages
     setError(null)
     setSuccessMessage(null)
+    setErrors({})
 
     try {
-      // Combine date and time
+      // Validate required fields
+      const validationErrors = {}
+      
+      if (!reminderForm.reminder_title || reminderForm.reminder_title.trim() === '') {
+        validationErrors.reminder_title = 'Please enter a reminder title'
+      }
+      if (!reminderForm.reminder_type || reminderForm.reminder_type.trim() === '') {
+        validationErrors.reminder_type = 'Please select a reminder type'
+      }
+      if (!reminderForm.reminder_date || reminderForm.reminder_date.trim() === '') {
+        validationErrors.reminder_date = 'Please select a reminder date'
+      }
+      if (!reminderForm.reminder_time || reminderForm.reminder_time.trim() === '') {
+        validationErrors.reminder_time = 'Please enter a valid reminder time'
+      }
+      if (!reminderForm.category || reminderForm.category.trim() === '') {
+        validationErrors.category = 'Please select a category'
+      }
+      if (reminderForm.is_enabled && !(reminderForm.reminder_frequencies.enabled_1_week || reminderForm.reminder_frequencies.enabled_3_days || reminderForm.reminder_frequencies.enabled_1_day)) {
+        validationErrors.reminder_frequencies = 'Please enable at least one reminder frequency'
+      }
+
+      // Combine date and time for further validation
+      if (!validationErrors.reminder_date && !validationErrors.reminder_time) {
+        const reminderDateTime = new Date(`${reminderForm.reminder_date}T${reminderForm.reminder_time}`)
+
+        if (reminderDateTime < new Date()) {
+          validationErrors.reminder_date = 'Reminder date and time cannot be in the past'
+        }
+        if (reminderDateTime > new Date(new Date().setFullYear(new Date().getFullYear() + 5))) {
+          validationErrors.reminder_date = 'Reminder date is too far in the future'
+        }
+      }
+
+      // If there are validation errors, set them and return
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors)
+        return
+      }
+
+      // All validations passed
       const reminderDateTime = new Date(`${reminderForm.reminder_date}T${reminderForm.reminder_time}`)
+
+      // All validations passed, show loading state
+      setIsLoading(true)
       
       const reminderData = {
         user_id: currentUser.id,
@@ -1138,7 +1244,7 @@ function HealthReportController() {
             frequencies.push({
               reminder_id: reminderId,
               scheduled_time: weekBefore.toISOString(),
-              notification_offset: '1 week before'
+              notification_offset: '1 week'
             })
           }
 
@@ -1149,7 +1255,7 @@ function HealthReportController() {
             frequencies.push({
               reminder_id: reminderId,
               scheduled_time: dayBefore.toISOString(),
-              notification_offset: '1 day before'
+              notification_offset: '1 day'
             })
           }
 
@@ -1160,7 +1266,7 @@ function HealthReportController() {
             frequencies.push({
               reminder_id: reminderId,
               scheduled_time: threeDaysBefore.toISOString(),
-              notification_offset: '3 days before'
+              notification_offset: '3 days'
             })
           }
 
@@ -1178,13 +1284,9 @@ function HealthReportController() {
             }
           }
 
-          // Trigger server-side reminder processor to handle due notifications
+          // Trigger reminder processor through CORS-safe proxy to avoid preflight failures
           try {
-            const { data: { session } } = await supabase.auth.getSession()
-            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reminder-processor/run`, {
-              method: 'GET',
-              headers: session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : undefined
-            })
+            await corsProxyFunctionInvoke('reminder-processor', { action: 'run' })
           } catch (err) {
             console.error('Error invoking reminder processor function:', err)
           }
@@ -1291,6 +1393,7 @@ function HealthReportController() {
   const handleCancelReminderModal = useCallback(() => {
     setShowReminderModal(false)
     setEditingReminder(null)
+    setErrors({})
     setReminderForm({
       reminder_title: '',
       reminder_type: 'Next health check',
@@ -1581,7 +1684,7 @@ function HealthReportController() {
       reportType: '',
       startDate: '',
       endDate: '',
-      uploadStatus: '',
+      healthReportStatus: '',
       dueStatus: '',
       providerName: ''
     })

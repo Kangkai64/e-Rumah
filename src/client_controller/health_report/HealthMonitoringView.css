@@ -3998,6 +3998,25 @@ body.modal-open {
   color: #22c55e;
 }
 
+.btn-approve-action {
+  background: #A8202D;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 0;
+  width: 100%;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 30px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-approve-action:hover {
+  background: #8B1A24;
+}
+
 /* Responsive adjustments for admin dashboard */
 @media (max-width: 1200px) {
   .admin-table-header-row,
