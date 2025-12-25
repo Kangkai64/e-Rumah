@@ -1733,11 +1733,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
       {formData.hasSecondNominee && (
         <section className="form-section conditional-section">
           <h3>Nominee 2 (Secondary) *</h3>
-          {editNomineeOnly && !promoteNominee2 && formData.nominee2Name && (
-            <div style={{padding: '0.75rem', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '1rem', color: '#856404', fontSize: '0.9rem', border: '1px solid #ffeaa7'}}>
-              ℹ️ Nominee 2 information is locked while nominating a new Nominee 1
-            </div>
-          )}
           
           <div className="form-group">
             <label>Salutation</label>
