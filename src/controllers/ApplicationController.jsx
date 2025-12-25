@@ -355,7 +355,11 @@ function ApplicationController({ editNomineeOnly = false }) {
             }
             
             setFormData(prev => ({ ...prev, ...loadedData }))
-            setCurrentStep(applicationData.current_step || 1)
+            
+            // Don't override currentStep in editNomineeOnly mode - keep it at 4
+            if (!editNomineeOnly) {
+              setCurrentStep(applicationData.current_step || 1)
+            }
             
             // If in edit nominee mode, just load the data as-is without blanking
             if (editNomineeOnly) {
@@ -475,7 +479,6 @@ function ApplicationController({ editNomineeOnly = false }) {
       // If no applicationId, try to get or create one
       let appId = applicationId
       if (!appId) {
-        console.log('🔄 No applicationId, fetching/creating application...')
         const { application, error: appError } = await loadApplicationData(currentUser.id)
         if (!appError && application?.id) {
           appId = application.id
@@ -945,20 +948,48 @@ function ApplicationController({ editNomineeOnly = false }) {
       }
       
       try {
+        // In editNomineeOnly mode, force update acknowledgement fields with new nominee data
+        const updatedFormData = {
+          ...formData,
+          // Update acknowledgement fields to match new nominee 1
+          ack_nomineeName: formData.nominee1Name,
+          ack_nomineeNRIC: formData.nominee1Ic,
+          ack_nomineeAddress: formData.nominee1Address,
+          // Clear the old nominee signature - new nominee must re-sign
+          ackNominee_signature: formData.ackNominee_signature || ''
+        }
+        
+        // Update local state with these changes
+        setFormData(updatedFormData)
+        
         // Save the form data first
         if (currentUser && applicationId) {
-          console.log('💾 Saving nominee updates...')
-          const { error } = await saveApplicationData(applicationId, formData, currentStep)
+          console.log('💾 Saving nominee updates...', { applicationId, currentStep })
+          console.log('📋 Nominee data to save:', {
+            nominee1Name: updatedFormData.nominee1Name,
+            nominee1Ic: updatedFormData.nominee1Ic,
+            nominee1Address: updatedFormData.nominee1Address,
+            ack_nomineeName: updatedFormData.ack_nomineeName,
+            ack_nomineeNRIC: updatedFormData.ack_nomineeNRIC,
+            ack_nomineeAddress: updatedFormData.ack_nomineeAddress
+          })
+          const { data: savedData, error } = await saveApplicationData(applicationId, updatedFormData, currentStep)
+          console.log('📦 Save result:', { savedData, error })
           if (error) {
             console.error('❌ Error saving nominee data:', error)
             alert('Error saving nominee data. Please try again.')
             return
           }
           console.log('✅ Nominee data saved to Supabase')
+        } else {
+          console.error('❌ Missing currentUser or applicationId:', { currentUser: !!currentUser, applicationId })
+          alert('Error: Missing user or application data. Please refresh and try again.')
+          return
         }
 
         // Clear flagged status when nominee is updated
         if (applicationId) {
+          console.log('🧹 Clearing flagged status for application:', applicationId)
           const result = await Application.clearFlaggedStatus(applicationId)
           if (!result.success) {
             console.error('Error clearing flagged status:', result.error)
@@ -972,28 +1003,28 @@ function ApplicationController({ editNomineeOnly = false }) {
           try {
             console.log('📄 Regenerating PDF with updated nominee data...')
             console.log('📋 Full nominee data for PDF:', {
-              nominee1Name: formData.nominee1Name,
-              nominee1Ic: formData.nominee1Ic,
-              nominee1Salutation: formData.nominee1Salutation,
-              nominee1Address: formData.nominee1Address,
-              nominee1Postcode: formData.nominee1Postcode,
-              nominee1Email: formData.nominee1Email,
-              nominee1Telephone: formData.nominee1Telephone,
-              nominee1DobDay: formData.nominee1DobDay,
-              nominee1DobMonth: formData.nominee1DobMonth,
-              nominee1DobYear: formData.nominee1DobYear,
-              nominee1Sex: formData.nominee1Sex,
-              nominee1Race: formData.nominee1Race,
-              ack_nomineeName: formData.ack_nomineeName,
-              ack_nomineeNRIC: formData.ack_nomineeNRIC,
-              ack_nomineeAddress: formData.ack_nomineeAddress,
-              ackNominee_signature: !!formData.ackNominee_signature
+              nominee1Name: updatedFormData.nominee1Name,
+              nominee1Ic: updatedFormData.nominee1Ic,
+              nominee1Salutation: updatedFormData.nominee1Salutation,
+              nominee1Address: updatedFormData.nominee1Address,
+              nominee1Postcode: updatedFormData.nominee1Postcode,
+              nominee1Email: updatedFormData.nominee1Email,
+              nominee1Telephone: updatedFormData.nominee1Telephone,
+              nominee1DobDay: updatedFormData.nominee1DobDay,
+              nominee1DobMonth: updatedFormData.nominee1DobMonth,
+              nominee1DobYear: updatedFormData.nominee1DobYear,
+              nominee1Sex: updatedFormData.nominee1Sex,
+              nominee1Race: updatedFormData.nominee1Race,
+              ack_nomineeName: updatedFormData.ack_nomineeName,
+              ack_nomineeNRIC: updatedFormData.ack_nomineeNRIC,
+              ack_nomineeAddress: updatedFormData.ack_nomineeAddress,
+              ackNominee_signature: !!updatedFormData.ackNominee_signature
             })
-            // Use the current formData which includes all updated nominee 1 data
-            const pdfBlob = await generatePDF(formData)
+            // Use the updatedFormData which includes all updated nominee 1 data and acknowledgement fields
+            const pdfBlob = await generatePDF(updatedFormData)
             
             console.log('☁️ Uploading updated PDF to storage...')
-            const fileName = `SSB_Application_${formData.nricNo?.replace(/[^0-9]/g, '')}.pdf`
+            const fileName = `SSB_Application_${updatedFormData.nricNo?.replace(/[^0-9]/g, '')}.pdf`
             const filePath = `${currentUser.id}/${fileName}`
             
             const { error: uploadError } = await supabase.storage
