@@ -32,7 +32,24 @@ export default function ProtectedRoute({ children, requireRole = null }) {
 
   // Wait for userRole to be determined before making routing decisions
   // This prevents premature redirects while role is being fetched
-  if (userRole === null || applicationStatus === null) {
+  if (userRole === null) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        <div className="loading-spinner"></div>
+        <p>Determining access...</p>
+      </div>
+    )
+  }
+
+  // For regular users, also wait for applicationStatus to be determined
+  if (userRole === 'user' && applicationStatus === null) {
     return (
       <div style={{ 
         minHeight: '100vh', 
