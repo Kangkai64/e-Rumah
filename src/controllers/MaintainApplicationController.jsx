@@ -20,6 +20,7 @@ function MaintainApplicationController() {
   const [application, setApplication] = useState(null)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [approvedAmount, setApprovedAmount] = useState(null)
+  const [monthlyPayout, setMonthlyPayout] = useState(null)
   const [flaggedCode, setFlaggedCode] = useState(null)
   const [flaggedReason, setFlaggedReason] = useState(null)
   const [timeline, setTimeline] = useState([])
@@ -79,9 +80,15 @@ function MaintainApplicationController() {
         setFlaggedCode(appData.flagged_code)
         setFlaggedReason(appData.flagged_reason)
         
-        // Extract approved amount from form_data
-        if (applicationData?.form_data?.approvedAmount) {
-          setApprovedAmount(parseFloat(applicationData.form_data.approvedAmount))
+        // Calculate approved amount from property value (60% of market value)
+        // This follows the same logic as UserDashboard
+        if (appData.properties) {
+          const propertyValue = appData.properties.expected_market_value || appData.properties.indicative_market_value || 0
+          const eligibleAmount = propertyValue * 0.60
+          const monthlyPayout = eligibleAmount / 60 // 60 months (5 years)
+          
+          setApprovedAmount(eligibleAmount)
+          setMonthlyPayout(monthlyPayout)
         }
         
         buildTimeline(appData)
@@ -120,9 +127,14 @@ function MaintainApplicationController() {
           setFlaggedCode(appData.flagged_code)
           setFlaggedReason(appData.flagged_reason)
           
-          // Extract approved amount from form_data
-          if (applicationData?.form_data?.approvedAmount) {
-            setApprovedAmount(parseFloat(applicationData.form_data.approvedAmount))
+          // Calculate approved amount from property value (60% of market value)
+          if (appData.properties) {
+            const propertyValue = appData.properties.expected_market_value || appData.properties.indicative_market_value || 0
+            const eligibleAmount = propertyValue * 0.60
+            const monthlyPayout = eligibleAmount / 60
+            
+            setApprovedAmount(eligibleAmount)
+            setMonthlyPayout(monthlyPayout)
           }
           
           buildTimeline(appData)
@@ -302,6 +314,7 @@ function MaintainApplicationController() {
       application={application}
       applicationStatus={applicationStatus}
       approvedAmount={approvedAmount}
+      monthlyPayout={monthlyPayout}
       flaggedCode={flaggedCode}
       flaggedReason={flaggedReason}
       timeline={timeline}

@@ -922,7 +922,7 @@ const Application = {
    */
   async downloadApplicationPDFDirect(applicationId, userId) {
     try {
-      console.log('=== PDF Open Process Started ===')
+      console.log('=== PDF Download Process Started ===')
       console.log('Application ID:', applicationId, 'User ID:', userId)
       
       const result = await this.downloadApplicationPDF(applicationId, userId)
@@ -933,14 +933,27 @@ const Application = {
         throw new Error(result.error)
       }
 
-      console.log('File retrieved successfully, opening in new tab')
-      // Open PDF in new tab instead of downloading
-      window.open(result.url, '_blank')
+      console.log('File retrieved successfully, fetching as blob')
+      // Fetch the PDF as a blob to force download
+      const response = await fetch(result.url)
+      const blob = await response.blob()
+      
+      // Create a blob URL and trigger download
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `application_${applicationId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl)
 
-      console.log('=== PDF opened in new tab ===')
+      console.log('=== PDF downloaded ===')
       return { success: true }
     } catch (error) {
-      console.error('=== Error opening PDF ===', error)
+      console.error('=== Error downloading PDF ===', error)
       return { success: false, error: error.message }
     }
   }
