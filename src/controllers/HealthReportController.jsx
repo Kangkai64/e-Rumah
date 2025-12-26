@@ -56,7 +56,7 @@ function HealthReportController() {
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState(null)
   const [successMessage, setSuccessMessage] = useState(null)
-  const [activeTab, setActiveTab] = useState('archived')
+  const [activeTab, setActiveTab] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const [showSort, setShowSort] = useState(false)
   const [errors, setErrors] = useState({})

@@ -1006,9 +1006,7 @@ function UserHealthReportView({
   };
 
   // Archived reports - filter to show only archived status
-  const archivedReports = activeTab === 'archived'
-    ? (reports && reports.filter(r => r.health_report_status === 'Archived')) || []
-    : [];
+  const archivedReports = reports && reports.filter(r => r.health_report_status === 'Archived') || [];
 
   return (
     <div className={`health-report-container ${isDragActive ? 'drag-active' : ''}`}>
