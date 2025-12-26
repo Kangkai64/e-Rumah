@@ -21,9 +21,6 @@ import {
   flagHealthReport,
   archiveHealthReport,
   reuploadHealthReport,
-  getHealthReportsByApplication,
-  updateHealthReportStatus,
-  updateHealthReportDueStatus,
   RemindersService,
   REMINDER_TYPES,
   REMINDER_CATEGORIES

@@ -1598,50 +1598,6 @@ const RemindersService = {
 export { RemindersService }
 
 /**
- * Get health reports by application ID
- * @param {string} applicationId - Application ID
- * @returns {Promise<Object>} Health reports
- */
-export const getHealthReportsByApplication = async (applicationId) => {
-  try {
-    return await HealthReport.getByApplication(applicationId)
-  } catch (error) {
-    console.error('Error in getHealthReportsByApplication:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
- * Update health report status
- * @param {string} reportId - Health report ID
- * @param {string} status - New status ('Pending', 'Reviewed', 'Flagged')
- * @returns {Promise<Object>} Updated health report
- */
-export const updateHealthReportStatus = async (reportId, status) => {
-  try {
-    return await HealthReport.updateStatus(reportId, status)
-  } catch (error) {
-    console.error('Error in updateHealthReportStatus:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
- * Update health report due status
- * @param {string} reportId - Health report ID
- * @param {string} dueStatus - New due status ('Overdue', 'Due Soon', 'Up to Date')
- * @returns {Promise<Object>} Updated health report
- */
-export const updateHealthReportDueStatus = async (reportId, dueStatus) => {
-  try {
-    return await HealthReport.updateDueStatus(reportId, dueStatus)
-  } catch (error) {
-    console.error('Error in updateHealthReportDueStatus:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
  * Replace an existing health report file and reset its status
  * @param {string} reportId - Health report ID
  * @param {string} fileUrl - Newly uploaded file URL
