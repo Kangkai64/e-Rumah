@@ -1,3 +1,60 @@
+/* Arrow Link Button Styles */
+.arrow-link {
+  padding: 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid #a8202d;
+  border-radius: 25px;
+  text-decoration: none;
+  width: fit-content;
+  background: transparent;
+  color: #a8202d;
+  display: inline-flex;
+  align-items: center;
+}
+.arrow-link .arrow-icon {
+  margin: 0 0 -0.2rem 0.5rem;
+  transition: color 0.3s;
+  font-size: 1.1em;
+}
+.arrow-link:hover {
+  background: #a8202d;
+  color: #f5f5f5;
+}
+.arrow-link:hover .arrow-icon {
+  color: #f5f5f5;
+}
+
+/* Light variant for white border and text */
+.arrow-link--light {
+  border: 2px solid #f5f5f5;
+  color: #f5f5f5;
+}
+.arrow-link--light:hover {
+  background: #f5f5f5;
+  color: #a8202d;
+}
+.arrow-link--light:hover .arrow-icon {
+  color: #a8202d;
+}
+
+/* Filled variant for solid background */
+.arrow-link--filled {
+  background: #a8202d;
+  color: #f5f5f5;
+}
+
+.arrow-link--filled:hover {
+  background: transparent;
+  color: #a8202d;
+}
+
+.arrow-link--filled:hover .arrow-icon {
+  color: #a8202d;
+}
+
 /* Hero Section */
 .hero {
   background: white;
@@ -29,7 +86,7 @@
   position: absolute;
   bottom: 3rem;
   left: 3rem;
-  background: #A8202D;
+  background: #a8202d;
   color: white;
   padding: 2rem;
   max-width: 420px;
@@ -99,7 +156,9 @@
   gap: 0.9rem;
   border: 1px solid #e5e7eb;
   border-bottom: 2px solid #a8202d;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .service-card:hover {
@@ -157,7 +216,7 @@
 
 /* Eligibility Section */
 .eligibility-section {
-  background: #A8202D;
+  background: #a8202d;
   color: white;
   padding: 0;
 }
@@ -206,7 +265,7 @@
 }
 
 .eligibility-list li {
-  font-size: 1.0rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -243,7 +302,7 @@
 .benefits-label {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #A8202D;
+  color: #a8202d;
   letter-spacing: 1px;
   text-align: center;
   margin-bottom: 0.5rem;
@@ -339,7 +398,7 @@
 .partnership-label {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #A8202D;
+  color: #a8202d;
   letter-spacing: 1px;
   text-align: left;
   margin-bottom: 2rem;
@@ -397,7 +456,7 @@
 }
 
 .btn-filled {
-  background: #A8202D;
+  background: #a8202d;
   border: none;
   color: white;
   padding: 0.6rem 1.5rem;
@@ -437,6 +496,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .philosophy-icon {
@@ -453,10 +515,15 @@
 }
 
 .philosophy-card p {
-  font-size: 1.0rem;
+  font-size: 1rem;
   color: #4b5563;
   line-height: 1.6;
   margin: 0;
+}
+
+.philosophy-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
 /* Responsive Design */
@@ -553,7 +620,7 @@
 }
 
 .partners-banner {
-  background: #A8202D;
+  background: #a8202d;
   color: white;
   padding: 1.8rem 2.5rem;
   border-radius: 10px;
@@ -633,7 +700,7 @@
 }
 
 .notice-right {
-  background: #A8202D;
+  background: #a8202d;
   color: white;
   border-radius: 10px;
   padding: 2rem;

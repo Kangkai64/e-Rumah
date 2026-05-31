@@ -3,6 +3,8 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowDown, faCheck } from '@fortawesome/free-solid-svg-icons'
 import './StepByStep.css'
 import Container from '../common/Container'
 
@@ -82,7 +84,7 @@ function StepByStep() {
             From 3 December 2025, Reverse Mortgage Scheme will be available in Klang Valley, Johor Bahru, Penang Island, Ipoh, Seremban and Malacca City. Customer can now submit application online.
           </p>
           <a href="#sbs-how-to-apply" className="sbs-scroll-btn">
-            <img src="/src/assets/icons/step_by_step_page/down_arrow.svg" alt="Scroll down"/>
+            <FontAwesomeIcon icon={faArrowDown} />
             SCROLL DOWN
           </a>
         </div>
@@ -102,8 +104,8 @@ function StepByStep() {
               <p>Reverse Mortgage Scheme is a type of loan that is targeted for the elderly or retired home owners. Since, and they convert their one-by-their residential property – into a fixed monthly income stream throughout their lifetime, without necessarily owning their home.</p>
               
               <ul className="sbs-about-benefits">
-                <li>To enable retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence.</li>
-                <li>Home owners can now draw on their home equity to supplement their retirement income, thus reducing dependency on their next-of-kin.</li>
+                <li><FontAwesomeIcon icon={faCheck} className="check-icon" />To enable retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence.</li>
+                <li><FontAwesomeIcon icon={faCheck} className="check-icon" />Home owners can now draw on their home equity to supplement their retirement income, thus reducing dependency on their next-of-kin.</li>
               </ul>
             </div>
 
@@ -146,7 +148,7 @@ function StepByStep() {
               <h3>Eligibility Criteria for Borrower</h3>
               <ul>
                 {eligibilityCriteria.borrower.map((item, idx) => (
-                  <li key={idx}>✓ {item}</li>
+                  <li key={idx}><FontAwesomeIcon icon={faCheck} className="check-icon" /> {item}</li>
                 ))}
               </ul>
             </div>
@@ -156,7 +158,7 @@ function StepByStep() {
               <h3>Eligibility Criteria for Property</h3>
               <ul>
                 {eligibilityCriteria.property.map((item, idx) => (
-                  <li key={idx}>✓ {item}</li>
+                  <li key={idx}><FontAwesomeIcon icon={faCheck} className="check-icon" /> {item}</li>
                 ))}
               </ul>
             </div>
@@ -195,7 +197,10 @@ function StepByStep() {
           <div className="sbs-apply-steps">
             {applicationSteps.map((step) => (
               <div key={step.id} className={`sbs-apply-step ${step.id === 1 ? 'first-step' : ''}`}>
-                <div className="sbs-step-icon">{step.icon.includes('.svg') ? <img src={step.icon} alt="Step icon" /> : step.icon}</div>
+                <div className="sbs-step-icon-wrapper">
+                  <div className="sbs-step-icon">{step.icon.includes('.svg') ? <img src={step.icon} alt="Step icon" /> : step.icon}</div>
+                  <span className="sbs-step-number">{step.id}</span>
+                </div>
                 <div className="sbs-step-content">
                   <p className="sbs-step-text">{step.title}</p>
                   {step.branches && (

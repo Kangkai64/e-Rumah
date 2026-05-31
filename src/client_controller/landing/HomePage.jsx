@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../sessionController/AuthContext'
 import heroImage from '../../assets/images/main_page/hero_coupleLookingPhone.jpg'
-import iconArrowRight from '../../assets/icons/icon_arrowRight.svg'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import eligibilityImage from '../../assets/images/main_page/hero_whatYouNeedToKnow.jpg'
 import partnershipImage from '../../assets/images/main_page/hero_aboutUs.jpeg'
 import elderImage from '../../assets/images/main_page/hero_asianAttractiveHappySenior.jpg'
@@ -86,7 +87,7 @@ const HomePage = () => {
             <h2 className="services-heading">
               We invest in people to create a progressive society that is meaningfully invested in each other.
             </h2>
-            <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#A8202D', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }}>Our Impact<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem', filter: 'invert()' }} /></Link>
+            <Link to="/about" className="arrow-link">Our Impact<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
           </div>
 
           <div className="services-grid">
@@ -143,9 +144,9 @@ const HomePage = () => {
               <li>Meets e-Rumah evaluation criteria</li>
             </ul>
             <div className="eligibility-buttons">
-              <Link to="/faqs" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>FAQs<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
-              <button type="button" onClick={() => setShowPostcodes(true)} style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Excluded Postcodes<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></button>
-              <Link to="https://www.datocms-assets.com/170285/1764558928-kalsis-brochure-2026.pdf" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Brochures<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
+              <Link to="/faqs" className="arrow-link arrow-link--light">FAQs<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
+              <button type="button" onClick={() => setShowPostcodes(true)} className="arrow-link arrow-link--light">Excluded Postcodes<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></button>
+              <Link to="https://www.datocms-assets.com/170285/1764558928-kalsis-brochure-2026.pdf" className="arrow-link arrow-link--light">Brochures<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
             </div>
           </div>
           <div className="eligibility-image">
@@ -237,8 +238,8 @@ const HomePage = () => {
               <div className="partnership-text">
                 <h2>A partnership with innovation and impact at its core</h2>
                 <div className="partnership-buttons">
-                  <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#A8202D', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }}>About Us<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem', filter: 'invert()' }} /></Link>
-                  <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #A8202D', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: '#A8202D', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#A8202D'; e.currentTarget.style.color = '#F5F5F5'; }}>Our Impact<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
+                  <Link to="/about" className="arrow-link">About Us<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
+                  <Link to="/about" className="arrow-link arrow-link--filled">Our Impact<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
                 </div>
               </div>
             </div>
@@ -313,7 +314,7 @@ const HomePage = () => {
               50300 Kuala Lumpur<br />
               Malaysia
             </p>
-            <Link to="/about" style={{ padding: '0.8rem', fontSize: '1.1rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.3s', border: '2px solid #F5F5F5', borderRadius: '25px', textDecoration: 'none', width: 'fit-content', background: 'transparent', color: '#F5F5F5', display: 'inline-flex', alignItems: 'center' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#F5F5F5'; e.currentTarget.style.color = '#A8202D'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#F5F5F5'; }}>Connect with Us<img src={iconArrowRight} alt="Arrow Right" style={{ margin: '0 0 -0.2rem 0.5rem' }} /></Link>
+            <Link to="/about" className="arrow-link arrow-link--light">Connect with Us<FontAwesomeIcon icon={faArrowRight} className="arrow-icon" /></Link>
           </div>
         </div>
       </section>

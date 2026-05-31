@@ -1,87 +1,87 @@
 // Staff Login Page (Admin & Customer Support)
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { signIn } from '../../services/authService'
-import { supabase } from '../../config/supabase'
-import './authLayout.css'
-import logo from '../../assets/images/logo.png'
-import bgImage from '../../assets/images/loginPageBg.jpg'
-import leftArrow from '../../assets/icons/icon_arrowLeft.svg'
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { signIn } from "../../services/authService";
+import { supabase } from "../../config/supabase";
+import "./authLayout.css";
+import logo from "../../assets/images/logo.png";
+import bgImage from "../../assets/images/loginPageBg.jpg";
+import leftArrow from "../../assets/icons/icon_arrowLeft.svg";
 
 export default function StaffLoginPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    staffId: '',
-    password: '',
-    rememberMe: false
-  })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+    staffId: "",
+    password: "",
+    rememberMe: false,
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    })
-  }
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       // Staff login uses email (staffId is their email)
-      const { user, error: signInError } = await signIn(formData.staffId, formData.password)
+      const { user, error: signInError } = await signIn(
+        formData.staffId,
+        formData.password,
+      );
 
       if (signInError) {
-        setError(signInError.message || 'Login failed')
-        setLoading(false)
-        return
+        setError(signInError.message || "Login failed");
+        setLoading(false);
+        return;
       }
 
       if (user) {
-        // Check user role - must be admin or support
-        const { data: userData, error: roleError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+        const [adminResult, supportResult, userResult] = await Promise.all([
+          supabase.from("admins").select("id").eq("id", user.id).maybeSingle(),
+          supabase
+            .from("customer_supports")
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle(),
+          supabase.from("users").select("id").eq("id", user.id).maybeSingle(),
+        ]);
 
-        if (roleError || !userData) {
-          setError('Unable to verify staff account')
-          await supabase.auth.signOut()
-          setLoading(false)
-          return
-        }
-
-        // Only allow staff roles (admin or support)
-        if (userData.role === 'user') {
-          setError('Please use User Login for customer accounts')
-          await supabase.auth.signOut()
-          setLoading(false)
-          return
-        }
-
-        console.log('✅ Staff login successful, role:', userData.role)
-
-        // Redirect based on role
-        if (userData.role === 'admin') {
-          navigate('/admin/dashboard')
-        } else if (userData.role === 'support') {
-          navigate('/support/dashboard')
+        if (adminResult.data) {
+          console.log("✅ Staff login successful, role: admin");
+          navigate("/admin/dashboard");
+        } else if (supportResult.data) {
+          console.log("✅ Staff login successful, role: support");
+          navigate("/support/dashboard");
+        } else if (userResult.data) {
+          setError("Please use User Login for customer accounts");
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        } else {
+          setError("Unable to verify staff account");
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred')
-      setLoading(false)
+      setError("An unexpected error occurred");
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-layout">
-      <button onClick={() => navigate('/')} className="back-button">
+      <button onClick={() => navigate("/")} className="back-button">
         <img src={leftArrow} alt="Back" />
       </button>
       <Link to="/login" className="switch-login-btn">
@@ -128,13 +128,21 @@ export default function StaffLoginPage() {
                 />
               </div>
 
-              <p className='eligibility-note'>Contact developer to get admin/customer support account</p>
+              <p className="eligibility-note">
+                Contact developer to get admin/customer support account
+              </p>
 
               <div className="form-buttons">
-                <button type="submit" className="auth-btn primary" disabled={loading}>
-                  {loading ? 'Logging in...' : 'Login'}
+                <button
+                  type="submit"
+                  className="auth-btn primary"
+                  disabled={loading}
+                >
+                  {loading ? "Logging in..." : "Login"}
                 </button>
-                <Link to="/" className="auth-btn secondary">Home</Link>
+                <Link to="/" className="auth-btn secondary">
+                  Home
+                </Link>
               </div>
             </form>
           </div>
@@ -144,11 +152,15 @@ export default function StaffLoginPage() {
           <img src={bgImage} alt="Background" className="auth-bg-image" />
           <div className="auth-overlay">
             <h1>Welcome to e-Rumah</h1>
-            <p>Enabling retired home owners to gain access to a lifetime of supplemental income stream for daily subsistence to cater to potential increases in the cost of living.</p>
+            <p>
+              Enabling retired home owners to gain access to a lifetime of
+              supplemental income stream for daily subsistence to cater to
+              potential increases in the cost of living.
+            </p>
           </div>
           <div className="auth-copyright">© Copyright 2025 e-Rumah</div>
         </div>
       </div>
     </div>
-  )
+  );
 }

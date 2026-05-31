@@ -34,10 +34,8 @@
 
 .btn .icon-arrow-right {
   margin: 0 0 -0.2rem 0.5rem;
-}
-
-.btn:hover .icon-arrow-right {
-  filter: invert();
+  transition: color 0.3s;
+  font-size: 1.1em;
 }
 
 .btn-tertiary {
@@ -49,14 +47,6 @@
 .btn-tertiary:hover {
   background: #A8202D;
   color: #F5F5F5;
-}
-
-.btn-tertiary .icon-arrow-right {
-  filter: invert();
-}
-
-.btn-tertiary:hover .icon-arrow-right {
-  filter: none;
 }
 
 .btn-login {

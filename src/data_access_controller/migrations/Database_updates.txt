@@ -1,0 +1,3 @@
+1. users.role and users.type column had been rmoved from the schema.
+2. users with diferrent roles have their own dedicated tables, for example, admins table
+   customer_supports table, caregivers table etc.

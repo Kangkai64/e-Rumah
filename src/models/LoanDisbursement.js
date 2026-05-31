@@ -1,0 +1,611 @@
+import { supabase } from "../config/supabase";
+
+const DEFAULT_LOAN_MONTHS = 60;
+const DISBURSEMENT_TYPE = "payout";
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatIsoDate = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 10);
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  return date.toISOString().slice(0, 10);
+};
+
+const addMonths = (dateValue, monthCount) => {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+
+  date.setMonth(date.getMonth() + monthCount);
+  return date.toISOString().slice(0, 10);
+};
+
+const resolvePropertyValue = (application) => {
+  const property = application?.properties;
+  const expectedValue = toNumber(property?.expected_market_value);
+  const indicativeValue = toNumber(property?.indicative_market_value);
+  return expectedValue || indicativeValue || 0;
+};
+
+const resolveApprovedAmount = (application) => {
+  const approvedAmount = toNumber(application?.approved_amount);
+  const approvedTotalAmount = toNumber(application?.approved_total_amount);
+
+  if (approvedTotalAmount > 0) return approvedTotalAmount;
+  if (approvedAmount > 0) return approvedAmount;
+
+  return resolvePropertyValue(application) * 0.6;
+};
+
+const resolveMonthlyAmount = (application) => {
+  const explicitMonthlyAmount = toNumber(application?.approved_monthly_amount);
+  if (explicitMonthlyAmount > 0) return explicitMonthlyAmount;
+
+  const approvedAmount = resolveApprovedAmount(application);
+  return approvedAmount > 0 ? approvedAmount / DEFAULT_LOAN_MONTHS : 0;
+};
+
+const mapTransaction = (transaction) => ({
+  id: transaction.id,
+  applicationId: transaction.application_id,
+  userId: transaction.user_id,
+  amount: toNumber(transaction.amount),
+  transactionDate: transaction.transaction_date,
+  description: transaction.description || "",
+  referenceNumber: transaction.reference_number || "",
+  createdAt: transaction.created_at,
+  type: transaction.transaction_type,
+  status: "Completed",
+});
+
+const buildSummary = (application, transactions = []) => {
+  const totalEligibleAmount = resolveApprovedAmount(application);
+  const totalDisbursed = transactions.reduce(
+    (sum, transaction) => sum + toNumber(transaction.amount),
+    0,
+  );
+  const remainingBalance = Math.max(totalEligibleAmount - totalDisbursed, 0);
+  const latestTransaction = transactions[0] || null;
+  const nextSuggestedDate = latestTransaction?.transaction_date
+    ? addMonths(latestTransaction.transaction_date, 1)
+    : addMonths(application?.approved_at || new Date().toISOString(), 1);
+
+  return {
+    applicationId: application.id,
+    userId: application.user_id,
+    applicantName: application.users?.full_name || "N/A",
+    applicantEmail: application.users?.email || "",
+    icNumber: application.users?.ic_number || "",
+    propertyType: application.properties?.property_type || "Property",
+    propertyAddress: application.properties?.address || "N/A",
+    approvedAt: application.approved_at,
+    approvedAmount: resolveApprovedAmount(application),
+    monthlyAmount: resolveMonthlyAmount(application),
+    totalEligibleAmount,
+    totalDisbursed,
+    remainingBalance,
+    latestDisbursementDate: latestTransaction?.transaction_date || null,
+    nextSuggestedDate,
+    canDisburse: application.status === "approved" && remainingBalance > 0,
+  };
+};
+
+const LoanDisbursement = {
+  async getApprovedApplications() {
+    try {
+      const { data, error } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          user_id,
+          status,
+          approved_at,
+          approved_amount,
+          approved_total_amount,
+          approved_monthly_amount,
+          users!applications_user_id_fkey(
+            full_name,
+            ic_number,
+            email
+          ),
+          properties(
+            property_type,
+            address,
+            expected_market_value,
+            indicative_market_value
+          )
+        `,
+        )
+        .eq("status", "approved")
+        .order("approved_at", { ascending: false });
+
+      if (error) throw error;
+
+      const applicationIds = (data || []).map((application) => application.id);
+      let totalsByApplication = {};
+
+      if (applicationIds.length > 0) {
+        const { data: transactions, error: transactionError } = await supabase
+          .from("transactions")
+          .select("application_id, amount")
+          .eq("transaction_type", DISBURSEMENT_TYPE)
+          .in("application_id", applicationIds);
+
+        if (transactionError) throw transactionError;
+
+        totalsByApplication = (transactions || []).reduce(
+          (accumulator, transaction) => {
+            const applicationId = transaction.application_id;
+            accumulator[applicationId] =
+              (accumulator[applicationId] || 0) + toNumber(transaction.amount);
+            return accumulator;
+          },
+          {},
+        );
+      }
+
+      const applications = (data || []).map((application) => {
+        const summary = buildSummary(application, []);
+
+        return {
+          id: application.id,
+          applicationId: application.id,
+          applicantName: application.users?.full_name || "N/A",
+          applicantEmail: application.users?.email || "",
+          icNumber: application.users?.ic_number || "",
+          propertyType: application.properties?.property_type || "Property",
+          propertyAddress: application.properties?.address || "N/A",
+          approvedAt: application.approved_at,
+          approvedAmount: summary.approvedAmount,
+          monthlyAmount: summary.monthlyAmount,
+          totalEligibleAmount: summary.totalEligibleAmount,
+          totalDisbursed: totalsByApplication[application.id] || 0,
+          remainingBalance: Math.max(
+            summary.totalEligibleAmount -
+              (totalsByApplication[application.id] || 0),
+            0,
+          ),
+          canDisburse:
+            application.status === "approved" &&
+            summary.totalEligibleAmount -
+              (totalsByApplication[application.id] || 0) >
+              0,
+        };
+      });
+
+      return { success: true, data: applications };
+    } catch (error) {
+      console.error("Error fetching approved applications:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getApplicationDisbursementSummary(applicationId) {
+    try {
+      const { data: application, error: applicationError } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          user_id,
+          status,
+          approved_at,
+          approved_amount,
+          approved_total_amount,
+          approved_monthly_amount,
+          users!applications_user_id_fkey(
+            full_name,
+            ic_number,
+            email
+          ),
+          properties(
+            property_type,
+            address,
+            expected_market_value,
+            indicative_market_value
+          )
+        `,
+        )
+        .eq("id", applicationId)
+        .maybeSingle();
+
+      if (applicationError) throw applicationError;
+      if (!application) {
+        return { success: false, error: "Application not found" };
+      }
+
+      const { data: transactions, error: transactionError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("application_id", applicationId)
+        .eq("transaction_type", DISBURSEMENT_TYPE)
+        .order("transaction_date", { ascending: false });
+
+      if (transactionError) throw transactionError;
+
+      const records = (transactions || []).map(mapTransaction);
+      const summary = buildSummary(application, records);
+
+      return {
+        success: true,
+        data: {
+          application,
+          summary,
+          records,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching application disbursement summary:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getDisbursementRecords(applicationId, limit = 50) {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("application_id", applicationId)
+        .eq("transaction_type", DISBURSEMENT_TYPE)
+        .order("transaction_date", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      return { success: true, data: (data || []).map(mapTransaction) };
+    } catch (error) {
+      console.error("Error fetching disbursement records:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async createDisbursement(applicationId, payload = {}) {
+    try {
+      const amount = toNumber(payload.amount);
+      if (amount <= 0) {
+        return {
+          success: false,
+          error: "Disbursement amount must be greater than zero",
+        };
+      }
+
+      const summaryResult =
+        await this.getApplicationDisbursementSummary(applicationId);
+      if (!summaryResult.success) {
+        return summaryResult;
+      }
+
+      const { summary, application } = summaryResult.data;
+      if (application.status !== "approved") {
+        return {
+          success: false,
+          error: "Only approved applications can receive disbursements",
+        };
+      }
+
+      if (amount > summary.remainingBalance) {
+        return {
+          success: false,
+          error: "Disbursement amount exceeds remaining balance",
+        };
+      }
+
+      const transactionDate = formatIsoDate(payload.transactionDate);
+      const referenceNumber =
+        (payload.referenceNumber || "").trim() || `DIS-${Date.now()}`;
+      const description =
+        (payload.description || "").trim() || "Loan disbursement payout";
+
+      const { data: inserted, error } = await supabase
+        .from("transactions")
+        .insert([
+          {
+            user_id: summary.userId,
+            application_id: applicationId,
+            transaction_type: DISBURSEMENT_TYPE,
+            amount,
+            transaction_date: transactionDate,
+            description,
+            reference_number: referenceNumber,
+          },
+        ])
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: {
+          record: mapTransaction(inserted),
+          summary: {
+            ...summary,
+            totalDisbursed: summary.totalDisbursed + amount,
+            remainingBalance: Math.max(summary.remainingBalance - amount, 0),
+          },
+        },
+      };
+    } catch (error) {
+      console.error("Error creating disbursement:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getUserLoanOverview(userId) {
+    try {
+      const { data: application, error } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          user_id,
+          status,
+          approved_at,
+          approved_amount,
+          approved_total_amount,
+          approved_monthly_amount,
+          users!applications_user_id_fkey(
+            full_name,
+            ic_number,
+            email
+          ),
+          properties(
+            indicative_market_value,
+            expected_market_value,
+            address,
+            property_type,
+            valuation_date
+          )
+        `,
+        )
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          return {
+            success: true,
+            data: {
+              hasLoan: false,
+              totalEligibleAmount: 0,
+              disbursedToDate: 0,
+              remainingBalance: 0,
+              status: "No Active Loan",
+              propertyDetails: null,
+            },
+          };
+        }
+
+        throw error;
+      }
+
+      if (!application) {
+        return {
+          success: true,
+          data: {
+            hasLoan: false,
+            totalEligibleAmount: 0,
+            disbursedToDate: 0,
+            remainingBalance: 0,
+            status: "No Active Loan",
+            propertyDetails: null,
+          },
+        };
+      }
+
+      const { data: transactions, error: transactionError } = await supabase
+        .from("transactions")
+        .select("amount, transaction_date")
+        .eq("application_id", application.id)
+        .eq("transaction_type", DISBURSEMENT_TYPE)
+        .order("transaction_date", { ascending: false });
+
+      if (transactionError) throw transactionError;
+
+      const disbursedToDate = (transactions || []).reduce(
+        (sum, transaction) => sum + toNumber(transaction.amount),
+        0,
+      );
+      const totalEligibleAmount = resolveApprovedAmount(application);
+      const remainingBalance = Math.max(
+        totalEligibleAmount - disbursedToDate,
+        0,
+      );
+
+      return {
+        success: true,
+        data: {
+          hasLoan: true,
+          totalEligibleAmount,
+          disbursedToDate,
+          remainingBalance,
+          status:
+            remainingBalance > 0 ? "Active & On Track" : "Fully Disbursed",
+          propertyDetails: application.properties
+            ? {
+                address: application.properties.address,
+                propertyType: application.properties.property_type,
+                valuationDate: application.properties.valuation_date,
+              }
+            : null,
+          approvedAt: application.approved_at,
+          applicationId: application.id,
+          monthlyAmount: resolveMonthlyAmount(application),
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching loan overview:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getUserDisbursements(userId, filters = {}) {
+    try {
+      const { limit = 6 } = filters;
+
+      const { data: application, error } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          approved_amount,
+          approved_total_amount,
+          approved_monthly_amount,
+          properties(
+            expected_market_value,
+            indicative_market_value
+          )
+        `,
+        )
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === "PGRST116") return [];
+        throw error;
+      }
+
+      if (!application) return [];
+
+      const { data: transactions, error: transactionError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("application_id", application.id)
+        .eq("transaction_type", DISBURSEMENT_TYPE)
+        .order("transaction_date", { ascending: true });
+
+      if (transactionError) throw transactionError;
+
+      const totalEligibleAmount = resolveApprovedAmount(application);
+      let cumulativeDisbursed = 0;
+
+      const recordsAscending = (transactions || []).map((transaction) => {
+        cumulativeDisbursed += toNumber(transaction.amount);
+        return {
+          ...mapTransaction(transaction),
+          remaining: Math.max(totalEligibleAmount - cumulativeDisbursed, 0),
+        };
+      });
+
+      return recordsAscending
+        .slice(-limit)
+        .reverse()
+        .map((record) => ({
+          date: record.transactionDate,
+          amountReceived: record.amount,
+          remaining: record.remaining,
+          status: record.status,
+          description: record.description,
+          referenceNumber: record.referenceNumber,
+        }));
+    } catch (error) {
+      console.error("Error fetching disbursements:", error);
+      throw error;
+    }
+  },
+
+  async getUserPayoutDetails(userId) {
+    try {
+      const { data: application, error } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          approved_at,
+          approved_amount,
+          approved_total_amount,
+          approved_monthly_amount,
+          properties(
+            expected_market_value,
+            indicative_market_value
+          )
+        `,
+        )
+        .eq("user_id", userId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          return {
+            success: true,
+            data: {
+              payoutType: "monthly",
+              monthlyAmount: 0,
+              startDate: null,
+              endDate: null,
+              totalMonths: 0,
+              nextPayoutDate: null,
+              bankAccount: null,
+            },
+          };
+        }
+
+        throw error;
+      }
+
+      if (!application) {
+        return {
+          success: true,
+          data: {
+            payoutType: "monthly",
+            monthlyAmount: 0,
+            startDate: null,
+            endDate: null,
+            totalMonths: 0,
+            nextPayoutDate: null,
+            bankAccount: null,
+          },
+        };
+      }
+
+      const monthlyAmount = resolveMonthlyAmount(application);
+      const totalMonths = DEFAULT_LOAN_MONTHS;
+      const startDate = formatIsoDate(application.approved_at);
+      const endDate = addMonths(startDate, totalMonths - 1);
+
+      const { data: latestTransactions, error: latestTransactionError } =
+        await supabase
+          .from("transactions")
+          .select("transaction_date")
+          .eq("application_id", application.id)
+          .eq("transaction_type", DISBURSEMENT_TYPE)
+          .order("transaction_date", { ascending: false })
+          .limit(1);
+
+      if (latestTransactionError) throw latestTransactionError;
+
+      const nextPayoutDate = latestTransactions?.[0]?.transaction_date
+        ? addMonths(latestTransactions[0].transaction_date, 1)
+        : addMonths(startDate, 1);
+
+      return {
+        success: true,
+        data: {
+          payoutType: "monthly",
+          monthlyAmount,
+          startDate,
+          endDate,
+          totalMonths,
+          nextPayoutDate,
+          bankAccount: null,
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching payout details:", error);
+      return { success: false, error: error.message };
+    }
+  },
+};
+
+export default LoanDisbursement;

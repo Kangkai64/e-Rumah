@@ -33,4 +33,7 @@ dist-ssr
 .branches/
 .output/
 
+# Dataset
+property_value_estimator/Open Transaction Data.csv
+
 ApplicationController_Documentation.md

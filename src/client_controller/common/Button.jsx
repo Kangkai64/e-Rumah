@@ -1,13 +1,14 @@
 import './Button.css'
 import { Link } from 'react-router-dom'
-import iconArrowRight from '../../assets/icons/icon_arrowRight.svg'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowRight } from '@fortawesome/free-solid-svg-icons'
 
 const Button = ({ children, variant = 'primary', onClick, className = '', to, showArrow = false }) => {
   if (to) {
     return (
       <Link to={to} className={`btn btn-${variant} ${className}`}>
         {children}
-        {showArrow && <img src={iconArrowRight} alt="Arrow Right" className="icon-arrow-right" />}
+        {showArrow && <FontAwesomeIcon icon={faArrowRight} className="icon-arrow-right" />}
       </Link>
     )
   }
@@ -18,7 +19,7 @@ const Button = ({ children, variant = 'primary', onClick, className = '', to, sh
       onClick={onClick}
     >
       {children}
-      {showArrow && <img src={iconArrowRight} alt="Arrow Right" className="icon-arrow-right" />}
+      {showArrow && <FontAwesomeIcon icon={faArrowRight} className="icon-arrow-right" />}
     </button>
   )
 }

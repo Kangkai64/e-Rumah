@@ -31,13 +31,46 @@
 }
 
 /* Heading */
+.admin-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .admin-heading h1 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 700;
   font-size: 30px;
   line-height: 36px;
   color: #111827;
   margin: 0;
+}
+
+.admin-heading-subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.admin-manage-disbursements-btn {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #b91c1c;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
+}
+
+.admin-manage-disbursements-btn:hover {
+  border-color: #f3c1c1;
+  background: #fff7f7;
 }
 
 /* Statistics Cards */
@@ -51,7 +84,9 @@
   background: white;
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -64,7 +99,7 @@
 }
 
 .admin-stat-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 14px;
   line-height: 20px;
@@ -72,7 +107,7 @@
 }
 
 .admin-stat-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 700;
   font-size: 36px;
   line-height: 40px;
@@ -80,7 +115,7 @@
 }
 
 .admin-stat-subtitle {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 12px;
   line-height: 16px;
@@ -99,7 +134,9 @@
 .admin-records-table {
   background: white;
   border-radius: 16px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
   flex: 1;
   min-width: 500px;
   max-width: calc(100% - 429.33px);
@@ -115,7 +152,7 @@
 }
 
 .admin-records-header h2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 18px;
   line-height: 28px;
@@ -157,7 +194,7 @@
   border: none;
   border-radius: 8px;
   padding: 10px 10px 10px 40px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 14px;
   color: #1f2937;
@@ -179,7 +216,7 @@
 }
 
 .admin-filter-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 14px;
   line-height: 20px;
@@ -191,7 +228,7 @@
   border: none;
   border-radius: 4px;
   padding: 4px 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 14px;
   line-height: 20px;
@@ -211,7 +248,7 @@
   background: white;
   cursor: pointer;
   font-size: 13px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   color: #1f2937;
   transition: all 0.2s ease;
@@ -244,7 +281,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   padding: 8px 12px 10px 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 14px;
   line-height: 20px;
@@ -264,7 +301,7 @@
 .admin-tab-hint {
   flex: 1;
   padding-left: 16px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 12px;
   line-height: 16px;
@@ -286,7 +323,7 @@
 }
 
 .admin-table-col {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 18px;
@@ -325,7 +362,7 @@
 }
 
 .admin-table-row .admin-table-col {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   color: #1f2937;
   font-size: 13px;
@@ -342,7 +379,7 @@
 .admin-no-records {
   padding: 48px 24px;
   text-align: center;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 14px;
   color: #9ca3af;
 }
@@ -354,7 +391,7 @@
   justify-content: center;
   flex: 1;
   min-height: 350px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 13px;
   padding: 20px;
   text-align: center;
@@ -366,7 +403,7 @@
   display: inline-block;
   padding: 3px 8px;
   border-radius: 9999px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 11px;
   line-height: 14px;
@@ -392,7 +429,7 @@
   display: inline-block;
   padding: 3px 8px;
   border-radius: 9999px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 11px;
   line-height: 14px;
@@ -413,7 +450,7 @@
   border: none;
   border-radius: 6px;
   padding: 3px 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 11px;
   line-height: 14px;
@@ -443,7 +480,9 @@
 .admin-details-card {
   background: white;
   border-radius: 16px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
   width: 413.33px;
   min-width: 413.33px;
   max-width: 413.33px;
@@ -461,7 +500,7 @@
 }
 
 .admin-details-header h2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 16px;
   line-height: 24px;
@@ -500,7 +539,7 @@
 }
 
 .admin-info-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 10px;
   line-height: 14px;
@@ -511,7 +550,7 @@
 }
 
 .admin-info-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 13px;
   line-height: 18px;
@@ -523,7 +562,7 @@
 }
 
 .admin-info-subtitle {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 11px;
   line-height: 16px;
@@ -540,7 +579,7 @@
 }
 
 .admin-amount-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 700;
   font-size: 20px;
   line-height: 28px;
@@ -555,7 +594,7 @@
 }
 
 .admin-eligibility-item {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 11px;
   line-height: 16px;
@@ -574,7 +613,7 @@
   border: none;
   border-radius: 8px;
   padding: 8px 16px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 13px;
   line-height: 18px;
@@ -620,15 +659,15 @@
 }
 
 .admin-nominee-card {
-  background-color: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 16px;
 }
 
 .admin-no-nominees {
   text-align: center;
-  color: #9CA3AF;
+  color: #9ca3af;
   padding: 40px 0;
   font-size: 13px;
 }
@@ -637,7 +676,9 @@
 .admin-reports-section {
   background: white;
   border-radius: 16px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -651,7 +692,7 @@
 }
 
 .admin-reports-header h2 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 18px;
   line-height: 28px;
@@ -676,7 +717,7 @@
 }
 
 .admin-reports-col {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 14px;
   line-height: 20px;
@@ -702,7 +743,7 @@
   border: none;
   border-radius: 6px;
   padding: 4px 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 16px;
@@ -723,7 +764,7 @@
 }
 
 .admin-reports-hint {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 12px;
   line-height: 16px;
@@ -735,7 +776,7 @@
   border: none;
   border-radius: 8px;
   padding: 8px 20px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 16px;
   line-height: 24px;
@@ -796,7 +837,7 @@
 }
 
 .status-update-modal {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 .modal-header {
@@ -812,7 +853,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   color: #111827;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 .close-button {
@@ -856,7 +897,7 @@
   margin: 0.4rem 0;
   font-size: 0.8125rem;
   color: #374151;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 .status-update-info p:first-child {
@@ -877,7 +918,7 @@
   font-weight: 600;
   font-size: 0.8125rem;
   color: #374151;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 .status-select {
@@ -886,7 +927,7 @@
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 0.8125rem;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   background: white;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -910,7 +951,7 @@
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 0.8125rem;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   resize: vertical;
   min-height: 70px;
   transition: all 0.2s ease;
@@ -936,7 +977,7 @@
   margin-top: 0.875rem;
   font-size: 0.8125rem;
   color: #92400e;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
@@ -957,7 +998,7 @@
   border-radius: 6px;
   font-size: 0.8125rem;
   font-weight: 600;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -993,7 +1034,7 @@
   color: #374151;
 }
 
-.report-type-options{
+.report-type-options {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
@@ -1053,11 +1094,11 @@
   .admin-table-col:nth-child(5) {
     display: none;
   }
-  
+
   .admin-table-col {
     font-size: 11px;
   }
-  
+
   .admin-action-btn {
     padding: 2px 6px;
     font-size: 10px;
@@ -1084,7 +1125,7 @@
   border: none;
   border-radius: 8px;
   padding: 10px 12px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 400;
   font-size: 14px;
   color: #1f2937;
@@ -1100,7 +1141,7 @@
 }
 
 .admin-info-label {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 12px;
   line-height: 16px;
@@ -1125,7 +1166,7 @@
 }
 
 .admin-termination-banner h3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 14px;
   color: #dc2626;
@@ -1133,7 +1174,7 @@
 }
 
 .admin-termination-banner p {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 13px;
   color: #7f1d1d;
   margin: 8px 0;
@@ -1159,7 +1200,7 @@
   padding: 10px 16px;
   border: none;
   border-radius: 8px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -1198,7 +1239,7 @@
 }
 
 .admin-terminated-banner h3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 600;
   font-size: 14px;
   color: #15803d;
@@ -1206,10 +1247,9 @@
 }
 
 .admin-terminated-banner p {
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-size: 13px;
   color: #166534;
   margin: 0;
   line-height: 1.5;
 }
-
