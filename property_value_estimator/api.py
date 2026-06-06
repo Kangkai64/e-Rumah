@@ -30,6 +30,14 @@ def resolve_relative_path(path: str) -> str:
 
 MODEL_PATH = resolve_relative_path(os.getenv("MODEL_PATH", "models/xgb_erumah_latest.pkl"))
 
+
+def build_model_version(model_path: str) -> str:
+    filename = os.path.splitext(os.path.basename(model_path))[0]
+    if filename.startswith("xgb_erumah_"):
+        suffix = filename.removeprefix("xgb_erumah_")
+        return f"XGBoost_{suffix}"
+    return filename
+
 app = FastAPI(
     title="e-Rumah Property Value Estimator",
     description="Estimates residential property value using NAPIC transaction data. "
@@ -52,7 +60,7 @@ class EstimationRequest(BaseModel):
     district:       str   = Field(..., example="Alor Gajah")
     mukim:          str   = Field(..., example="Bdr Masjid Tanah")
     floor_area_sqm: float = Field(..., gt=0, example=106.0)
-    land_area_sqm:  float = Field(..., gt=0, example=374.0)
+    land_area_sqm:  Optional[float] = Field(None, ge=0, example=374.0)
     tenure:         str   = Field("Freehold", example="Freehold")
     unit_level:     Optional[float] = Field(0, example=0)
     txn_year:       Optional[int]   = Field(2024, example=2024)
@@ -99,16 +107,14 @@ def estimate(req: EstimationRequest):
             scheme_name=req.scheme_name,
             tenure=req.tenure,
             floor_area_sqm=req.floor_area_sqm,
-            land_area_sqm=req.land_area_sqm,
+            land_area_sqm=req.land_area_sqm or 0,
             unit_level=req.unit_level or 0,
             txn_year=req.txn_year or 2024,
             txn_month=req.txn_month or 1,
         )
 
         # Map pipeline output to the frontend-friendly schema
-        model_version = raw.get("model_version") or bundle.get("version", "unknown")
-        if model_version == "unknown":
-            model_version = raw.get("model_used") or "unknown"
+        model_version = build_model_version(MODEL_PATH)
 
         mapped = {
             "estimated_price_rm": raw.get("estimated_value_rm") or raw.get("estimated_price_rm"),

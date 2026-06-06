@@ -12,49 +12,28 @@ import { supabase } from "../config/supabase";
  */
 export const signUp = async (email, password, metadata = {}) => {
   try {
+    const normalizedMetadata = {
+      ...metadata,
+    };
+
     // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: metadata, // Stores in auth.users.raw_user_meta_data
+        data: normalizedMetadata, // Stores in auth.users.raw_user_meta_data
       },
     });
 
     if (authError) throw authError;
 
-    // 2. Create user record in users table
+    // 2. Keep profile data on the auth user itself so the app does not depend
+    // on a public.users REST endpoint being available.
     if (authData.user) {
-      console.log("📝 Creating user record in users table...");
-
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: metadata.full_name || null,
-          ic_number: metadata.ic_number || null,
-          phone: metadata.phone || null,
-        })
-        .select();
-
-      if (userError) {
-        console.error("❌ Error creating user record:", userError);
-        // Try to check if user already exists
-        const { data: existingUser } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", authData.user.id)
-          .single();
-
-        if (existingUser) {
-          console.log("✅ User record already exists");
-        } else {
-          console.error("⚠️ User created in Auth but not in users table!");
-        }
-      } else {
-        console.log("✅ User record created:", userData);
-      }
+      console.log(
+        "✅ Auth user created with profile metadata:",
+        normalizedMetadata,
+      );
     }
 
     return { user: authData.user, error: null };

@@ -173,3 +173,90 @@ create table public.care_services (
   constraint care_service_pkey primary key (service_id),
   constraint care_service_elder_id_fkey foreign KEY (elder_id) references users (id)
 ) TABLESPACE pg_default;
+
+create table public.applications (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid not null,
+  joint_user_id uuid null,
+  status text not null default 'draft'::text,
+  remarks text null,
+  main_applicant_deceased boolean null default false,
+  submitted_at timestamp with time zone null,
+  reviewed_at timestamp with time zone null,
+  approved_at timestamp with time zone null,
+  created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
+  is_flagged boolean null default false,
+  flagged_reason text null,
+  flagged_at timestamp with time zone null,
+  flagged_by uuid null,
+  flagged_code public.flagged_code null,
+  termination_reason text null,
+  termination_submitted_at timestamp with time zone null,
+  termination_update_at timestamp with time zone null,
+  approved_amount numeric null,
+  reject_termination_reason text null,
+  constraint applications_pkey primary key (id),
+  constraint applications_flagged_by_fkey foreign KEY (flagged_by) references admins (id) on update CASCADE on delete RESTRICT,
+  constraint applications_joint_user_id_fkey foreign KEY (joint_user_id) references users (id) on delete set null,
+  constraint applications_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE,
+  constraint applications_approved_amount_check check ((approved_amount > (0)::numeric)),
+  constraint applications_status_check check (
+    (
+      status = any (
+        array[
+          'draft'::text,
+          'submitted'::text,
+          'underReviewed'::text,
+          'approved'::text,
+          'rejected'::text,
+          'terminated'::text
+        ]
+      )
+    )
+  )
+) TABLESPACE pg_default;
+
+create index IF not exists idx_applications_flagged on public.applications using btree (is_flagged) TABLESPACE pg_default
+where
+  (is_flagged = true);
+
+create index IF not exists idx_applications_user_id on public.applications using btree (user_id) TABLESPACE pg_default;
+
+create index IF not exists idx_applications_status on public.applications using btree (status) TABLESPACE pg_default;
+
+create unique INDEX IF not exists idx_one_active_application on public.applications using btree (user_id) TABLESPACE pg_default
+where
+  (
+    status = any (array['approved'::text, 'underReviewed'::text])
+  );
+
+create trigger update_applications_updated_at BEFORE
+update on applications for EACH row
+execute FUNCTION update_updated_at_column ();
+
+create table public.user_bank_details (
+  id uuid not null default extensions.uuid_generate_v4 (),
+  user_id uuid not null,
+  account_holder_name text not null,
+  bank_name text not null,
+  bank_account_number text not null,
+  account_type text null,
+  is_primary boolean not null default true,
+  is_verified boolean not null default false,
+  verified_at timestamp with time zone null,
+  notes text null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint user_bank_details_pkey primary key (id),
+  constraint user_bank_details_user_account_unique unique (user_id, bank_account_number),
+  constraint user_bank_details_user_id_fkey foreign KEY (user_id) references users (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_user_bank_details_user_id on public.user_bank_details using btree (user_id) TABLESPACE pg_default;
+
+create index IF not exists idx_user_bank_details_is_primary on public.user_bank_details using btree (is_primary) TABLESPACE pg_default;
+
+create trigger tr_user_bank_details_set_updated_at BEFORE
+update on user_bank_details for EACH row
+execute FUNCTION update_updated_at_column ();

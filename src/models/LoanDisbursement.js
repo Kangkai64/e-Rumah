@@ -1,6 +1,6 @@
 import { supabase } from "../config/supabase";
 
-const DEFAULT_LOAN_MONTHS = 60;
+const DEFAULT_LOAN_MONTHS = 240;
 const DISBURSEMENT_TYPE = "payout";
 
 const toNumber = (value) => {
@@ -36,18 +36,12 @@ const resolvePropertyValue = (application) => {
 
 const resolveApprovedAmount = (application) => {
   const approvedAmount = toNumber(application?.approved_amount);
-  const approvedTotalAmount = toNumber(application?.approved_total_amount);
-
-  if (approvedTotalAmount > 0) return approvedTotalAmount;
   if (approvedAmount > 0) return approvedAmount;
 
-  return resolvePropertyValue(application) * 0.6;
+  return resolvePropertyValue(application) * 0.7;
 };
 
 const resolveMonthlyAmount = (application) => {
-  const explicitMonthlyAmount = toNumber(application?.approved_monthly_amount);
-  if (explicitMonthlyAmount > 0) return explicitMonthlyAmount;
-
   const approvedAmount = resolveApprovedAmount(application);
   return approvedAmount > 0 ? approvedAmount / DEFAULT_LOAN_MONTHS : 0;
 };
@@ -64,6 +58,24 @@ const mapTransaction = (transaction) => ({
   type: transaction.transaction_type,
   status: "Completed",
 });
+
+const formatBankAccountNumber = (accountNumber) => {
+  const digits = String(accountNumber || "").replace(/\D/g, "");
+  if (!digits) return "";
+
+  return `**** ${digits.slice(-4)}`;
+};
+
+const formatBankAccountLabel = (bankDetails) => {
+  if (!bankDetails) return null;
+
+  const bankName = bankDetails.bank_name || "Bank";
+  const maskedAccount = formatBankAccountNumber(
+    bankDetails.bank_account_number,
+  );
+
+  return [bankName, maskedAccount].filter(Boolean).join(" ").trim();
+};
 
 const buildSummary = (application, transactions = []) => {
   const totalEligibleAmount = resolveApprovedAmount(application);
@@ -109,8 +121,6 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
-          approved_total_amount,
-          approved_monthly_amount,
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -199,8 +209,6 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
-          approved_total_amount,
-          approved_monthly_amount,
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -350,8 +358,6 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
-          approved_total_amount,
-          approved_monthly_amount,
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -458,8 +464,6 @@ const LoanDisbursement = {
           `
           id,
           approved_amount,
-          approved_total_amount,
-          approved_monthly_amount,
           properties(
             expected_market_value,
             indicative_market_value
@@ -523,8 +527,6 @@ const LoanDisbursement = {
           id,
           approved_at,
           approved_amount,
-          approved_total_amount,
-          approved_monthly_amount,
           properties(
             expected_market_value,
             indicative_market_value
@@ -564,6 +566,7 @@ const LoanDisbursement = {
             endDate: null,
             totalMonths: 0,
             nextPayoutDate: null,
+            bankDetails: null,
             bankAccount: null,
           },
         };
@@ -585,6 +588,25 @@ const LoanDisbursement = {
 
       if (latestTransactionError) throw latestTransactionError;
 
+      let bankDetails = null;
+      try {
+        const { data: bankRows, error: bankError } = await supabase
+          .from("user_bank_details")
+          .select(
+            "account_holder_name, bank_name, bank_account_number, account_type, is_primary, is_verified, verified_at, notes",
+          )
+          .eq("user_id", userId)
+          .order("is_primary", { ascending: false })
+          .order("created_at", { ascending: true })
+          .limit(1);
+
+        if (bankError) throw bankError;
+
+        bankDetails = bankRows?.[0] || null;
+      } catch (bankError) {
+        console.warn("Error fetching user bank details:", bankError);
+      }
+
       const nextPayoutDate = latestTransactions?.[0]?.transaction_date
         ? addMonths(latestTransactions[0].transaction_date, 1)
         : addMonths(startDate, 1);
@@ -598,7 +620,8 @@ const LoanDisbursement = {
           endDate,
           totalMonths,
           nextPayoutDate,
-          bankAccount: null,
+          bankDetails,
+          bankAccount: formatBankAccountLabel(bankDetails),
         },
       };
     } catch (error) {

@@ -21,6 +21,11 @@ const toNumber = (value) => {
 
 const PropertyCalculatorController = () => {
   const defaultTransactionDate = getDefaultTransactionDate();
+  const strataPropertyTypes = new Set([
+    "Condominium/Apartment",
+    "Flat",
+    "Low-Cost Flat",
+  ]);
 
   const [formData, setFormData] = useState({
     propertyType: "",
@@ -30,7 +35,6 @@ const PropertyCalculatorController = () => {
     floorAreaSqm: "",
     landAreaSqm: "",
     tenure: "Freehold",
-    unitLevel: "",
     txnYear: defaultTransactionDate.txnYear,
     txnMonth: defaultTransactionDate.txnMonth,
   });
@@ -46,6 +50,7 @@ const PropertyCalculatorController = () => {
 
   const buildValidationErrors = () => {
     const nextErrors = {};
+    const isStrataProperty = strataPropertyTypes.has(formData.propertyType);
 
     if (!formData.propertyType)
       nextErrors.propertyType = "Property Type is required";
@@ -56,22 +61,20 @@ const PropertyCalculatorController = () => {
 
     const floorAreaSqm = toNumber(formData.floorAreaSqm);
     const landAreaSqm = toNumber(formData.landAreaSqm);
-    const unitLevel =
-      formData.unitLevel === "" ? null : toNumber(formData.unitLevel);
 
     if (floorAreaSqm === null || floorAreaSqm <= 0) {
       nextErrors.floorAreaSqm = "Floor area must be greater than 0";
     }
 
-    if (landAreaSqm === null || landAreaSqm <= 0) {
+    if (!isStrataProperty && (landAreaSqm === null || landAreaSqm <= 0)) {
       nextErrors.landAreaSqm = "Land area must be greater than 0";
     }
 
-    if (!formData.tenure) nextErrors.tenure = "Tenure is required";
-
-    if (unitLevel !== null && unitLevel < 0) {
-      nextErrors.unitLevel = "Unit level cannot be negative";
+    if (isStrataProperty && landAreaSqm !== null && landAreaSqm < 0) {
+      nextErrors.landAreaSqm = "Land area cannot be negative";
     }
+
+    if (!formData.tenure) nextErrors.tenure = "Tenure is required";
 
     if (!formData.txnYear) nextErrors.txnYear = "Transaction year is required";
     if (!formData.txnMonth)
@@ -126,10 +129,10 @@ const PropertyCalculatorController = () => {
           district: formData.district.trim(),
           mukim: formData.mukim.trim(),
           floor_area_sqm: toNumber(formData.floorAreaSqm),
-          land_area_sqm: toNumber(formData.landAreaSqm),
+          land_area_sqm:
+            toNumber(formData.landAreaSqm) ??
+            (strataPropertyTypes.has(formData.propertyType) ? 0 : null),
           tenure: formData.tenure,
-          unit_level:
-            formData.unitLevel === "" ? 0 : (toNumber(formData.unitLevel) ?? 0),
           txn_year: toNumber(formData.txnYear),
           txn_month: toNumber(formData.txnMonth),
         }),
@@ -170,7 +173,6 @@ const PropertyCalculatorController = () => {
       floorAreaSqm: "",
       landAreaSqm: "",
       tenure: "Freehold",
-      unitLevel: "",
       txnYear: defaultTransactionDate.txnYear,
       txnMonth: defaultTransactionDate.txnMonth,
     });

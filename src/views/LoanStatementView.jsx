@@ -1,4 +1,4 @@
-import '../client_controller/user/UserProfileView.css'
+import "../client_controller/user/UserProfileView.css";
 
 function UserProfileView({
   loading,
@@ -17,8 +17,22 @@ function UserProfileView({
   formatCurrency,
   formatDate,
   getStatusBadgeClass,
-  onViewFullSchedule
+  onViewFullSchedule,
+  isReestimatingProperty,
+  propertyEstimateMessage,
+  propertyEstimateMessageType,
+  showFullSchedule,
+  disbursementSchedule = [],
 }) {
+  const scheduleByYear = disbursementSchedule.reduce((accumulator, entry) => {
+    if (!accumulator[entry.year]) {
+      accumulator[entry.year] = [];
+    }
+
+    accumulator[entry.year].push(entry);
+    return accumulator;
+  }, {});
+
   if (loading) {
     return (
       <div className="user-dashboard">
@@ -26,7 +40,7 @@ function UserProfileView({
           <p>Loading dashboard...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -37,7 +51,7 @@ function UserProfileView({
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -52,7 +66,7 @@ function UserProfileView({
           <div className="loan-overview-section">
             <div className="loan-overview-card">
               <h2 className="card-title">Loan Overview</h2>
-              
+
               {/* Pie Chart */}
               <div className="loan-chart-container">
                 <div className="pie-chart">
@@ -60,7 +74,7 @@ function UserProfileView({
                     <circle
                       cx="128"
                       cy="128"
-                      r="90"
+                      r="100"
                       fill="none"
                       stroke="#D1D5DB"
                       strokeWidth="36"
@@ -68,7 +82,7 @@ function UserProfileView({
                     <circle
                       cx="128"
                       cy="128"
-                      r="90"
+                      r="100"
                       fill="none"
                       stroke="#F59E0B"
                       strokeWidth="36"
@@ -77,16 +91,19 @@ function UserProfileView({
                       transform="rotate(-90 128 128)"
                     />
                     {/* Center white circle */}
-                    <circle cx="128" cy="128" r="76" fill="white" />
+                    <circle cx="128" cy="128" r="100" fill="white" />
                   </svg>
-                  
+
                   <div className="chart-center-details">
                     <p className="chart-label">Total Eligible Amount</p>
                     <p className="chart-amount">
                       {formatCurrency(loanOverview?.totalEligibleAmount || 0)}
                     </p>
                     <p className="chart-date">
-                      Updated as at {loanOverview?.approvedAt ? formatDate(loanOverview.approvedAt) : 'N/A'}
+                      Updated as at{" "}
+                      {loanOverview?.approvedAt
+                        ? formatDate(loanOverview.approvedAt)
+                        : "N/A"}
                     </p>
                   </div>
                 </div>
@@ -94,8 +111,10 @@ function UserProfileView({
 
               {/* Loan Status Badge */}
               <div className="loan-status-container">
-                <span className={`loan-status-badge ${getStatusBadgeClass(loanOverview?.status)}`}>
-                  {loanOverview?.status || 'No Active Loan'}
+                <span
+                  className={`loan-status-badge ${getStatusBadgeClass(loanOverview?.status)}`}
+                >
+                  {loanOverview?.status || "No Active Loan"}
                 </span>
               </div>
 
@@ -103,25 +122,104 @@ function UserProfileView({
               <div className="loan-summary">
                 <div className="loan-summary-item">
                   <p className="summary-label">Disbursed to-date</p>
-                  <p className="summary-amount">{formatCurrency(loanOverview?.disbursedToDate || 0)}</p>
+                  <p className="summary-amount">
+                    {formatCurrency(loanOverview?.disbursedToDate || 0)}
+                  </p>
                 </div>
                 <div className="loan-summary-item">
                   <p className="summary-label">Remaining balance</p>
-                  <p className="summary-amount">{formatCurrency(loanOverview?.remainingBalance || 0)}</p>
+                  <p className="summary-amount">
+                    {formatCurrency(loanOverview?.remainingBalance || 0)}
+                  </p>
                 </div>
               </div>
 
               {/* Footer Actions */}
               <div className="loan-footer">
                 <button className="link-button" onClick={onViewFullSchedule}>
-                  View full schedule
+                  {showFullSchedule
+                    ? "Hide full schedule"
+                    : "View full schedule"}
                 </button>
                 <p className="property-details">
-                  Property: {loanOverview?.propertyDetails?.propertyType || 'N/A'}, {loanOverview?.propertyDetails?.address || 'N/A'}
+                  Property:{" "}
+                  {loanOverview?.propertyDetails?.propertyType || "N/A"},{" "}
+                  {loanOverview?.propertyDetails?.address || "N/A"}
                 </p>
               </div>
             </div>
           </div>
+
+          {showFullSchedule && (
+            <div className="schedule-section">
+              <div className="schedule-card">
+                <div className="schedule-header">
+                  <div>
+                    <h3>Full Disbursement Schedule</h3>
+                    <p>
+                      Months marked in green have already been disbursed. Amber
+                      shows the current month, and grey indicates months still
+                      ahead.
+                    </p>
+                  </div>
+                  <div className="schedule-legend">
+                    <span className="legend-item">
+                      <span className="legend-swatch legend-disbursed"></span>
+                      Disbursed
+                    </span>
+                    <span className="legend-item">
+                      <span className="legend-swatch legend-current"></span>
+                      Current
+                    </span>
+                    <span className="legend-item">
+                      <span className="legend-swatch legend-upcoming"></span>
+                      Upcoming
+                    </span>
+                  </div>
+                </div>
+
+                {disbursementSchedule.length > 0 ? (
+                  <div className="schedule-years">
+                    {Object.entries(scheduleByYear).map(([year, months]) => (
+                      <div key={year} className="schedule-year-block">
+                        <div className="schedule-year-label">{year}</div>
+                        <div className="schedule-month-grid">
+                          {months.map((entry) => (
+                            <div
+                              key={entry.monthKey}
+                              className={`schedule-month schedule-${entry.status}`}
+                              title={
+                                entry.referenceNumber
+                                  ? `${entry.monthLabel} ${year} - ${entry.referenceNumber}`
+                                  : `${entry.monthLabel} ${year}`
+                              }
+                            >
+                              <span className="schedule-month-label">
+                                {entry.monthLabel}
+                              </span>
+                              <span className="schedule-month-status">
+                                {entry.status === "disbursed"
+                                  ? "Disbursed"
+                                  : entry.status === "current"
+                                    ? "Current"
+                                    : entry.status === "missed"
+                                      ? "Pending"
+                                      : "Upcoming"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="schedule-empty">
+                    No schedule data is available yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Financial Monitoring Section */}
           <div className="financial-monitoring-section">
@@ -130,19 +228,22 @@ function UserProfileView({
               <div className="card-header">
                 <div className="card-title-section">
                   <h3>Loan Disbursement Monitoring</h3>
-                  <p className="card-subtitle">Track how and when your payouts are released.</p>
+                  <p className="card-subtitle">
+                    Track the transaction records for every payout released to
+                    your loan.
+                  </p>
                 </div>
                 <div className="filter-controls">
                   <span className="filter-label">Filter</span>
-                  <button 
-                    className={`filter-button ${disbursementFilter === 'last6months' ? 'active' : ''}`}
-                    onClick={() => onDisbursementFilterChange('last6months')}
+                  <button
+                    className={`filter-button ${disbursementFilter === "last6months" ? "active" : ""}`}
+                    onClick={() => onDisbursementFilterChange("last6months")}
                   >
                     Last 6 months
                   </button>
-                  <button 
-                    className={`filter-button ${disbursementFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => onDisbursementFilterChange('all')}
+                  <button
+                    className={`filter-button ${disbursementFilter === "all" ? "active" : ""}`}
+                    onClick={() => onDisbursementFilterChange("all")}
                   >
                     View all
                   </button>
@@ -152,37 +253,62 @@ function UserProfileView({
               <div className="disbursement-table">
                 <div className="table-header">
                   <span>Date</span>
+                  <span>Reference</span>
+                  <span>Description</span>
                   <span>Amount Received</span>
                   <span>Remaining</span>
                   <span>Status</span>
                 </div>
-                
+
                 {disbursements && disbursements.length > 0 ? (
                   disbursements.map((record, index) => (
                     <div key={index} className="table-row">
-                      <span className="row-date">{formatDate(record.date)}</span>
-                      <span className="row-amount">{formatCurrency(record.amountReceived)}</span>
-                      <span className="row-remaining">{formatCurrency(record.remaining)}</span>
-                      <span className={`status-badge ${getStatusBadgeClass(record.status)}`}>
+                      <span className="row-date">
+                        {formatDate(record.date)}
+                      </span>
+                      <span className="row-reference">
+                        {record.referenceNumber || "N/A"}
+                      </span>
+                      <span className="row-description">
+                        {record.description || "Loan disbursement payout"}
+                      </span>
+                      <span className="row-amount">
+                        {formatCurrency(record.amountReceived)}
+                      </span>
+                      <span className="row-remaining">
+                        {formatCurrency(record.remaining)}
+                      </span>
+                      <span
+                        className={`status-badge ${getStatusBadgeClass(record.status)}`}
+                      >
                         {record.status}
                       </span>
                     </div>
                   ))
                 ) : (
                   <div className="table-row">
-                    <span className="no-data" style={{gridColumn: '1 / -1', textAlign: 'center'}}>
+                    <span
+                      className="no-data"
+                      style={{ gridColumn: "1 / -1", textAlign: "center" }}
+                    >
                       No disbursement records found
                     </span>
                   </div>
                 )}
-                
+
                 {/* Upcoming disbursement (mock data) */}
                 {loanOverview?.hasLoan && (
                   <div className="table-row">
                     <span className="row-date">Upcoming</span>
                     <span className="row-amount">RM 2,500</span>
-                    <span className="row-remaining">{formatCurrency(loanOverview?.remainingBalance - 2500 || 0)}</span>
-                    <span className={`status-badge ${getStatusBadgeClass('scheduled')}`}>
+                    <span className="row-remaining">
+                      {formatCurrency(
+                        loanOverview?.remainingBalance - 2500 || 0,
+                      )}
+                    </span>
+                    <span
+                      className={`status-badge ${getStatusBadgeClass("scheduled")}`}
+                    >
                       Scheduled
                     </span>
                   </div>
@@ -195,7 +321,10 @@ function UserProfileView({
               <div className="property-header">
                 <h3>Property Value Estimation</h3>
                 <p className="last-checked">
-                  Last checked: {propertyValue?.lastChecked ? formatDate(propertyValue.lastChecked) : 'N/A'}
+                  Last checked:{" "}
+                  {propertyValue?.lastChecked
+                    ? formatDate(propertyValue.lastChecked)
+                    : "N/A"}
                 </p>
               </div>
 
@@ -208,13 +337,29 @@ function UserProfileView({
                 </div>
 
                 <div className="property-actions">
-                  <button className="secondary-button" onClick={onViewPropertyHistory}>
+                  <button
+                    className="secondary-button"
+                    onClick={onViewPropertyHistory}
+                  >
                     View history
                   </button>
-                  <button className="primary-button" onClick={onReEstimateProperty}>
-                    Re-estimate Property
+                  <button
+                    className="primary-button"
+                    disabled={isReestimatingProperty}
+                    onClick={onReEstimateProperty}
+                  >
+                    {isReestimatingProperty
+                      ? "Re-estimating..."
+                      : "Re-estimate Property"}
                   </button>
                 </div>
+                {propertyEstimateMessage && (
+                  <p
+                    className={`property-estimate-message ${propertyEstimateMessageType || ""}`}
+                  >
+                    {propertyEstimateMessage}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -225,15 +370,15 @@ function UserProfileView({
               <div className="payout-header">
                 <h3>Payout Details</h3>
                 <div className="payout-toggle">
-                  <button 
-                    className={`toggle-button ${payoutType === 'monthly' ? 'active' : ''}`}
-                    onClick={() => onPayoutTypeToggle('monthly')}
+                  <button
+                    className={`toggle-button ${payoutType === "monthly" ? "active" : ""}`}
+                    onClick={() => onPayoutTypeToggle("monthly")}
                   >
                     Monthly
                   </button>
-                  <button 
-                    className={`toggle-button ${payoutType === 'lump-sum' ? 'active' : ''}`}
-                    onClick={() => onPayoutTypeToggle('lump-sum')}
+                  <button
+                    className={`toggle-button ${payoutType === "lump-sum" ? "active" : ""}`}
+                    onClick={() => onPayoutTypeToggle("lump-sum")}
                   >
                     Lump-sum
                   </button>
@@ -241,7 +386,7 @@ function UserProfileView({
               </div>
 
               <div className="payout-content">
-                {payoutType === 'monthly' ? (
+                {payoutType === "monthly" ? (
                   <>
                     <div className="payout-info-section">
                       <div className="payout-info-left">
@@ -250,24 +395,42 @@ function UserProfileView({
                           {formatCurrency(payoutDetails?.monthlyAmount || 0)}
                         </p>
                         <p className="info-period">
-                          From {payoutDetails?.startDate ? formatDate(payoutDetails.startDate) : 'Jan 2026'} to{' '}
-                          {payoutDetails?.endDate ? formatDate(payoutDetails.endDate) : 'Dec 2030'} ({payoutDetails?.totalMonths || 0} months)
+                          From{" "}
+                          {payoutDetails?.startDate
+                            ? formatDate(payoutDetails.startDate)
+                            : "Jan 2026"}{" "}
+                          to{" "}
+                          {payoutDetails?.endDate
+                            ? formatDate(payoutDetails.endDate)
+                            : "Dec 2030"}{" "}
+                          ({payoutDetails?.totalMonths || 0} months)
                         </p>
-                        
+
                         <ul className="info-notes">
-                          <li>Payouts are subject to property value review every 2 years.</li>
-                          <li>Early termination may affect total amount disbursed.</li>
-                          <li>You may switch to lump-sum once every 12 months.</li>
+                          <li>
+                            Payouts are subject to property value review every 2
+                            years.
+                          </li>
+                          <li>
+                            Early termination may affect total amount disbursed.
+                          </li>
+                          <li>
+                            You may switch to lump-sum once every 12 months.
+                          </li>
                         </ul>
                       </div>
 
                       <div className="payout-info-right">
                         <p className="info-label">Next payout date</p>
                         <p className="info-next-date">
-                          {payoutDetails?.nextPayoutDate ? formatDate(payoutDetails.nextPayoutDate) : '02 Jan 2026'}
+                          {payoutDetails?.nextPayoutDate
+                            ? formatDate(payoutDetails.nextPayoutDate)
+                            : "02 Jan 2026"}
                         </p>
                         <p className="info-bank">
-                          Deposited into {payoutDetails?.bankAccount || 'Maybank **** 1234'}
+                          Deposited into{" "}
+                          {payoutDetails?.bankAccount ||
+                            "No bank account details available."}
                         </p>
                       </div>
                     </div>
@@ -288,7 +451,7 @@ function UserProfileView({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default UserProfileView
+export default UserProfileView;

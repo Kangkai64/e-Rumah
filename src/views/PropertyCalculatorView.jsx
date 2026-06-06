@@ -10,6 +10,12 @@ const PropertyCalculatorView = ({
   isLoading = false,
   calculationResults = null,
 }) => {
+  const strataPropertyTypes = new Set([
+    "Condominium/Apartment",
+    "Flat",
+    "Low-Cost Flat",
+  ]);
+
   const propertyTypeOptions = [
     "1 - 1 1/2 Storey Semi-Detached",
     "1 - 1 1/2 Storey Terraced",
@@ -46,6 +52,8 @@ const PropertyCalculatorView = ({
     const year = 2018 + index;
     return String(year);
   });
+
+  const isStrataProperty = strataPropertyTypes.has(formData.propertyType);
 
   const formatCurrency = (value) => {
     const amount = Number(value) || 0;
@@ -227,7 +235,9 @@ const PropertyCalculatorView = ({
 
               <div className="property-calculator-form-group">
                 <label className="property-calculator-label">
-                  Land Area (sqm)
+                  {isStrataProperty
+                    ? "Parcel / Land Share Area (sqm)"
+                    : "Land Area (sqm)"}
                 </label>
                 <div className="property-calculator-input-wrapper">
                   <input
@@ -237,9 +247,14 @@ const PropertyCalculatorView = ({
                     name="landAreaSqm"
                     value={formData.landAreaSqm || ""}
                     onChange={onInputChange}
-                    placeholder="0.0"
+                    placeholder={isStrataProperty ? "Optional" : "0.0"}
                     className="property-calculator-text-input"
                   />
+                  <small className="property-calculator-helper-text">
+                    {isStrataProperty
+                      ? "For condominium, apartment, and flat properties, enter the parcel or share land area if you have it. Leave it blank if unavailable; the estimator will fall back to 0, which is less precise."
+                      : "Enter the land area recorded for the property."}
+                  </small>
                   {errors.landAreaSqm && (
                     <div className="property-calculator-error-message">
                       {errors.landAreaSqm}
@@ -270,31 +285,6 @@ const PropertyCalculatorView = ({
                   {errors.tenure && (
                     <div className="property-calculator-error-message">
                       {errors.tenure}
-                      <div className="property-calculator-error-arrow"></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="property-calculator-form-group">
-                <label className="property-calculator-label">Unit Level</label>
-                <div className="property-calculator-input-wrapper">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    name="unitLevel"
-                    value={formData.unitLevel || ""}
-                    onChange={onInputChange}
-                    placeholder="Optional"
-                    className="property-calculator-text-input"
-                  />
-                  <small className="property-calculator-helper-text">
-                    Ground level can be left blank or set to 0.
-                  </small>
-                  {errors.unitLevel && (
-                    <div className="property-calculator-error-message">
-                      {errors.unitLevel}
                       <div className="property-calculator-error-arrow"></div>
                     </div>
                   )}

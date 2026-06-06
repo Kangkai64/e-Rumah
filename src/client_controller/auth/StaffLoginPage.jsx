@@ -45,29 +45,30 @@ export default function StaffLoginPage() {
       }
 
       if (user) {
-        const [adminResult, supportResult, userResult] = await Promise.all([
+        const [adminResult, supportResult] = await Promise.allSettled([
           supabase.from("admins").select("id").eq("id", user.id).maybeSingle(),
           supabase
             .from("customer_supports")
             .select("id")
             .eq("id", user.id)
             .maybeSingle(),
-          supabase.from("users").select("id").eq("id", user.id).maybeSingle(),
         ]);
 
-        if (adminResult.data) {
+        const adminData =
+          adminResult.status === "fulfilled" ? adminResult.value.data : null;
+        const supportData =
+          supportResult.status === "fulfilled"
+            ? supportResult.value.data
+            : null;
+
+        if (adminData) {
           console.log("✅ Staff login successful, role: admin");
           navigate("/admin/dashboard");
-        } else if (supportResult.data) {
+        } else if (supportData) {
           console.log("✅ Staff login successful, role: support");
           navigate("/support/dashboard");
-        } else if (userResult.data) {
-          setError("Please use User Login for customer accounts");
-          await supabase.auth.signOut();
-          setLoading(false);
-          return;
         } else {
-          setError("Unable to verify staff account");
+          setError("Please use User Login for customer accounts");
           await supabase.auth.signOut();
           setLoading(false);
           return;

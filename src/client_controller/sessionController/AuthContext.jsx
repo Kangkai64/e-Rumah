@@ -28,6 +28,15 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
 
+  const buildUserProfile = (authUser) => ({
+    id: authUser.id,
+    email: authUser.email || authUser.user_metadata?.email || null,
+    full_name:
+      authUser.user_metadata?.full_name || authUser.user_metadata?.name || null,
+    ic_number: authUser.user_metadata?.ic_number || null,
+    phone: authUser.user_metadata?.phone || null,
+  });
+
   const fetchUserData = async (authUser) => {
     if (!authUser) {
       setUser(null);
@@ -94,48 +103,20 @@ export function AuthProvider({ children }) {
           "✅ Staff data from database:",
           staffRole === "admin" ? adminResult.data : supportResult.data,
         );
-        setUser(authUser);
+        setUser({
+          ...authUser,
+          ...buildUserProfile(authUser),
+          role: staffRole,
+        });
         return;
       }
 
-      // Fetch customer user data from the users table with timeout (reduced to 3s)
-      const userTimeout = createTimeout("UserTimeout");
-      const fetchPromise = supabase
-        .from("users")
-        .select("id, email, full_name, ic_number, phone")
-        .eq("id", authUser.id)
-        .maybeSingle();
-
-      const { data: userData } = await Promise.race([
-        fetchPromise,
-        userTimeout,
-      ]).catch((error) => {
-        console.warn("⚠️ Timeout or error fetching user data:", error.message);
-        // Don't set default values on timeout - keep trying
-        return { data: null, error: error };
-      });
-
-      // Determine role: use database data, then cache, then default to 'user'
-      const role = userData ? "user" : cachedRole || "user";
+      const profile = buildUserProfile(authUser);
+      const role = "user";
       setUserRole(role);
-
-      // Only update cache if we got fresh data from database
-      if (userData) {
-        localStorage.setItem("userRole", role);
-        console.log("✅ User data from database:", userData);
-      } else if (cachedRole) {
-        console.log("📦 Using cached role:", cachedRole);
-      } else {
-        console.warn(
-          "⚠️ User not found in database and no cache, defaulting to user role",
-        );
-      }
-
-      if (!userData && !cachedRole) {
-        console.warn("⚠️ No user data and no cache available");
-      } else {
-        console.log("✅ User data:", userData, "- Role:", role);
-      }
+      localStorage.setItem("userRole", role);
+      setUser({ ...authUser, ...profile, role });
+      console.log("✅ User profile from auth metadata:", profile);
 
       // Check if user has completed application (for 'user' role) - with timeout
       if (role === "user") {
@@ -196,7 +177,7 @@ export function AuthProvider({ children }) {
         }
       }
 
-      setUser(authUser);
+      setUser({ ...authUser, ...profile, role });
     } catch (error) {
       console.error("❌ Error fetching user data:", error);
       // Fallback: set user with default role
@@ -205,7 +186,11 @@ export function AuthProvider({ children }) {
         localStorage.getItem("applicationStatus") || "incomplete";
       setUserRole(cachedRole);
       setApplicationStatus(cachedStatus);
-      setUser(authUser);
+      setUser(
+        authUser
+          ? { ...authUser, ...buildUserProfile(authUser), role: cachedRole }
+          : null,
+      );
       // Keep userRole as null to indicate data fetch failure
       console.warn("⚠️ User role could not be determined due to error");
     }
