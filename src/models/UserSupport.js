@@ -72,15 +72,7 @@ class UserSupport {
 
       const { data, error } = await supabase
         .from('support_conversations')
-        .select(`
-          *,
-          sender:sender_id (
-            id,
-            full_name,
-            email,
-            type
-          )
-        `)
+        .select('*')
         .eq('entity_type', entityType)
         .eq('entity_id', inquiryId)
         .order('created_at', { ascending: true })
@@ -222,15 +214,7 @@ class UserSupport {
             // Fetch the full conversation data with sender info
             const { data, error } = await supabase
               .from('support_conversations')
-              .select(`
-                *,
-                sender:sender_id (
-                  id,
-                  full_name,
-                  email,
-                  type
-                )
-              `)
+              .select('*')
               .eq('id', payload.new.id)
               .single()
 
@@ -253,6 +237,42 @@ class UserSupport {
    * @param {Object} subscription - Subscription object returned from subscribeToConversations
    */
   static unsubscribeFromConversations(subscription) {
+    if (subscription) {
+      supabase.removeChannel(subscription)
+    }
+  }
+
+  /**
+   * Subscribe to real-time status changes for a specific inquiry
+   * @param {string} inquiryId - Inquiry ID
+   * @param {Function} callback - Called with the updated inquiry row
+   * @returns {Object} Subscription object
+   */
+  static subscribeToInquiryStatus(inquiryId, callback) {
+    try {
+      const subscription = supabase
+        .channel(`inquiry_status:${inquiryId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'customer_support_inquiries',
+            filter: `id=eq.${inquiryId}`
+          },
+          (payload) => {
+            if (payload.new) callback(payload.new)
+          }
+        )
+        .subscribe()
+      return subscription
+    } catch (error) {
+      console.error('Error subscribing to inquiry status:', error)
+      return null
+    }
+  }
+
+  static unsubscribeFromInquiryStatus(subscription) {
     if (subscription) {
       supabase.removeChannel(subscription)
     }

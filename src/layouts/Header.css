@@ -65,6 +65,11 @@
   color: #A8202D;
 }
 
+.nav-link.active {
+  color: #A8202D;
+  font-weight: 600;
+}
+
 .header-actions {
   display: flex;
   align-items: center;

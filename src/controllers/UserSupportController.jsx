@@ -61,14 +61,11 @@ export default function UserSupportController() {
   useEffect(() => {
     if (!selectedInquiry?.id) return
 
-    // Subscribe to real-time updates
     const subscription = UserSupport.subscribeToConversations(
       selectedInquiry.id,
       selectedInquiry.subject,
       (newConversation) => {
-        // Add new conversation to the list
         setConversations((prev) => {
-          // Check if conversation already exists to avoid duplicates
           const exists = prev.some(conv => conv.id === newConversation.id)
           if (exists) return prev
           return [...prev, newConversation]
@@ -76,13 +73,33 @@ export default function UserSupportController() {
       }
     )
 
-    // Cleanup subscription on unmount or when selectedInquiry changes
     return () => {
       if (subscription) {
         UserSupport.unsubscribeFromConversations(subscription)
       }
     }
   }, [selectedInquiry?.id, selectedInquiry?.subject])
+
+  // Subscribe to real-time inquiry status changes so the UI locks when resolved
+  useEffect(() => {
+    if (!selectedInquiry?.id) return
+
+    const subscription = UserSupport.subscribeToInquiryStatus(
+      selectedInquiry.id,
+      (updatedInquiry) => {
+        setSelectedInquiry(prev => prev ? { ...prev, ...updatedInquiry } : prev)
+        setInquiries(prev => prev.map(inq =>
+          inq.id === updatedInquiry.id ? { ...inq, ...updatedInquiry } : inq
+        ))
+      }
+    )
+
+    return () => {
+      if (subscription) {
+        UserSupport.unsubscribeFromInquiryStatus(subscription)
+      }
+    }
+  }, [selectedInquiry?.id])
 
   const handleCreateInquiry = async ({ subject, message }) => {
     if (!user?.id) return { success: false, error: 'User not authenticated' }
@@ -118,6 +135,10 @@ export default function UserSupportController() {
   const handleSendMessage = async (message, file = null) => {
     if (!user?.id || !selectedInquiry?.id) {
       return { success: false, error: 'Missing required data' }
+    }
+
+    if (selectedInquiry.status === 'resolved') {
+      return { success: false, error: 'This inquiry has been resolved' }
     }
 
     if (!message.trim() && !file) {

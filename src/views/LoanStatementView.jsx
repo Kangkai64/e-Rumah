@@ -1,4 +1,279 @@
+import { useState } from "react";
 import "../client_controller/user/UserProfileView.css";
+
+const MALAYSIAN_BANKS = [
+  "Maybank",
+  "CIMB Bank",
+  "Public Bank",
+  "RHB Bank",
+  "Hong Leong Bank",
+  "AmBank",
+  "Bank Islam",
+  "Bank Rakyat",
+  "Affin Bank",
+  "Alliance Bank",
+  "OCBC Bank",
+  "Standard Chartered",
+  "HSBC Bank",
+  "Other",
+];
+
+const NAME_REGEX = /^[a-zA-Z\s/'-]+$/;
+const DIGITS_ONLY = /^\d+$/;
+
+const BANK_ACCOUNT_RULES = {
+  "Maybank":           { min: 12, max: 12 },
+  "CIMB Bank":         { min: 14, max: 14 },
+  "Public Bank":       { min: 10, max: 10 },
+  "RHB Bank":          { min: 14, max: 14 },
+  "Hong Leong Bank":   { min: 10, max: 10 },
+  "AmBank":            { min: 14, max: 14 },
+  "Bank Islam":        { min: 16, max: 16 },
+  "Bank Rakyat":       { min: 12, max: 12 },
+  "Affin Bank":        { min: 12, max: 12 },
+  "Alliance Bank":     { min: 12, max: 12 },
+  "OCBC Bank":         { min: 10, max: 10 },
+  "Standard Chartered":{ min: 10, max: 12 },
+  "HSBC Bank":         { min: 12, max: 12 },
+};
+
+function validateAccountNumber(accNum, bankName) {
+  if (!accNum) return "Account number is required.";
+  if (!DIGITS_ONLY.test(accNum)) return "Account number must contain digits only.";
+
+  const rule = BANK_ACCOUNT_RULES[bankName];
+  if (rule) {
+    if (rule.min === rule.max) {
+      if (accNum.length !== rule.min)
+        return `${bankName} account numbers must be exactly ${rule.min} digits.`;
+    } else {
+      if (accNum.length < rule.min || accNum.length > rule.max)
+        return `${bankName} account numbers must be ${rule.min}–${rule.max} digits.`;
+    }
+  } else {
+    if (accNum.length < 5 || accNum.length > 20)
+      return "Account number must be between 5 and 20 digits.";
+  }
+
+  return null;
+}
+
+function validate(form) {
+  const errors = {};
+
+  const name = form.accountHolderName.trim();
+  if (!name) {
+    errors.accountHolderName = "Account holder name is required.";
+  } else if (!NAME_REGEX.test(name)) {
+    errors.accountHolderName = "Name must contain letters only.";
+  } else if (name.length < 2) {
+    errors.accountHolderName = "Name is too short.";
+  }
+
+  if (!form.bankName) {
+    errors.bankName = "Please select a bank.";
+  } else if (form.bankName === "Other" && !form.otherBankName.trim()) {
+    errors.otherBankName = "Please enter your bank name.";
+  }
+
+  const accError = validateAccountNumber(
+    form.bankAccountNumber.trim(),
+    form.bankName === "Other" ? "Other" : form.bankName,
+  );
+  if (accError) errors.bankAccountNumber = accError;
+
+  return errors;
+}
+
+function BankDetailsModal({
+  onSave,
+  onDismiss,
+  submitting,
+  error,
+}) {
+  const [form, setForm] = useState({
+    accountHolderName: "",
+    bankName: "",
+    otherBankName: "",
+    bankAccountNumber: "",
+    accountType: "Savings",
+  });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...form, [name]: value };
+    // Clear account number error when bank changes (different length rule)
+    if (name === "bankName") updated.bankAccountNumber = "";
+    setForm(updated);
+    if (touched[name]) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        [name]: validate(updated)[name] || null,
+        ...(name === "bankName" ? { bankAccountNumber: null } : {}),
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      [name]: validate(form)[name] || null,
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const errors = validate(form);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setTouched({
+        accountHolderName: true,
+        bankName: true,
+        otherBankName: true,
+        bankAccountNumber: true,
+      });
+      return;
+    }
+    const payload = {
+      ...form,
+      bankName: form.bankName === "Other" ? form.otherBankName.trim() : form.bankName,
+    };
+    onSave(payload);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-container">
+        <div className="modal-header">
+          <h2>Bank Details Required</h2>
+          <p className="modal-subtitle">
+            Your application is approved. Please provide your bank account
+            details so we can process your loan disbursements.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} noValidate className="modal-form">
+          <div className="form-group">
+            <label htmlFor="accountHolderName">Account Holder Name</label>
+            <input
+              id="accountHolderName"
+              name="accountHolderName"
+              type="text"
+              value={form.accountHolderName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Full name as in bank account"
+              disabled={submitting}
+              className={fieldErrors.accountHolderName ? "input-error" : ""}
+            />
+            {fieldErrors.accountHolderName && (
+              <p className="field-error">{fieldErrors.accountHolderName}</p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="bankName">Bank</label>
+            <select
+              id="bankName"
+              name="bankName"
+              value={form.bankName}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              disabled={submitting}
+              className={fieldErrors.bankName ? "input-error" : ""}
+            >
+              <option value="">Select a bank</option>
+              {MALAYSIAN_BANKS.map((bank) => (
+                <option key={bank} value={bank}>
+                  {bank}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.bankName && (
+              <p className="field-error">{fieldErrors.bankName}</p>
+            )}
+          </div>
+
+          {form.bankName === "Other" && (
+            <div className="form-group">
+              <label htmlFor="otherBankName">Bank Name</label>
+              <input
+                id="otherBankName"
+                name="otherBankName"
+                type="text"
+                value={form.otherBankName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                placeholder="Enter your bank name"
+                disabled={submitting}
+                className={fieldErrors.otherBankName ? "input-error" : ""}
+              />
+              {fieldErrors.otherBankName && (
+                <p className="field-error">{fieldErrors.otherBankName}</p>
+              )}
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="bankAccountNumber">Account Number</label>
+            <input
+              id="bankAccountNumber"
+              name="bankAccountNumber"
+              type="text"
+              value={form.bankAccountNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="e.g. 1234567890"
+              disabled={submitting}
+              className={fieldErrors.bankAccountNumber ? "input-error" : ""}
+            />
+            {fieldErrors.bankAccountNumber && (
+              <p className="field-error">{fieldErrors.bankAccountNumber}</p>
+            )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="accountType">Account Type</label>
+            <select
+              id="accountType"
+              name="accountType"
+              value={form.accountType}
+              onChange={handleChange}
+              disabled={submitting}
+            >
+              <option value="Savings">Savings</option>
+              <option value="Current">Current</option>
+            </select>
+          </div>
+
+          {error && <p className="modal-error">{error}</p>}
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="modal-btn-secondary"
+              onClick={onDismiss}
+              disabled={submitting}
+            >
+              Maybe Later
+            </button>
+            <button
+              type="submit"
+              className="modal-btn-primary"
+              disabled={submitting}
+            >
+              {submitting ? "Saving..." : "Save Bank Details"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function UserProfileView({
   loading,
@@ -8,9 +283,6 @@ function UserProfileView({
   disbursements,
   disbursementFilter,
   onDisbursementFilterChange,
-  propertyValue,
-  onReEstimateProperty,
-  onViewPropertyHistory,
   payoutDetails,
   payoutType,
   onPayoutTypeToggle,
@@ -18,11 +290,13 @@ function UserProfileView({
   formatDate,
   getStatusBadgeClass,
   onViewFullSchedule,
-  isReestimatingProperty,
-  propertyEstimateMessage,
-  propertyEstimateMessageType,
   showFullSchedule,
   disbursementSchedule = [],
+  showBankDetailsModal,
+  onSaveBankDetails,
+  onDismissBankDetailsModal,
+  bankDetailsSubmitting,
+  bankDetailsError,
 }) {
   const scheduleByYear = disbursementSchedule.reduce((accumulator, entry) => {
     if (!accumulator[entry.year]) {
@@ -142,8 +416,10 @@ function UserProfileView({
                     : "View full schedule"}
                 </button>
                 <p className="property-details">
-                  Property:{" "}
-                  {loanOverview?.propertyDetails?.propertyType || "N/A"},{" "}
+                  <span>Property Type: </span>
+                  {loanOverview?.propertyDetails?.propertyType || "N/A"}
+                  <br></br>
+                  <span>Address: </span>
                   {loanOverview?.propertyDetails?.address || "N/A"}
                 </p>
               </div>
@@ -296,70 +572,40 @@ function UserProfileView({
                   </div>
                 )}
 
-                {/* Upcoming disbursement (mock data) */}
-                {loanOverview?.hasLoan && (
-                  <div className="table-row">
-                    <span className="row-date">Upcoming</span>
-                    <span className="row-amount">RM 2,500</span>
-                    <span className="row-remaining">
-                      {formatCurrency(
-                        loanOverview?.remainingBalance - 2500 || 0,
-                      )}
-                    </span>
-                    <span
-                      className={`status-badge ${getStatusBadgeClass("scheduled")}`}
-                    >
-                      Scheduled
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+                {/* Upcoming disbursement (from payoutDetails) */}
+                {loanOverview?.hasLoan &&
+                  (() => {
+                    const upcomingAmount = payoutDetails?.monthlyAmount || 2500;
+                    const upcomingRemaining = Math.max(
+                      (loanOverview?.remainingBalance || 0) - upcomingAmount,
+                      0,
+                    );
 
-            {/* Property Value Estimation */}
-            <div className="property-value-card">
-              <div className="property-header">
-                <h3>Property Value Estimation</h3>
-                <p className="last-checked">
-                  Last checked:{" "}
-                  {propertyValue?.lastChecked
-                    ? formatDate(propertyValue.lastChecked)
-                    : "N/A"}
-                </p>
-              </div>
-
-              <div className="property-content">
-                <div className="property-value-section">
-                  <p className="value-label">Current estimated value</p>
-                  <p className="value-amount">
-                    {formatCurrency(propertyValue?.currentEstimatedValue || 0)}
-                  </p>
-                </div>
-
-                <div className="property-actions">
-                  <button
-                    className="secondary-button"
-                    onClick={onViewPropertyHistory}
-                  >
-                    View history
-                  </button>
-                  <button
-                    className="primary-button"
-                    disabled={isReestimatingProperty}
-                    onClick={onReEstimateProperty}
-                  >
-                    {isReestimatingProperty
-                      ? "Re-estimating..."
-                      : "Re-estimate Property"}
-                  </button>
-                </div>
-                {propertyEstimateMessage && (
-                  <p
-                    className={`property-estimate-message ${propertyEstimateMessageType || ""}`}
-                  >
-                    {propertyEstimateMessage}
-                  </p>
-                )}
+                    return (
+                      <div className="table-row">
+                        <span className="row-date">
+                          {payoutDetails?.nextPayoutDate
+                            ? `Upcoming — ${formatDate(payoutDetails.nextPayoutDate)}`
+                            : "Upcoming"}
+                        </span>
+                        <span className="row-reference">N/A</span>
+                        <span className="row-description">
+                          Scheduled payout
+                        </span>
+                        <span className="row-amount">
+                          {formatCurrency(upcomingAmount)}
+                        </span>
+                        <span className="row-remaining">
+                          {formatCurrency(upcomingRemaining)}
+                        </span>
+                        <span
+                          className={`status-badge ${getStatusBadgeClass("scheduled")}`}
+                        >
+                          Scheduled
+                        </span>
+                      </div>
+                    );
+                  })()}
               </div>
             </div>
           </div>
@@ -369,87 +615,58 @@ function UserProfileView({
             <div className="payout-card">
               <div className="payout-header">
                 <h3>Payout Details</h3>
-                <div className="payout-toggle">
-                  <button
-                    className={`toggle-button ${payoutType === "monthly" ? "active" : ""}`}
-                    onClick={() => onPayoutTypeToggle("monthly")}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    className={`toggle-button ${payoutType === "lump-sum" ? "active" : ""}`}
-                    onClick={() => onPayoutTypeToggle("lump-sum")}
-                  >
-                    Lump-sum
-                  </button>
-                </div>
               </div>
 
               <div className="payout-content">
-                {payoutType === "monthly" ? (
-                  <>
-                    <div className="payout-info-section">
-                      <div className="payout-info-left">
-                        <p className="info-label">Estimated monthly payout</p>
-                        <p className="info-amount">
-                          {formatCurrency(payoutDetails?.monthlyAmount || 0)}
-                        </p>
-                        <p className="info-period">
-                          From{" "}
-                          {payoutDetails?.startDate
-                            ? formatDate(payoutDetails.startDate)
-                            : "Jan 2026"}{" "}
-                          to{" "}
-                          {payoutDetails?.endDate
-                            ? formatDate(payoutDetails.endDate)
-                            : "Dec 2030"}{" "}
-                          ({payoutDetails?.totalMonths || 0} months)
-                        </p>
-
-                        <ul className="info-notes">
-                          <li>
-                            Payouts are subject to property value review every 2
-                            years.
-                          </li>
-                          <li>
-                            Early termination may affect total amount disbursed.
-                          </li>
-                          <li>
-                            You may switch to lump-sum once every 12 months.
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div className="payout-info-right">
-                        <p className="info-label">Next payout date</p>
-                        <p className="info-next-date">
-                          {payoutDetails?.nextPayoutDate
-                            ? formatDate(payoutDetails.nextPayoutDate)
-                            : "02 Jan 2026"}
-                        </p>
-                        <p className="info-bank">
-                          Deposited into{" "}
-                          {payoutDetails?.bankAccount ||
-                            "No bank account details available."}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
+                <>
                   <div className="payout-info-section">
                     <div className="payout-info-left">
-                      <p className="info-label">Lump-sum payout option</p>
-                      <p className="info-description">
-                        Contact customer support to arrange a lump-sum payout.
+                      <p className="info-label">Estimated monthly payout</p>
+                      <p className="info-amount">
+                        {formatCurrency(payoutDetails?.monthlyAmount || 0)}
+                      </p>
+                      <p className="info-period">
+                        From{" "}
+                        {payoutDetails?.startDate
+                          ? formatDate(payoutDetails.startDate)
+                          : "Jan 2026"}{" "}
+                        to{" "}
+                        {payoutDetails?.endDate
+                          ? formatDate(payoutDetails.endDate)
+                          : "Dec 2030"}{" "}
+                        ({payoutDetails?.totalMonths || 0} months)
+                      </p>
+                    </div>
+
+                    <div className="payout-info-right">
+                      <p className="info-label">Next payout date</p>
+                      <p className="info-next-date">
+                        {payoutDetails?.nextPayoutDate
+                          ? formatDate(payoutDetails.nextPayoutDate)
+                          : "02 Jan 2026"}
+                      </p>
+                      <p className="info-bank">
+                        Deposited into{" "}
+                        {payoutDetails?.bankAccount ||
+                          "No bank account details available."}
                       </p>
                     </div>
                   </div>
-                )}
+                </>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {showBankDetailsModal && (
+        <BankDetailsModal
+          onSave={onSaveBankDetails}
+          onDismiss={onDismissBankDetailsModal}
+          submitting={bankDetailsSubmitting}
+          error={bankDetailsError}
+        />
+      )}
     </div>
   );
 }

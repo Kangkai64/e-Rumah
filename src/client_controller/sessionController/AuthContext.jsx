@@ -37,6 +37,9 @@ export function AuthProvider({ children }) {
     phone: authUser.user_metadata?.phone || null,
   });
 
+  const getMetadataRole = (authUser) =>
+    authUser?.user_metadata?.role || authUser?.app_metadata?.role || null;
+
   const fetchUserData = async (authUser) => {
     if (!authUser) {
       setUser(null);
@@ -50,6 +53,21 @@ export function AuthProvider({ children }) {
 
     try {
       console.log("🔍 Fetching user data for:", authUser.id);
+      const metadataRole = getMetadataRole(authUser);
+
+      if (metadataRole === "admin" || metadataRole === "support") {
+        setUserRole(metadataRole);
+        localStorage.setItem("userRole", metadataRole);
+        setApplicationStatus(null);
+        localStorage.removeItem("applicationStatus");
+        setUser({
+          ...authUser,
+          ...buildUserProfile(authUser),
+          role: metadataRole,
+        });
+        console.log("✅ Staff role from auth metadata:", metadataRole);
+        return;
+      }
 
       const createTimeout = (label) =>
         new Promise((_, reject) =>
@@ -112,7 +130,12 @@ export function AuthProvider({ children }) {
       }
 
       const profile = buildUserProfile(authUser);
-      const role = "user";
+      const role =
+        metadataRole === "user"
+          ? "user"
+          : cachedRole === "admin" || cachedRole === "support"
+            ? cachedRole
+            : "user";
       setUserRole(role);
       localStorage.setItem("userRole", role);
       setUser({ ...authUser, ...profile, role });

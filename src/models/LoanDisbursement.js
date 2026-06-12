@@ -77,17 +77,36 @@ const formatBankAccountLabel = (bankDetails) => {
   return [bankName, maskedAccount].filter(Boolean).join(" ").trim();
 };
 
+const calcMissedMonths = (approvedAt, disbursementCount) => {
+  const approved = new Date(approvedAt);
+  if (Number.isNaN(approved.getTime())) return 0;
+  const today = new Date();
+  const monthsElapsed =
+    (today.getFullYear() - approved.getFullYear()) * 12 +
+    (today.getMonth() - approved.getMonth());
+  return Math.max(monthsElapsed - disbursementCount, 0);
+};
+
 const buildSummary = (application, transactions = []) => {
   const totalEligibleAmount = resolveApprovedAmount(application);
+  const monthlyAmount = resolveMonthlyAmount(application);
   const totalDisbursed = transactions.reduce(
     (sum, transaction) => sum + toNumber(transaction.amount),
     0,
   );
   const remainingBalance = Math.max(totalEligibleAmount - totalDisbursed, 0);
   const latestTransaction = transactions[0] || null;
-  const nextSuggestedDate = latestTransaction?.transaction_date
-    ? addMonths(latestTransaction.transaction_date, 1)
-    : addMonths(application?.approved_at || new Date().toISOString(), 1);
+
+  const approvedAt = application?.approved_at || new Date().toISOString();
+  const disbursementCount = transactions.length;
+  // Anchor to the approval schedule so the date never drifts with late payments
+  const nextSuggestedDate = addMonths(approvedAt, disbursementCount + 1);
+  const missedMonths = calcMissedMonths(approvedAt, disbursementCount);
+  // Catch-up: cover all missed months plus the current one, capped at remaining balance
+  const suggestedAmount = Math.min(
+    (missedMonths + 1) * monthlyAmount,
+    remainingBalance,
+  );
 
   return {
     applicationId: application.id,
@@ -99,12 +118,14 @@ const buildSummary = (application, transactions = []) => {
     propertyAddress: application.properties?.address || "N/A",
     approvedAt: application.approved_at,
     approvedAmount: resolveApprovedAmount(application),
-    monthlyAmount: resolveMonthlyAmount(application),
+    monthlyAmount,
     totalEligibleAmount,
     totalDisbursed,
     remainingBalance,
     latestDisbursementDate: latestTransaction?.transaction_date || null,
     nextSuggestedDate,
+    missedMonths,
+    suggestedAmount,
     canDisburse: application.status === "approved" && remainingBalance > 0,
   };
 };
@@ -515,6 +536,31 @@ const LoanDisbursement = {
     } catch (error) {
       console.error("Error fetching disbursements:", error);
       throw error;
+    }
+  },
+
+  async saveBankDetails(userId, bankData) {
+    try {
+      const { data, error } = await supabase
+        .from("user_bank_details")
+        .insert([
+          {
+            user_id: userId,
+            account_holder_name: bankData.accountHolderName,
+            bank_name: bankData.bankName,
+            bank_account_number: bankData.bankAccountNumber,
+            account_type: bankData.accountType || null,
+            is_primary: true,
+          },
+        ])
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error saving bank details:", error);
+      return { success: false, error: error.message };
     }
   },
 

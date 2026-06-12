@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../client_controller/sessionController/AuthContext";
 import User from "../models/User";
+import LoanDisbursement from "../models/LoanDisbursement";
 import LoanStatementView from "../views/LoanStatementView";
 
 const buildDisbursementSchedule = (payoutDetails, disbursements) => {
@@ -84,6 +85,11 @@ function UserDashboardController() {
   const [propertyEstimateMessageType, setPropertyEstimateMessageType] =
     useState("");
 
+  // Bank details modal states
+  const [showBankDetailsModal, setShowBankDetailsModal] = useState(false);
+  const [bankDetailsSubmitting, setBankDetailsSubmitting] = useState(false);
+  const [bankDetailsError, setBankDetailsError] = useState(null);
+
   // Load dashboard data on mount
   useEffect(() => {
     if (user?.id) {
@@ -112,6 +118,11 @@ function UserDashboardController() {
       // Set payout type from data if available
       if (data.payoutDetails?.payoutType) {
         setPayoutType(data.payoutDetails.payoutType);
+      }
+
+      // Prompt for bank details when approved but none on file
+      if (data.loanOverview?.hasLoan && !data.payoutDetails?.bankDetails) {
+        setShowBankDetailsModal(true);
       }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
@@ -187,6 +198,32 @@ function UserDashboardController() {
       setPropertyEstimateMessageType("error");
     } finally {
       setIsReestimatingProperty(false);
+    }
+  };
+
+  /**
+   * Save bank details submitted from the modal
+   */
+  const handleSaveBankDetails = async (formData) => {
+    if (!user?.id) return;
+
+    setBankDetailsSubmitting(true);
+    setBankDetailsError(null);
+
+    try {
+      const result = await LoanDisbursement.saveBankDetails(user.id, formData);
+      if (!result.success) throw new Error(result.error);
+
+      // Refresh payout details to reflect the new bank account
+      const payoutDetails = await User.getPayoutDetails(user.id);
+      setDashboardData((prev) => ({ ...prev, payoutDetails }));
+      setShowBankDetailsModal(false);
+    } catch (err) {
+      setBankDetailsError(
+        err.message || "Failed to save bank details. Please try again.",
+      );
+    } finally {
+      setBankDetailsSubmitting(false);
     }
   };
 
@@ -298,6 +335,13 @@ function UserDashboardController() {
 
     // Actions
     onViewFullSchedule: handleViewFullSchedule,
+
+    // Bank details modal
+    showBankDetailsModal,
+    onSaveBankDetails: handleSaveBankDetails,
+    onDismissBankDetailsModal: () => setShowBankDetailsModal(false),
+    bankDetailsSubmitting,
+    bankDetailsError,
   };
 
   return <LoanStatementView {...viewProps} />;

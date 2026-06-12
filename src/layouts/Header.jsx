@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { signOut } from '../services/authService'
 import { useState, useRef } from 'react'
@@ -44,12 +44,12 @@ const Header = () => {
             </Link>
 
           <nav className="main-nav">
-            <Link to="/" className="nav-link">Home</Link>
+            <NavLink to="/" end className="nav-link">Home</NavLink>
             <Link to="/#eligibility" className="nav-link">Eligibility Criteria</Link>
-            <Link to="/about" className="nav-link">About Us</Link>
-            <Link to="/faqs" className="nav-link">FAQs</Link>
-            <Link to="/step-by-step" className="nav-link">How to Apply</Link>
-            <Link to="/property-calculator" className="nav-link">Estimate My Property</Link>
+            <NavLink to="/about" className="nav-link">About Us</NavLink>
+            <NavLink to="/faqs" className="nav-link">FAQs</NavLink>
+            <NavLink to="/step-by-step" className="nav-link">How to Apply</NavLink>
+            <NavLink to="/property-calculator" className="nav-link">Estimate My Property</NavLink>
           </nav>
 
           <div className="header-actions">
@@ -89,12 +89,12 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/" className="nav-link">Home</Link>
+            <NavLink to="/" end className="nav-link">Home</NavLink>
             <Link to="/#eligibility" className="nav-link">Eligibility Criteria</Link>
-            <Link to="/about" className="nav-link">About Us</Link>
-            <Link to="/faqs" className="nav-link">FAQs</Link>
-            <Link to="/step-by-step" className="nav-link">How to Apply</Link>
-            <Link to="/property-calculator" className="nav-link">Estimate My Property</Link>
+            <NavLink to="/about" className="nav-link">About Us</NavLink>
+            <NavLink to="/faqs" className="nav-link">FAQs</NavLink>
+            <NavLink to="/step-by-step" className="nav-link">How to Apply</NavLink>
+            <NavLink to="/property-calculator" className="nav-link">Estimate My Property</NavLink>
           </nav>
 
           <div className="header-actions">
@@ -134,9 +134,9 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/user/dashboard" className="nav-link">Dashboard</Link>
-            <Link to="/user/health-reports" className="nav-link">Health Reports</Link>
-            <Link to="/user/support" className="nav-link">Support</Link>
+            <NavLink to="/user/dashboard" className="nav-link">Dashboard</NavLink>
+            <NavLink to="/user/health-reports" className="nav-link">Health Reports</NavLink>
+            <NavLink to="/user/support" className="nav-link">Support</NavLink>
           </nav>
 
           <div className="header-actions">
@@ -175,8 +175,9 @@ const Header = () => {
           </Link>
 
           <nav className="main-nav">
-            <Link to="/admin/dashboard" className="nav-link">Application Review</Link>
-            <Link to="/admin/health-reports" className="nav-link">Health Report Review</Link>
+            <NavLink to="/admin/dashboard" className="nav-link">Application Review</NavLink>
+            <NavLink to="/admin/health-reports" className="nav-link">Health Report Review</NavLink>
+            <NavLink to="/admin/disbursements" className="nav-link">Disbursements</NavLink>
           </nav>
 
           <div 

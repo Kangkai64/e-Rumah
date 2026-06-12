@@ -41,7 +41,6 @@ function AdminView({
   onUpdateStatus,
   onReviewApplication,
   onGenerateReport,
-  onManageDisbursements,
   showReportModal,
   reportGenerationType,
   reportGenerating,
@@ -120,12 +119,6 @@ function AdminView({
                 Review applications, manage approvals, and record loan payouts.
               </p>
             </div>
-            <button
-              className="admin-manage-disbursements-btn"
-              onClick={onManageDisbursements}
-            >
-              Manage Disbursements
-            </button>
           </div>
 
           {/* Statistics Cards */}

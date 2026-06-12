@@ -26,6 +26,32 @@ export default function StaffLoginPage() {
     });
   };
 
+  const fetchStaffProfile = async (table, user) => {
+    const queries = [
+      supabase.from(table).select("id, email").eq("id", user.id).maybeSingle(),
+    ];
+
+    if (user.email) {
+      queries.push(
+        supabase
+          .from(table)
+          .select("id, email")
+          .eq("email", user.email)
+          .maybeSingle(),
+      );
+    }
+
+    const results = await Promise.allSettled(queries);
+
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value.data) {
+        return result.value.data;
+      }
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -45,26 +71,17 @@ export default function StaffLoginPage() {
       }
 
       if (user) {
-        const [adminResult, supportResult] = await Promise.allSettled([
-          supabase.from("admins").select("id").eq("id", user.id).maybeSingle(),
-          supabase
-            .from("customer_supports")
-            .select("id")
-            .eq("id", user.id)
-            .maybeSingle(),
+        const [adminData, supportData] = await Promise.all([
+          fetchStaffProfile("admins", user),
+          fetchStaffProfile("customer_supports", user),
         ]);
 
-        const adminData =
-          adminResult.status === "fulfilled" ? adminResult.value.data : null;
-        const supportData =
-          supportResult.status === "fulfilled"
-            ? supportResult.value.data
-            : null;
-
         if (adminData) {
+          await supabase.auth.updateUser({ data: { role: "admin" } });
           console.log("✅ Staff login successful, role: admin");
           navigate("/admin/dashboard");
         } else if (supportData) {
+          await supabase.auth.updateUser({ data: { role: "support" } });
           console.log("✅ Staff login successful, role: support");
           navigate("/support/dashboard");
         } else {

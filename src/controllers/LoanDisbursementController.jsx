@@ -82,10 +82,14 @@ function LoanDisbursementController() {
       const { summary, records } = result.data;
       setSelectedSummary(summary);
       setDisbursementRecords(records || []);
+      const catchUpDesc =
+        summary.missedMonths > 0
+          ? `Catch-up disbursement (${summary.missedMonths} missed + current month)`
+          : "Loan disbursement payout";
       setFormState({
-        amount: summary.canDisburse ? summary.monthlyAmount.toFixed(2) : "",
-        transactionDate: todayIso,
-        description: "Loan disbursement payout",
+        amount: summary.canDisburse ? summary.suggestedAmount.toFixed(2) : "",
+        transactionDate: summary.nextSuggestedDate || todayIso,
+        description: catchUpDesc,
         referenceNumber: "",
       });
     } catch (err) {

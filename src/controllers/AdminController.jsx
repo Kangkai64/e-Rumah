@@ -453,11 +453,7 @@ function AdminController() {
     setReportGenerationType("monthly");
   };
 
-  const handleManageDisbursements = () => {
-    navigate("/admin/disbursements");
-  };
-
-  const handleCloseReportGenerator = () => {
+const handleCloseReportGenerator = () => {
     setShowReportModal(false);
     setReportGenerationType("monthly");
   };
@@ -591,7 +587,6 @@ function AdminController() {
       onUpdateStatus={handleUpdateStatus}
       onReviewApplication={handleReviewApplication}
       onGenerateReport={handleOpenReportGenerator}
-      onManageDisbursements={handleManageDisbursements}
       onViewReport={handleViewReport}
       onShareReport={handleShareReport}
       showReportModal={showReportModal}

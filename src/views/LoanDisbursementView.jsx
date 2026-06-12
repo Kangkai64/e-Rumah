@@ -40,18 +40,12 @@ function LoanDisbursementView({
               remaining balance in one place.
             </p>
           </div>
-          <button
-            className="loan-disbursement-back-btn"
-            onClick={onBackToDashboard}
-          >
-            Back to dashboard
-          </button>
         </div>
 
         {error && <div className="loan-disbursement-error">{error}</div>}
 
         <div className="loan-disbursement-summary-grid">
-          <div className="summary-card accent">
+          <div className="summary-card">
             <span className="summary-label">Approved applications</span>
             <strong>{approvedApplications.length}</strong>
           </div>
@@ -105,6 +99,7 @@ function LoanDisbursementView({
                         {formatCurrency(application.remainingBalance || 0)}{" "}
                         remaining
                       </span>
+                      <br></br>
                       <small>{application.propertyAddress}</small>
                     </div>
                   </button>
@@ -164,6 +159,13 @@ function LoanDisbursementView({
                       application.
                     </p>
                   </div>
+                  {selectedSummary.missedMonths > 0 && (
+                    <div className="missed-months-warning">
+                      {selectedSummary.missedMonths} missed payout
+                      {selectedSummary.missedMonths > 1 ? "s" : ""} detected —
+                      amount pre-filled to catch up.
+                    </div>
+                  )}
 
                   <div className="form-grid">
                     <label>

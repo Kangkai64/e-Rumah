@@ -1,6 +1,6 @@
 // src/controllers/CustomerSupportController.jsx
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { supabase } from '../config/supabase'
+import { useAuth } from '../client_controller/sessionController/AuthContext'
 import Inquiry from '../models/Inquiry'
 import Nominee from '../models/Nominee'
 import Application from '../models/Application'
@@ -10,6 +10,8 @@ import CustomerSupportView from '../views/CustomerSupportView'
 import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
 
 export default function CustomerSupportController() {
+  const { user } = useAuth()
+
   // 1. State Management
   const [activeTab, setActiveTab] = useState('inquiries') // inquiries | nominees | healthReports
   const [inquiries, setInquiries] = useState([])
@@ -256,26 +258,12 @@ export default function CustomerSupportController() {
   }, [selectedItem?.id, activeTab])
 
   // 5. Send Reply
-  const getCurrentUserId = async () => {
-    try {
-      if (supabase?.auth?.getUser) {
-        const { data } = await supabase.auth.getUser()
-        if (data?.user?.id) return data.user.id
-      } else if (supabase?.auth?.user) {
-        const user = supabase.auth.user()
-        if (user?.id) return user.id
-      }
-    } catch (e) {
-      // ignore and fallback
-    }
-    return 'current-support-user-id'
-  }
-
   const handleSendReply = async (message) => {
     if (!selectedItem || !message.trim()) return { success: false }
+    if (!user?.id) return { success: false, error: 'Not authenticated' }
 
     try {
-      const currentUserId = await getCurrentUserId()
+      const currentUserId = user.id
       
       // Determine entity type
       let entityType = ''
@@ -425,7 +413,8 @@ export default function CustomerSupportController() {
     }
 
     try {
-      const currentUserId = await getCurrentUserId()
+      const currentUserId = user?.id
+      if (!currentUserId) return { success: false, error: 'Not authenticated' }
       const result = await Application.flagByUserId(
         selectedItem.user_id,
         reason,

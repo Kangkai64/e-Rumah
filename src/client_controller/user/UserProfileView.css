@@ -167,7 +167,6 @@
 
 /* Loan Footer */
 .loan-footer {
-  display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
@@ -197,6 +196,12 @@
   color: #6b7280;
   line-height: 20px;
   margin: 0;
+  padding-top: 4px;
+}
+
+.property-details span {
+  font-weight: 600;
+  color: #1f2937;
 }
 
 /* Financial Monitoring Section */
@@ -276,16 +281,40 @@
   background-color: #e5e7eb;
 }
 
-.filter-button.active {
-  background-color: #1f2937;
-  color: white;
-}
-
 /* Disbursement Table */
 .disbursement-table {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.filter-label {
+  margin-right: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.filter-button {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.filter-button.active {
+  background-color: #fff;
+  border-color: #e5e7eb;
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04);
+  color: #111827;
 }
 
 .table-header {
@@ -296,6 +325,50 @@
   font-weight: 500;
   color: #6b7280;
   line-height: 20px;
+}
+/* Table header and row grid */
+.table-header,
+.table-row {
+  display: grid;
+  grid-template-columns: 160px 220px 1fr 160px 160px 140px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.table-header {
+  border-bottom: 1px solid #e6e6e6;
+  font-weight: 700;
+  color: #374151;
+}
+
+.table-row {
+  border-bottom: 1px solid rgba(229, 231, 235, 0.6);
+}
+
+.table-row span {
+  display: block;
+}
+
+.row-date {
+  color: #111827;
+  font-weight: 600;
+}
+
+.row-reference {
+  color: #6b7280;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.row-description {
+  color: #6b7280;
+}
+
+.row-amount,
+.row-remaining {
+  color: #111827;
+  text-align: left;
 }
 
 .table-row {
@@ -654,38 +727,6 @@
   margin: 0;
 }
 
-.payout-toggle {
-  display: flex;
-  background-color: #f3f4f6;
-  border-radius: 8px;
-  padding: 4px;
-  gap: 0;
-}
-
-.toggle-button {
-  background-color: transparent;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #6b7280;
-  line-height: 20px;
-  cursor: pointer;
-  font-family: "Poppins", sans-serif;
-  transition: all 0.2s;
-}
-
-.toggle-button.active {
-  background-color: white;
-  color: #1f2937;
-  box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
-}
-
-.toggle-button:hover:not(.active) {
-  color: #1f2937;
-}
-
 .payout-content {
   padding-top: 25px;
   border-top: 1px solid #e5e7eb;
@@ -808,6 +849,180 @@
   background-color: #991b1b;
 }
 
+/* Bank Details Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 40px 16px;
+}
+
+.modal-container {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  box-shadow:
+    0px 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0px 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  margin-bottom: 24px;
+}
+
+.modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 28px;
+  margin: 0 0 8px 0;
+}
+
+.modal-subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6b7280;
+  line-height: 20px;
+  margin: 0;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 20px;
+}
+
+.form-group input,
+.form-group select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #111827;
+  line-height: 20px;
+  font-family: "Poppins", sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+  background-color: white;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.1);
+}
+
+.form-group input.input-error,
+.form-group select.input-error {
+  border-color: #ef4444;
+}
+
+.form-group input.input-error:focus,
+.form-group select.input-error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.field-error {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ef4444;
+  margin: 2px 0 0 0;
+  line-height: 16px;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.modal-error {
+  font-size: 13px;
+  font-weight: 400;
+  color: #b91c1c;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.modal-btn-secondary {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  transition: all 0.15s;
+}
+
+.modal-btn-secondary:hover:not(:disabled) {
+  background-color: #f3f4f6;
+}
+
+.modal-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-btn-primary {
+  background-color: #b91c1c;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  transition: background-color 0.15s;
+}
+
+.modal-btn-primary:hover:not(:disabled) {
+  background-color: #991b1b;
+}
+
+.modal-btn-primary:disabled {
+  background-color: #d1d5db;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .financial-monitoring-section {
@@ -839,15 +1054,24 @@
 
   .table-header,
   .table-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
+    align-items: center;
   }
 
+  /* On small screens, show Date, Amount, Status (collapse reference/description/remaining) */
+  .table-header span:nth-child(2),
   .table-header span:nth-child(3),
-  .table-header span:nth-child(4),
+  .table-header span:nth-child(5),
+  .table-row span:nth-child(2),
   .table-row span:nth-child(3),
-  .table-row span:nth-child(4) {
+  .table-row span:nth-child(5) {
     display: none;
+  }
+
+  .row-amount,
+  .row-remaining {
+    text-align: right;
   }
 
   .property-content {

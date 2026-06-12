@@ -20,15 +20,7 @@ class SupportConversation {
     try {
       const { data, error } = await supabase
         .from('support_conversations')
-        .select(`
-          *,
-          sender:sender_id (
-            id,
-            full_name,
-            email,
-            type
-          )
-        `)
+        .select('*')
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
         .order('created_at', { ascending: true })
@@ -131,15 +123,7 @@ class SupportConversation {
             // Fetch the full conversation data with sender info
             const { data, error } = await supabase
               .from('support_conversations')
-              .select(`
-                *,
-                sender:sender_id (
-                  id,
-                  full_name,
-                  email,
-                  type
-                )
-              `)
+              .select('*')
               .eq('id', payload.new.id)
               .single()
 
