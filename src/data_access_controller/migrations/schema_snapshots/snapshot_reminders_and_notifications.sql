@@ -1,3 +1,8 @@
+-- SCHEMA SNAPSHOT (not a sequential migration).
+-- Point-in-time dump of public.reminders and public.reminder_notifications
+-- pulled from the Supabase dashboard; these tables were created directly in
+-- the dashboard rather than through a numbered migration.
+
 create table public.reminders (
   id uuid not null default extensions.uuid_generate_v4 (),
   user_id uuid not null,

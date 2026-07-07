@@ -1,4 +1,7 @@
--- Reports table for admin analytics and history
+-- SCHEMA SNAPSHOT (not a sequential migration).
+-- Reports table for admin analytics and history, pulled from the Supabase
+-- dashboard; created directly in the dashboard rather than through a
+-- numbered migration.
 create table if not exists public.reports (
   id uuid not null default extensions.uuid_generate_v4 (),
   name text not null,

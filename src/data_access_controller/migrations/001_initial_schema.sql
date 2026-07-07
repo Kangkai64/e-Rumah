@@ -5,13 +5,12 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =============================================
--- USERS TABLE
+-- USERS TABLE (linked to Supabase Auth)
 -- =============================================
 CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
-  password_hash TEXT, -- NULL for joint applicants until main dies
-  type TEXT NOT NULL CHECK (type IN ('main', 'joint')),
+  type TEXT NOT NULL DEFAULT 'main' CHECK (type IN ('main', 'joint')),
   full_name TEXT,
   ic_number TEXT,
   phone TEXT,
@@ -29,9 +28,9 @@ CREATE INDEX idx_users_type ON users(type);
 CREATE TABLE applications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  joint_user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Created when main dies
+  joint_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'submitted', 'underReviewed', 'approved', 'rejected', 'terminated')),
-  remarks TEXT, -- For rejection/termination messages
+  remarks TEXT,
   main_applicant_deceased BOOLEAN DEFAULT FALSE,
   submitted_at TIMESTAMP WITH TIME ZONE,
   reviewed_at TIMESTAMP WITH TIME ZONE,
@@ -45,8 +44,8 @@ CREATE INDEX idx_applications_user_id ON applications(user_id);
 CREATE INDEX idx_applications_status ON applications(status);
 
 -- Constraint: User can only have ONE active application (approved or underReviewed)
-CREATE UNIQUE INDEX idx_one_active_application 
-  ON applications(user_id) 
+CREATE UNIQUE INDEX idx_one_active_application
+  ON applications(user_id)
   WHERE status IN ('approved', 'underReviewed');
 
 -- =============================================
@@ -56,7 +55,7 @@ CREATE TABLE application_data (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   application_id UUID UNIQUE NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
   current_step INTEGER DEFAULT 1 CHECK (current_step BETWEEN 1 AND 7),
-  form_data JSONB NOT NULL DEFAULT '{}', -- Stores all ~100+ form fields
+  form_data JSONB NOT NULL DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -64,7 +63,7 @@ CREATE TABLE application_data (
 -- Index for faster queries
 CREATE INDEX idx_application_data_application_id ON application_data(application_id);
 
--- GIN index for JSONB queries (optional, for querying inside JSON)
+-- GIN index for JSONB queries
 CREATE INDEX idx_application_data_form_data ON application_data USING GIN (form_data);
 
 -- =============================================
@@ -96,7 +95,6 @@ CREATE TABLE nominees (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index
 CREATE INDEX idx_nominees_application_id ON nominees(application_id);
 
 -- =============================================
@@ -127,7 +125,6 @@ CREATE TABLE properties (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index
 CREATE INDEX idx_properties_application_id ON properties(application_id);
 
 -- =============================================
@@ -145,7 +142,6 @@ CREATE TABLE transactions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indexes
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_application_id ON transactions(application_id);
 
@@ -158,13 +154,12 @@ CREATE TABLE health_reports (
   application_id UUID REFERENCES applications(id) ON DELETE SET NULL,
   report_date DATE NOT NULL,
   report_type TEXT,
-  report_file_url TEXT, -- File path/URL in Supabase Storage
+  report_file_url TEXT,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indexes
 CREATE INDEX idx_health_reports_user_id ON health_reports(user_id);
 CREATE INDEX idx_health_reports_application_id ON health_reports(application_id);
 
@@ -178,13 +173,12 @@ CREATE TABLE customer_support_inquiries (
   message TEXT NOT NULL,
   status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
-  assigned_to UUID, -- Admin user ID (can add admin users table later)
+  assigned_to UUID,
   resolved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indexes
 CREATE INDEX idx_customer_support_user_id ON customer_support_inquiries(user_id);
 CREATE INDEX idx_customer_support_status ON customer_support_inquiries(status);
 
@@ -199,7 +193,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply triggers to all tables with updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -239,6 +232,9 @@ ALTER TABLE customer_support_inquiries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own data" ON users
   FOR SELECT USING (auth.uid() = id);
 
+CREATE POLICY "Users can insert own data" ON users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "Users can update own data" ON users
   FOR UPDATE USING (auth.uid() = id);
 
@@ -256,8 +252,8 @@ CREATE POLICY "Users can update own applications" ON applications
 CREATE POLICY "Users can view own application data" ON application_data
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM applications 
-      WHERE applications.id = application_data.application_id 
+      SELECT 1 FROM applications
+      WHERE applications.id = application_data.application_id
       AND (applications.user_id = auth.uid() OR applications.joint_user_id = auth.uid())
     )
   );
@@ -265,8 +261,8 @@ CREATE POLICY "Users can view own application data" ON application_data
 CREATE POLICY "Users can create own application data" ON application_data
   FOR INSERT WITH CHECK (
     EXISTS (
-      SELECT 1 FROM applications 
-      WHERE applications.id = application_data.application_id 
+      SELECT 1 FROM applications
+      WHERE applications.id = application_data.application_id
       AND applications.user_id = auth.uid()
     )
   );
@@ -274,8 +270,8 @@ CREATE POLICY "Users can create own application data" ON application_data
 CREATE POLICY "Users can update own application data" ON application_data
   FOR UPDATE USING (
     EXISTS (
-      SELECT 1 FROM applications 
-      WHERE applications.id = application_data.application_id 
+      SELECT 1 FROM applications
+      WHERE applications.id = application_data.application_id
       AND (applications.user_id = auth.uid() OR applications.joint_user_id = auth.uid())
     )
   );
@@ -284,8 +280,8 @@ CREATE POLICY "Users can update own application data" ON application_data
 CREATE POLICY "Users can view nominees for own applications" ON nominees
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM applications 
-      WHERE applications.id = nominees.application_id 
+      SELECT 1 FROM applications
+      WHERE applications.id = nominees.application_id
       AND (applications.user_id = auth.uid() OR applications.joint_user_id = auth.uid())
     )
   );
@@ -294,8 +290,8 @@ CREATE POLICY "Users can view nominees for own applications" ON nominees
 CREATE POLICY "Users can view properties for own applications" ON properties
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM applications 
-      WHERE applications.id = properties.application_id 
+      SELECT 1 FROM applications
+      WHERE applications.id = properties.application_id
       AND (applications.user_id = auth.uid() OR applications.joint_user_id = auth.uid())
     )
   );

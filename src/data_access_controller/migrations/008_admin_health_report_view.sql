@@ -1,3 +1,6 @@
+-- Depends on health_reports.health_report_status, which was added directly in
+-- the Supabase dashboard rather than through a numbered migration; see
+-- schema_snapshots/snapshot_health_reports.sql for its definition.
 create view public.admin_health_report_view as
 select
   hr.id as health_report_id,

@@ -1,5 +1,5 @@
 -- Add report title and provider name fields to health_reports table
--- Migration 007: Add report title and provider name fields
+-- Migration 006: Add report title and provider name fields
 
 -- Add new columns
 ALTER TABLE public.health_reports 

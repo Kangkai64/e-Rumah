@@ -1,3 +1,11 @@
+-- SCHEMA SNAPSHOT (not a sequential migration).
+-- Point-in-time dump of public.health_reports pulled from the Supabase
+-- dashboard. Columns like health_report_status, due_status and
+-- flagged_reason were added directly in the dashboard and have no
+-- corresponding numbered migration file. report_title/provider_name are
+-- covered by 006_add_report_title_provider_name.sql.
+-- Do not run this after the numbered migrations - the table already exists.
+
 create table public.health_reports (
   id uuid not null default extensions.uuid_generate_v4 (),
   user_id uuid not null,

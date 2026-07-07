@@ -1,3 +1,16 @@
+-- SCHEMA SNAPSHOT (not a sequential migration).
+-- Point-in-time dump pulled from the Supabase dashboard, reflecting a
+-- restructuring done directly in the dashboard: users.role and users.type
+-- were removed, and each role now has its own dedicated table (admins,
+-- customer_supports, caregivers, healthcare_providers, etc.) instead of a
+-- shared role column. 003_add_user_role.sql's `role` column and 001's `type`
+-- column no longer exist in the live schema as of this snapshot, but there is
+-- no numbered migration that dropped them - that happened directly in the
+-- dashboard.
+-- caregivers/healthcare_providers/family_members here supersede the shapes in
+-- snapshot_health_sharing_and_care_tables.sql (id is now the FK directly,
+-- rather than a separate user_id column).
+
 create table public.users (
   id uuid not null,
   email text not null,

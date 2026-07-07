@@ -1,3 +1,14 @@
+-- SCHEMA SNAPSHOT (not a sequential migration).
+-- Point-in-time dump of public.health_report_shares, public.caregivers,
+-- public.healthcare_providers and public.family_members pulled from the
+-- Supabase dashboard; these tables were created directly in the dashboard
+-- rather than through a numbered migration.
+-- 007_health_report_shares_rls.sql adds RLS policies for health_report_shares.
+-- NOTE: caregivers/healthcare_providers/family_members shown here use a
+-- separate user_id column; a later revision of these tables (see
+-- snapshot_users_and_role_tables.sql) uses `id` directly as the FK to
+-- users/auth.users instead.
+
 create table public.health_report_shares (
   id uuid not null default gen_random_uuid (),
   report_id uuid not null,

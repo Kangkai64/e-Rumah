@@ -1,4 +1,7 @@
 -- Enable RLS for health report share links
+-- Depends on public.health_report_shares, which was created directly in the
+-- Supabase dashboard rather than through a numbered migration; see
+-- schema_snapshots/snapshot_health_sharing_and_care_tables.sql for its definition.
 ALTER TABLE public.health_report_shares ENABLE ROW LEVEL SECURITY;
 
 -- Allow owners to manage their own share records
