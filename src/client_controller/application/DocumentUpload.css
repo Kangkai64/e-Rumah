@@ -31,6 +31,14 @@
 .upload-area {
   text-align: center;
   padding: 2rem 1rem;
+  border: 2px dashed transparent;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.upload-area.drag-active {
+  border-color: #A8202D;
+  background: rgba(168, 32, 45, 0.06);
 }
 
 .file-input-hidden {

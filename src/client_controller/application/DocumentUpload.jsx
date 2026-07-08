@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import './DocumentUpload.css'
 
-const DocumentUpload = ({ 
-  label, 
+const DocumentUpload = ({
+  label,
   required = false,
   documentData,
   onUpload,
@@ -12,16 +12,82 @@ const DocumentUpload = ({
   hint = "PDF, JPG, PNG (Max 10MB)",
   error = null
 }) => {
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounter = useRef(0)
+  const fileInputRef = useRef(null)
+
+  const acceptedExtensions = accept
+    .split(',')
+    .map((ext) => ext.trim().toLowerCase())
+    .filter(Boolean)
+
+  const isFileAccepted = (file) => {
+    if (acceptedExtensions.length === 0) return true
+    const fileName = file.name?.toLowerCase() || ''
+    return acceptedExtensions.some((ext) => fileName.endsWith(ext))
+  }
+
+  const isDisabled = () => uploading || !!fileInputRef.current?.matches(':disabled')
+
+  const handleDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isDisabled()) return
+    dragCounter.current += 1
+    setIsDragging(true)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (isDisabled()) return
+    dragCounter.current -= 1
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0
+      setIsDragging(false)
+    }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragging(false)
+
+    if (isDisabled()) return
+
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+
+    if (!isFileAccepted(file)) {
+      return
+    }
+
+    onUpload({ target: { files: [file] } })
+  }
+
   return (
     <div className="document-upload-field">
       <label className="document-label">
         {label}
         {required && <span className="required-star">*</span>}
       </label>
-      
+
       {!documentData?.url ? (
-        <div className="upload-area">
+        <div
+          className={`upload-area ${isDragging ? 'drag-active' : ''}`}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <input
+            ref={fileInputRef}
             type="file"
             id={`upload-${label.replace(/\s+/g, '-')}`}
             className="file-input-hidden"
@@ -29,8 +95,8 @@ const DocumentUpload = ({
             onChange={onUpload}
             disabled={uploading}
           />
-          <label 
-            htmlFor={`upload-${label.replace(/\s+/g, '-')}`} 
+          <label
+            htmlFor={`upload-${label.replace(/\s+/g, '-')}`}
             className={`upload-button ${uploading ? 'uploading' : ''}`}
           >
             {uploading ? (
@@ -45,7 +111,9 @@ const DocumentUpload = ({
               </>
             )}
           </label>
-          <p className="upload-hint">{hint}</p>
+          <p className="upload-hint">
+            {isDragging ? 'Drop file to upload' : `Drag & drop a file here, or ${hint}`}
+          </p>
         </div>
       ) : (
         <div className="uploaded-file-container">
