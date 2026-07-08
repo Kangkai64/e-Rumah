@@ -30,6 +30,19 @@ def resolve_relative_path(path: str) -> str:
 
 MODEL_PATH = resolve_relative_path(os.getenv("MODEL_PATH", "models/xgb_erumah_latest.pkl"))
 
+# Reloading the multi-MB bundle per request is wasteful; cache it and
+# invalidate when the file on disk changes.
+_bundle_cache = {"path": None, "mtime": None, "bundle": None}
+
+
+def load_bundle(model_path: str) -> dict:
+    mtime = os.path.getmtime(model_path)
+    if _bundle_cache["path"] != model_path or _bundle_cache["mtime"] != mtime:
+        _bundle_cache["bundle"] = joblib.load(model_path)
+        _bundle_cache["path"] = model_path
+        _bundle_cache["mtime"] = mtime
+    return _bundle_cache["bundle"]
+
 
 def build_model_version(model_path: str) -> str:
     filename = os.path.splitext(os.path.basename(model_path))[0]
@@ -96,7 +109,7 @@ def estimate(req: EstimationRequest):
         )
     try:
         # Load the model bundle saved by the training pipeline
-        bundle = joblib.load(MODEL_PATH)
+        bundle = load_bundle(MODEL_PATH)
 
         # Call the pipeline inference helper (expects bundle first)
         raw = predict_price(
@@ -113,8 +126,15 @@ def estimate(req: EstimationRequest):
             txn_month=req.txn_month or 1,
         )
 
-        # Map pipeline output to the frontend-friendly schema
-        model_version = build_model_version(MODEL_PATH)
+        # Map pipeline output to the frontend-friendly schema.
+        # Prefer the training version stored in the bundle so the API
+        # reports the real model version even when serving the
+        # "latest" alias file.
+        bundle_version = raw.get("model_version") or bundle.get("version")
+        if bundle_version:
+            model_version = f"XGBoost_{bundle_version}"
+        else:
+            model_version = build_model_version(MODEL_PATH)
 
         mapped = {
             "estimated_price_rm": raw.get("estimated_value_rm") or raw.get("estimated_price_rm"),

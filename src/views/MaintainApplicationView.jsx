@@ -37,6 +37,7 @@ function MaintainApplicationView({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [showTerminateModal, setShowTerminateModal] = useState(false)
   const [terminationReason, setTerminationReason] = useState('')
+  const [terminationReasonError, setTerminationReasonError] = useState(null)
   const [terminatingApp, setTerminatingApp] = useState(false)
 
   const handleMissingDocClick = (doc) => {
@@ -48,13 +49,15 @@ function MaintainApplicationView({
   const handleTerminateClick = () => {
     setShowTerminateModal(true)
     setTerminationReason('')
+    setTerminationReasonError(null)
   }
 
   const handleTerminateConfirm = async () => {
     if (!terminationReason.trim()) {
-      alert('Please provide a reason for terminating the application.')
+      setTerminationReasonError('Please provide a reason for terminating the application.')
       return
     }
+    setTerminationReasonError(null)
     setTerminatingApp(true)
     await onTerminateApplication(terminationReason)
     setTerminatingApp(false)
@@ -265,12 +268,36 @@ function MaintainApplicationView({
               <p><strong>Reason:</strong> {application.reject_termination_reason}</p>
               <p className="rejection-note">Your request to terminate this application has been rejected by the admin team.</p>
             </div>
-            <button 
+            <button
               className="rejection-close-btn"
               onClick={onDismissRejectReason}
             >
               OK
             </button>
+          </div>
+        )}
+
+        {/* Flagged Document Message */}
+        {flaggedCode === 'document_flagged' && flaggedReason && (
+          <div className="rejection-reason-banner">
+            <div className="rejection-icon">⚠️</div>
+            <div className="rejection-message">
+              <h3>Document Requires Correction</h3>
+              <p><strong>Reason:</strong> {flaggedReason}</p>
+              <p className="rejection-note">Please upload a corrected copy of the document below. The flagged document has been removed and is shown as missing.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Application Rejected Message */}
+        {applicationStatus === 'rejected' && application?.remarks && (
+          <div className="rejection-reason-banner">
+            <div className="rejection-icon">❌</div>
+            <div className="rejection-message">
+              <h3>Application Rejected</h3>
+              <p><strong>Reason:</strong> {application.remarks}</p>
+              <p className="rejection-note">Please contact customer support if you have any questions about this decision.</p>
+            </div>
           </div>
         )}
 
@@ -353,6 +380,18 @@ function MaintainApplicationView({
                 <div className="info-row">
                   <span className="label">Property Address</span>
                   <span className="value">{formData.propertyAddress || '-'}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">Scheme / Taman Name</span>
+                  <span className="value">{formData.propertySchemeName || '-'}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">District</span>
+                  <span className="value">{formData.propertyDistrict || '-'}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">Mukim</span>
+                  <span className="value">{formData.propertyMukim || '-'}</span>
                 </div>
                 <div className="info-row">
                   <span className="label">Property Type</span>
@@ -702,10 +741,18 @@ function MaintainApplicationView({
             className="terminate-reason-input"
             placeholder="Enter reason for termination (required)"
             value={terminationReason}
-            onChange={(e) => setTerminationReason(e.target.value)}
+            onChange={(e) => {
+              setTerminationReason(e.target.value)
+              if (terminationReasonError) setTerminationReasonError(null)
+            }}
             rows={5}
-            required
           />
+          {terminationReasonError && (
+            <div className="error-alert">
+              <span className="error-icon">⚠️</span>
+              <span className="error-text">{terminationReasonError}</span>
+            </div>
+          )}
           <div className="modal-actions">
             <button 
               className="btn btn-secondary"

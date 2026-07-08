@@ -6,6 +6,50 @@
 import { useRef, useEffect } from 'react'
 import '../client_controller/application/applicationForm.css'
 import DocumentUpload from '../client_controller/application/DocumentUpload'
+import { calculateAge, formatICInput, getICCursorPosition } from '../utils/icParser'
+
+// SSB eligibility: applicant/joint applicant must be a Malaysian citizen
+// (not a PR) aged 55 or above. Returns a human-readable reason when
+// ineligible, or null when eligible / not yet determinable.
+function getEligibilityBlockReason(nric, citizenshipType, dobDay, dobMonth, dobYear, label) {
+  if (!nric) return null
+
+  if (citizenshipType === 'PR') {
+    return `${label} must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.`
+  }
+
+  const age = calculateAge({ day: dobDay, month: dobMonth, year: dobYear })
+  if (age !== null && age < 55) {
+    return `${label} must be at least 55 years old to be eligible for SSB.`
+  }
+
+  return null
+}
+
+// Wraps handleChange for an IC input: formats raw digits into the
+// YYMMDD-PB-###G layout as the user types and keeps the caret from
+// jumping to the end when editing in the middle of the number
+function useICChangeHandler(name, handleChange) {
+  const inputRef = useRef(null)
+
+  const onChange = (e) => {
+    const digitsBeforeCursor = e.target.value
+      .slice(0, e.target.selectionStart)
+      .replace(/\D/g, '').length
+    const formatted = formatICInput(e.target.value)
+
+    handleChange({ target: { name, value: formatted } })
+
+    requestAnimationFrame(() => {
+      const input = inputRef.current
+      if (!input) return
+      const caret = getICCursorPosition(formatted, digitsBeforeCursor)
+      input.setSelectionRange(caret, caret)
+    })
+  }
+
+  return [inputRef, onChange]
+}
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)
@@ -238,6 +282,16 @@ function ReadOnlyField({ label, value, helpText = "Extracted from NRIC" }) {
 
 // Step 1: Personal Information
 function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
+  const [nricInputRef, handleNricChange] = useICChangeHandler('nricNo', handleChange)
+  const eligibilityBlockReason = getEligibilityBlockReason(
+    formData.nricNo,
+    formData.citizenshipType,
+    formData.dobDay,
+    formData.dobMonth,
+    formData.dobYear,
+    'Applicant',
+  )
+
   return (
     <div className="step-container">
       <h2>Personal Information</h2>
@@ -314,29 +368,40 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label>Name as per NRIC *</label>
-        <input 
-          type="text" 
-          name="nameAsPerNRIC" 
-          value={formData.nameAsPerNRIC} 
-          onChange={handleChange} 
+        <input
+          type="text"
+          name="nameAsPerNRIC"
+          value={formData.nameAsPerNRIC}
+          onChange={handleChange}
           className={errors.nameAsPerNRIC ? 'error' : ''}
-          required 
+          readOnly={!!formData.nameAsPerNRIC}
+          style={formData.nameAsPerNRIC ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+          required
         />
+        {formData.nameAsPerNRIC && (
+          <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Locked - matches your registered account name</small>
+        )}
         <ErrorMessage error={errors.nameAsPerNRIC} />
       </div>
 
       <div className="form-group">
         <label>NRIC No. *</label>
-        <input 
-          type="text" 
-          name="nricNo" 
-          value={formData.nricNo} 
-          onChange={handleChange} 
+        <input
+          ref={nricInputRef}
+          type="text"
+          name="nricNo"
+          value={formData.nricNo}
+          onChange={handleNricChange}
           className={errors.nricNo ? 'error' : ''}
           placeholder="Format: xxxxxx-xx-xxxx"
-          required 
+          maxLength={14}
+          readOnly={!!formData.nricNo}
+          style={formData.nricNo ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+          required
         />
-        <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
+        <small style={{color: '#666', fontSize: '0.85rem'}}>
+          {formData.nricNo ? '🔒 Locked - matches your registered NRIC. ' : ''}ℹ️ Birthdate and sex will be auto-filled from IC number
+        </small>
         <ErrorMessage error={errors.nricNo} />
       </div>
 
@@ -347,11 +412,18 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
       />
 
       <ReadOnlyField 
-        label="Sex" 
-        value={!!formData.nricNo && formData.sex ? formData.sex : '—'} 
+        label="Sex"
+        value={!!formData.nricNo && formData.sex ? formData.sex : '—'}
         helpText={!!formData.nricNo ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
       />
 
+      {eligibilityBlockReason && (
+        <div className="error-message" style={{marginBottom: '1rem'}}>
+          ⚠️ {eligibilityBlockReason} The remaining fields are disabled until an eligible NRIC is provided.
+        </div>
+      )}
+
+      <fieldset disabled={!!eligibilityBlockReason} style={{border: 'none', padding: 0, margin: 0}}>
       <div className="form-group">
         <label>Race</label>
         <select name="race" value={formData.race.startsWith('Other:') ? 'Other' : formData.race} onChange={(e) => {
@@ -493,15 +565,14 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-row">
         <div className="form-group">
-          <label>Telephone No. (Residence) *</label>
-          <input 
-            type="tel" 
-            name="residencePhone" 
-            value={formData.residencePhone} 
-            onChange={handleChange} 
+          <label>Telephone No. (Residence)</label>
+          <input
+            type="tel"
+            name="residencePhone"
+            value={formData.residencePhone}
+            onChange={handleChange}
             className={errors.residencePhone ? 'error' : ''}
-            placeholder="xxx-xxxxxxx"
-            required
+            placeholder="03-xxxxxxx"
           />
           <ErrorMessage error={errors.residencePhone} />
         </div>
@@ -731,6 +802,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           <label className="radio-label"><input type="radio" name="paymentOption" value="toBeAdvanced" checked={formData.paymentOption === 'toBeAdvanced'} onChange={handleChange} /> To be advanced by Organization</label>
         </div>
       </div>
+      </fieldset>
       </section>
     </div>
   )
@@ -738,6 +810,17 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
 // Step 2: Joint Applicant & Banking Information
 function Step2JointApplicant({ formData, handleChange, errors = {} }) {
+  const [jIcInputRef, handleJIcChange] = useICChangeHandler('jIc', handleChange)
+  const jointEligibilityBlockReason = formData.isJointApplicant
+    ? getEligibilityBlockReason(
+        formData.jIc,
+        formData.jCitizenshipType,
+        formData.jDobDay,
+        formData.jDobMonth,
+        formData.jDobYear,
+        'Joint Applicant',
+      )
+    : null
   return (
     <div className="step-container">
       <h2>Joint Applicant & Banking Information</h2>
@@ -793,14 +876,16 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label>NRIC No. *</label>
-            <input 
-              type="text" 
-              name="jIc" 
-              value={formData.jIc} 
-              onChange={handleChange} 
+            <input
+              ref={jIcInputRef}
+              type="text"
+              name="jIc"
+              value={formData.jIc}
+              onChange={handleJIcChange}
               className={errors.jIc ? 'error' : ''}
               placeholder="Format: xxxxxx-xx-xxxx"
-              required 
+              maxLength={14}
+              required
             />
             <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
             <ErrorMessage error={errors.jIc} />
@@ -812,12 +897,19 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             helpText={!!formData.jIc ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
           />
 
-          <ReadOnlyField 
-            label="Sex" 
-            value={!!formData.jIc && formData.jSex ? formData.jSex : '—'} 
+          <ReadOnlyField
+            label="Sex"
+            value={!!formData.jIc && formData.jSex ? formData.jSex : '—'}
             helpText={!!formData.jIc ? "Verified from NRIC" : "Enter NRIC to auto-fill"}
           />
 
+          {jointEligibilityBlockReason && (
+            <div className="error-message" style={{marginBottom: '1rem'}}>
+              ⚠️ {jointEligibilityBlockReason} The remaining joint applicant fields are disabled until an eligible NRIC is provided.
+            </div>
+          )}
+
+          <fieldset disabled={!!jointEligibilityBlockReason} style={{border: 'none', padding: 0, margin: 0}}>
           <div className="form-group">
             <label>Race</label>
             <select name="jRace" value={formData.jRace?.startsWith('Other:') ? 'Other' : formData.jRace} onChange={(e) => {
@@ -1013,6 +1105,7 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             />
             <ErrorMessage error={errors.jEmployerPostcode} />
           </div>
+          </fieldset>
         </section>
       )}
       
@@ -1054,13 +1147,15 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
         </div>
 
         <div className="form-group">
-          <label>Account Number</label>
-          <input 
-            type="text" 
-            name="accountNumber" 
-            value={formData.accountNumber} 
-            onChange={handleChange} 
+          <label>Account Number *</label>
+          <input
+            type="text"
+            name="accountNumber"
+            value={formData.accountNumber}
+            onChange={handleChange}
+            className={errors.accountNumber ? 'error' : ''}
           />
+          <ErrorMessage error={errors.accountNumber} />
         </div>
       </section>
     </div>
@@ -1127,15 +1222,56 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Property Address *</label>
-          <textarea 
-            name="propertyAddress" 
-            value={formData.propertyAddress} 
-            onChange={handleChange} 
-            rows="2" 
+          <label>Street Address *</label>
+          <textarea
+            name="propertyAddress"
+            value={formData.propertyAddress}
+            onChange={handleChange}
+            rows="2"
+            placeholder="Unit/lot no., street name"
             className={errors.propertyAddress ? 'error' : ''}
           />
           <ErrorMessage error={errors.propertyAddress} />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Scheme / Taman Name *</label>
+            <input
+              type="text"
+              name="propertySchemeName"
+              value={formData.propertySchemeName}
+              onChange={handleChange}
+              placeholder="e.g. Taman Pandan Indah"
+              className={errors.propertySchemeName ? 'error' : ''}
+            />
+            <small style={{color: '#666', fontSize: '0.85rem'}}>Used to estimate the property's market value</small>
+            <ErrorMessage error={errors.propertySchemeName} />
+          </div>
+          <div className="form-group">
+            <label>District *</label>
+            <input
+              type="text"
+              name="propertyDistrict"
+              value={formData.propertyDistrict}
+              onChange={handleChange}
+              placeholder="e.g. Kuala Lumpur"
+              className={errors.propertyDistrict ? 'error' : ''}
+            />
+            <ErrorMessage error={errors.propertyDistrict} />
+          </div>
+          <div className="form-group">
+            <label>Mukim *</label>
+            <input
+              type="text"
+              name="propertyMukim"
+              value={formData.propertyMukim}
+              onChange={handleChange}
+              placeholder="e.g. Kuala Lumpur"
+              className={errors.propertyMukim ? 'error' : ''}
+            />
+            <ErrorMessage error={errors.propertyMukim} />
+          </div>
         </div>
 
         <div className="form-group">
@@ -1465,6 +1601,8 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
 // Step 4: Nominee(s) Details
 function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = false, promoteNominee2 = false, nomineeCount = 0, showNomineeForm = true, handlePopulateNomineeForm = null, handleBackToMaintainApplication = null, flaggedCode = null }) {
+  const [nominee1IcInputRef, handleNominee1IcChange] = useICChangeHandler('nominee1Ic', handleChange)
+  const [nominee2IcInputRef, handleNominee2IcChange] = useICChangeHandler('nominee2Ic', handleChange)
   // Determine which nominee is inactive based on flaggedCode
   const nominee1Inactive = flaggedCode === 'nominee1_inactive'
   const nominee2Inactive = flaggedCode === 'nominee2_inactive'
@@ -1521,14 +1659,16 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
         <div className="form-group">
           <label>NRIC No. *</label>
-          <input 
-            type="text" 
-            name="nominee1Ic" 
-            value={formData.nominee1Ic} 
-            onChange={handleChange} 
+          <input
+            ref={nominee1IcInputRef}
+            type="text"
+            name="nominee1Ic"
+            value={formData.nominee1Ic}
+            onChange={handleNominee1IcChange}
             className={errors.nominee1Ic ? 'error' : ''}
             placeholder="Format: xxxxxx-xx-xxxx"
-            required 
+            maxLength={14}
+            required
           />
           <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
           <ErrorMessage error={errors.nominee1Ic} />
@@ -1760,14 +1900,16 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
           <div className="form-group">
             <label>NRIC No. *</label>
-            <input 
-              type="text" 
-              name="nominee2Ic" 
-              value={formData.nominee2Ic} 
-              onChange={handleChange} 
+            <input
+              ref={nominee2IcInputRef}
+              type="text"
+              name="nominee2Ic"
+              value={formData.nominee2Ic}
+              onChange={handleNominee2IcChange}
               className={errors.nominee2Ic ? 'error' : ''}
               placeholder="Format: xxxxxx-xx-xxxx"
-              required 
+              maxLength={14}
+              required
             />
             <small style={{color: '#666', fontSize: '0.85rem'}}>ℹ️ Birthdate and sex will be auto-filled from IC number</small>
             <ErrorMessage error={errors.nominee2Ic} />
@@ -2535,7 +2677,10 @@ function Step7Review({ formData }) {
         {formData.tenureTitle === 'Leasehold' && (
           <div className="review-field"><strong>Lease Expiry Date:</strong> {formatDate(formData.expiryDay, formData.expiryMonth, formData.expiryYear)}</div>
         )}
-        <div className="review-field"><strong>Property Address:</strong> {getValue(formData.propertyAddress)}</div>
+        <div className="review-field"><strong>Street Address:</strong> {getValue(formData.propertyAddress)}</div>
+        <div className="review-field"><strong>Scheme / Taman Name:</strong> {getValue(formData.propertySchemeName)}</div>
+        <div className="review-field"><strong>District:</strong> {getValue(formData.propertyDistrict)}</div>
+        <div className="review-field"><strong>Mukim:</strong> {getValue(formData.propertyMukim)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.propertyPostcode)}</div>
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Measurements</h4>

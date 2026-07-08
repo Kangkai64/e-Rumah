@@ -520,6 +520,9 @@ export const saveProperty = async (applicationId, formData) => {
       application_id: applicationId,
       property_type: formData.propertyType || null,
       address: formData.propertyAddress || null,
+      scheme_name: formData.propertySchemeName || null,
+      district: formData.propertyDistrict || null,
+      mukim: formData.propertyMukim || null,
       postcode: formData.propertyPostcode || null,
       indicative_market_value: formData.indicativeMarketValue
         ? parseFloat(formData.indicativeMarketValue)
@@ -550,14 +553,14 @@ export const saveProperty = async (applicationId, formData) => {
         ? parseFloat(formData.buildUpArea)
         : null,
       land_area: formData.landArea ? parseFloat(formData.landArea) : null,
-      is_encumbered: formData.isEncumbered || false,
+      is_encumbered: formData.propertyEncumbered === "yes",
       bank_name: formData.bankName || null,
       est_outstanding_balance: formData.outstandingBalance
         ? parseFloat(formData.outstandingBalance)
         : null,
-      has_fire_insurance: formData.hasFireInsurance || false,
+      has_fire_insurance: formData.fireInsurance === "inForce",
       insurance_company: formData.insuranceCompany || null,
-      insurance_period_validity: formData.insurancePeriodValidity || null,
+      insurance_period_validity: formData.periodValidity || null,
     };
 
     // Check if property already exists

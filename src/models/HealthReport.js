@@ -141,6 +141,26 @@ const HealthReport = {
       if (!result.success) throw new Error(result.error)
       return { success: true, data: result.data }
     } catch (error) {
+      console.error('Error updating health report:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Delete health report
+   * @param {string} reportId - The health report ID
+   * @returns {Promise<Object>} Success indicator
+   */
+  async delete(reportId) {
+    try {
+      const { error } = await supabase
+        .from('health_reports')
+        .delete()
+        .eq('id', reportId)
+
+      if (error) throw error
+      return { success: true }
+    } catch (error) {
       console.error('Error deleting health report:', error)
       return { success: false, error: error.message }
     }

@@ -26,26 +26,12 @@ import iconComplimentary5 from '../../assets/icons/main_page/icon_complimentaryS
 import iconInnovation from '../../assets/icons/main_page/icon_innovation.png'
 import iconImpact from '../../assets/icons/main_page/icon_impact.png'
 import iconIntegrity from '../../assets/icons/main_page/icon_integrity.png'
+import { KL_POSTCODES } from '../../utils/klPostcodes'
 
 const HomePage = () => {
   const navigate = useNavigate()
   const { user, userRole, applicationStatus } = useAuth()
   const [showPostcodes, setShowPostcodes] = useState(false)
-  const EXCLUDED_POSTCODES = [
-    '41100',
-    '42100',
-    '42000',
-    '45800',
-    '45600',
-    '42500',
-    '42600',
-    '45000',
-    '42700',
-    '43950',
-    '42200',
-    '41300',
-    '41050',
-  ]
 
   // Redirect authenticated users to their appropriate dashboard
   useEffect(() => {
@@ -370,7 +356,7 @@ const HomePage = () => {
             <p style={{ marginTop: '0.75rem' }}>The following postcodes are currently excluded:</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem 0.75rem' }}>
-              {EXCLUDED_POSTCODES.map((pc) => (
+              {KL_POSTCODES.map((pc) => (
                 <span key={pc} style={{
                   display: 'inline-block',
                   padding: '0.4rem 0.6rem',

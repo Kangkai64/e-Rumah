@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import '../client_controller/customerSupport/CustomerSupport.css'
 import PDFViewer from '../client_controller/common/PDFViewer'
+import { useToast } from '../client_controller/common/ToastContext'
 
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)
@@ -133,19 +134,20 @@ function FlagApplicationModal({ onClose, onFlag }) {
   const [reason, setReason] = useState('')
   const [flaggedCode, setFlaggedCode] = useState('')
   const [isFlagging, setIsFlagging] = useState(false)
+  const { showToast } = useToast()
 
   const handleFlag = async () => {
     if (!reason.trim() || !flaggedCode || isFlagging) return
-    
+
     setIsFlagging(true)
     const result = await onFlag(reason, flaggedCode)
-    
+
     if (result?.success) {
       setReason('')
       setFlaggedCode('')
       onClose()
     } else {
-      alert('Failed to flag application: ' + (result?.error || 'Unknown error'))
+      showToast('Failed to flag application: ' + (result?.error || 'Unknown error'), 'error')
     }
     setIsFlagging(false)
   }

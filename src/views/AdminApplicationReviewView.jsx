@@ -183,6 +183,24 @@ function AdminApplicationReviewView({
                     </span>
                   </div>
                   <div className="info-item">
+                    <span className="info-label">Scheme / Taman Name</span>
+                    <span className="info-value">
+                      {application.application_data?.form_data?.propertySchemeName || application.properties?.scheme_name || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">District</span>
+                    <span className="info-value">
+                      {application.application_data?.form_data?.propertyDistrict || application.properties?.district || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Mukim</span>
+                    <span className="info-value">
+                      {application.application_data?.form_data?.propertyMukim || application.properties?.mukim || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="info-item">
                     <span className="info-label">Market Value</span>
                     <span className="info-value">
                       {formatCurrency(application.application_data?.form_data?.indicativeMarketValue || application.properties?.indicative_market_value)}

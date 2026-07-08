@@ -1281,9 +1281,10 @@ function HealthReportController() {
             }
           }
 
-          // Trigger reminder processor through CORS-safe proxy to avoid preflight failures
+          // Trigger reminder processor; the deployed function only
+          // processes notifications on its /run route
           try {
-            await corsProxyFunctionInvoke('reminder-processor', { action: 'run' })
+            await corsProxyFunctionInvoke('reminder-processor/run', { action: 'run' })
           } catch (err) {
             console.error('Error invoking reminder processor function:', err)
           }

@@ -9,7 +9,7 @@ import { PDFDocument } from "pdf-lib";
 import Application from "../models/Application";
 import { validateStep } from "../utils/applicationValidation";
 import ApplicationFormView from "../views/ApplicationFormView";
-import { parseICNumber, getCurrentDate } from "../utils/icParser";
+import { parseICNumber, getCurrentDate, calculateAge } from "../utils/icParser";
 import { getCurrentUser } from "../services/authService";
 import {
   loadApplicationData,
@@ -21,9 +21,11 @@ import {
 } from "../services/applicationService";
 import { uploadDocument, deleteDocument } from "../services/fileUploadService";
 import { supabase } from "../config/supabase";
+import { useToast } from "../client_controller/common/ToastContext";
 
 function ApplicationController({ editNomineeOnly = false }) {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { applicationId: urlApplicationId } = useParams();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -116,6 +118,9 @@ function ApplicationController({ editNomineeOnly = false }) {
     // Property
     propertyType: "",
     propertyAddress: "",
+    propertySchemeName: "",
+    propertyDistrict: "",
+    propertyMukim: "",
     propertyPostcode: "",
     indicativeMarketValue: "",
     valuationDay: "",
@@ -288,7 +293,6 @@ function ApplicationController({ editNomineeOnly = false }) {
             nameAsPerNRIC: data.nameAsPerNRIC || userProfile.full_name || "",
             email: data.email || userProfile.email || "",
             nricNo: data.nricNo || userProfile.ic_number || "",
-            residencePhone: data.residencePhone || userProfile.phone || "",
             telephone: data.telephone || userProfile.phone || "",
           };
         };
@@ -313,6 +317,26 @@ function ApplicationController({ editNomineeOnly = false }) {
           setApplicationId(application?.id);
           setFlaggedCode(application?.flagged_code || null);
           setApplicationStatus(application?.status || null);
+
+          // Nominee editing after approval is only allowed when support has
+          // flagged a nominee as inactive (replacement flow)
+          if (
+            editNomineeOnly &&
+            (application?.status === "approved" ||
+              application?.status === "terminated") &&
+            ![
+              "nominee1_inactive",
+              "nominee2_inactive",
+              "both_nominees_inactive",
+            ].includes(application?.flagged_code)
+          ) {
+            showToast(
+              "Nominee details can no longer be edited after the application has been approved.",
+              "warning",
+            );
+            navigate("/user/application", { replace: true });
+            return;
+          }
 
           if (
             applicationData?.form_data &&
@@ -510,6 +534,62 @@ function ApplicationController({ editNomineeOnly = false }) {
   ]);
 
   // ==========================================
+  // AUTO-FILL: Derive birthdate/sex/citizenship from NRIC (Step 1)
+  // Runs whenever nricNo is populated by any means (typing, profile
+  // auto-fill, or a loaded application) since the NRIC field itself is
+  // locked from editing and can no longer rely solely on its onChange
+  // handler to trigger the derivation.
+  // ==========================================
+  useEffect(() => {
+    if (isLoading || !formData.nricNo) return;
+
+    const parsed = parseICNumber(formData.nricNo);
+    if (!parsed.isValid || !parsed.birthDate) return;
+
+    const citizenshipType =
+      parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn
+        ? "PR"
+        : "Citizen";
+
+    const needsUpdate =
+      formData.dobDay !== parsed.birthDate.day ||
+      formData.dobMonth !== parsed.birthDate.month ||
+      formData.dobYear !== parsed.birthDate.year ||
+      formData.sex !== parsed.sex ||
+      formData.citizenshipType !== citizenshipType ||
+      !formData.malaysian;
+
+    if (needsUpdate) {
+      setFormData((prev) => ({
+        ...prev,
+        dobDay: parsed.birthDate.day,
+        dobMonth: parsed.birthDate.month,
+        dobYear: parsed.birthDate.year,
+        sex: parsed.sex,
+        malaysian: true,
+        citizenshipType,
+      }));
+    }
+
+    const applicantAge = calculateAge(parsed.birthDate);
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (applicantAge < 55) {
+        next.nricNo = "Applicant must be at least 55 years old";
+      } else if (next.nricNo === "Applicant must be at least 55 years old") {
+        delete next.nricNo;
+      }
+      if (citizenshipType === "PR") {
+        next.citizenshipType =
+          "Applicant must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.";
+      } else {
+        delete next.citizenshipType;
+      }
+      return next;
+    });
+  }, [formData.nricNo, isLoading]);
+
+  // ==========================================
   // AUTO-SAVE: Debounced save to Supabase
   // ==========================================
   const debouncedSave = useCallback(
@@ -570,27 +650,6 @@ function ApplicationController({ editNomineeOnly = false }) {
     [currentUser, applicationId],
   );
 
-  const calculateAgeFromBirthDate = (birthDate) => {
-    if (!birthDate?.day || !birthDate?.month || !birthDate?.year) {
-      return null;
-    }
-
-    const dob = new Date(
-      parseInt(birthDate.year, 10),
-      parseInt(birthDate.month, 10) - 1,
-      parseInt(birthDate.day, 10),
-    );
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-      age--;
-    }
-
-    return age;
-  };
-
   // Trigger auto-save when formData or currentStep changes
   useEffect(() => {
     if (isLoading) return; // Don't save during initial load
@@ -646,6 +705,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         updates.sex = "";
         updates.citizenshipType = "";
 
+        let ageError = null;
+        let citizenshipError = null;
+
         if (value) {
           const parsed = parseICNumber(value);
           if (parsed.isValid && parsed.birthDate) {
@@ -662,19 +724,33 @@ function ApplicationController({ editNomineeOnly = false }) {
             // If born outside (60-99) -> PR / Foreign Born
             if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
               updates.citizenshipType = "PR";
+              citizenshipError =
+                "Applicant must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.";
             } else {
               updates.citizenshipType = "Citizen";
             }
 
-            const applicantAge = calculateAgeFromBirthDate(parsed.birthDate);
+            const applicantAge = calculateAge(parsed.birthDate);
             if (applicantAge < 55) {
-              setErrors((prev) => ({
-                ...prev,
-                nricNo: "Applicant must be at least 55 years old",
-              }));
+              ageError = "Applicant must be at least 55 years old";
             }
           }
         }
+
+        setErrors((prev) => {
+          const next = { ...prev };
+          if (ageError) {
+            next.nricNo = ageError;
+          } else {
+            delete next.nricNo;
+          }
+          if (citizenshipError) {
+            next.citizenshipType = citizenshipError;
+          } else {
+            delete next.citizenshipType;
+          }
+          return next;
+        });
       }
 
       // Auto-fill: Parse IC number and fill birthdate + sex for joint applicant
@@ -684,6 +760,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         updates.jDobYear = "";
         updates.jSex = "";
         updates.jCitizenshipType = "";
+
+        let jointAgeError = null;
+        let jointCitizenshipError = null;
 
         if (value) {
           const parsed = parseICNumber(value);
@@ -699,21 +778,33 @@ function ApplicationController({ editNomineeOnly = false }) {
             // Set Citizenship Type
             if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
               updates.jCitizenshipType = "PR";
+              jointCitizenshipError =
+                "Joint Applicant must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.";
             } else {
               updates.jCitizenshipType = "Citizen";
             }
 
-            const jointApplicantAge = calculateAgeFromBirthDate(
-              parsed.birthDate,
-            );
+            const jointApplicantAge = calculateAge(parsed.birthDate);
             if (jointApplicantAge < 55) {
-              setErrors((prev) => ({
-                ...prev,
-                jIc: "Joint Applicant must be at least 55 years old",
-              }));
+              jointAgeError = "Joint Applicant must be at least 55 years old";
             }
           }
         }
+
+        setErrors((prev) => {
+          const next = { ...prev };
+          if (jointAgeError) {
+            next.jIc = jointAgeError;
+          } else {
+            delete next.jIc;
+          }
+          if (jointCitizenshipError) {
+            next.jCitizenshipType = jointCitizenshipError;
+          } else {
+            delete next.jCitizenshipType;
+          }
+          return next;
+        });
       }
 
       // Auto-fill: Parse IC number and fill birthdate + sex + citizenship for nominee 1
@@ -839,7 +930,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     if (!file) return;
 
     if (!currentUser) {
-      alert("Please log in to upload files");
+      showToast("Please log in to upload files", "warning");
       return;
     }
 
@@ -866,7 +957,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       );
 
       if (error) {
-        alert("Upload failed: " + error.message);
+        showToast("Upload failed: " + error.message, "error");
         setUploadProgress((prev) => ({
           ...prev,
           [uploadKey]: { uploading: false },
@@ -923,7 +1014,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       console.log("✅ File uploaded:", fileName);
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Upload failed. Please try again.");
+      showToast("Upload failed. Please try again.", "error");
       const uploadKey =
         arrayIndex !== null ? `${documentType}_${arrayIndex}` : documentType;
       setUploadProgress((prev) => ({
@@ -938,7 +1029,7 @@ function ApplicationController({ editNomineeOnly = false }) {
    */
   const handleFileDelete = async (documentType, arrayIndex = null) => {
     if (!currentUser) {
-      alert("Please log in to delete files");
+      showToast("Please log in to delete files", "warning");
       return;
     }
 
@@ -966,7 +1057,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       const { success, error } = await deleteDocument(fileUrl, currentUser.id);
 
       if (error) {
-        alert("Delete failed: " + error.message);
+        showToast("Delete failed: " + error.message, "error");
         return;
       }
 
@@ -1002,7 +1093,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       console.log("✅ File deleted");
     } catch (error) {
       console.error("Delete error:", error);
-      alert("Failed to delete file. Please try again.");
+      showToast("Failed to delete file. Please try again.", "error");
     }
   };
 
@@ -1078,6 +1169,24 @@ function ApplicationController({ editNomineeOnly = false }) {
   const handleNext = async () => {
     // For editNomineeOnly mode, validate nominee form before saving
     if (editNomineeOnly && currentStep === 4) {
+      // Post-approval nominee edits are only allowed for the inactive-nominee
+      // replacement flow (mirrors the guard applied on load)
+      if (
+        (applicationStatus === "approved" ||
+          applicationStatus === "terminated") &&
+        ![
+          "nominee1_inactive",
+          "nominee2_inactive",
+          "both_nominees_inactive",
+        ].includes(flaggedCode)
+      ) {
+        showToast(
+          "Nominee details can no longer be edited after the application has been approved.",
+          "warning",
+        );
+        return;
+      }
+
       // Validate nominee form
       const stepErrors = validateStep(4, formData);
 
@@ -1125,7 +1234,7 @@ function ApplicationController({ editNomineeOnly = false }) {
           console.log("📦 Save result:", { savedData, error });
           if (error) {
             console.error("❌ Error saving nominee data:", error);
-            alert("Error saving nominee data. Please try again.");
+            showToast("Error saving nominee data. Please try again.", "error");
             return;
           }
           console.log("✅ Nominee data saved to Supabase");
@@ -1134,8 +1243,9 @@ function ApplicationController({ editNomineeOnly = false }) {
             currentUser: !!currentUser,
             applicationId,
           });
-          alert(
+          showToast(
             "Error: Missing user or application data. Please refresh and try again.",
+            "error",
           );
           return;
         }
@@ -1209,7 +1319,7 @@ function ApplicationController({ editNomineeOnly = false }) {
         navigate("/user/application");
       } catch (error) {
         console.error("Error during nominee update completion:", error);
-        alert("Error updating nominee. Please try again.");
+        showToast("Error updating nominee. Please try again.", "error");
       }
       return;
     }
@@ -1353,7 +1463,8 @@ function ApplicationController({ editNomineeOnly = false }) {
 
         if (error) {
           console.error("❌ Database submission failed:", error);
-          alert("Failed to submit application to database: " + error.message);
+          showToast("Failed to submit application to database: " + error.message, "error");
+          setIsSubmitting(false);
           return;
         }
 
@@ -1379,8 +1490,9 @@ function ApplicationController({ editNomineeOnly = false }) {
 
       if (uploadError) {
         console.error("❌ PDF upload failed:", uploadError);
-        alert(
-          "Warning: PDF was generated but failed to upload to storage. Downloading locally...",
+        showToast(
+          "PDF was generated but failed to upload to storage. Downloading locally...",
+          "warning",
         );
         downloadPDF(pdfBlob);
       } else {
@@ -1390,8 +1502,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         downloadPDF(pdfBlob);
       }
 
-      alert(
+      showToast(
         "Application submitted successfully! Redirecting to your dashboard...",
+        "success",
       );
 
       // 4. Navigate to user dashboard
@@ -1399,7 +1512,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       window.location.href = "/user/dashboard";
     } catch (error) {
       console.error("Error during submission:", error);
-      alert("Error submitting application. Please try again.");
+      showToast("Error submitting application. Please try again.", "error");
       setIsSubmitting(false);
     }
   };
@@ -1563,7 +1676,14 @@ function ApplicationController({ editNomineeOnly = false }) {
     const propertyTypeValue =
       data.propertyType === "semi-detach" ? "semiDetach" : data.propertyType;
     fillRadio(form, "property_type", propertyTypeValue);
-    fillTextField(form, "property_address", data.propertyAddress);
+    const propertyAddressLine = [
+      data.propertyAddress,
+      data.propertySchemeName,
+      data.propertyDistrict,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    fillTextField(form, "property_address", propertyAddressLine);
     fillTextField(form, "property_address_postcode", data.propertyPostcode);
     fillTextField(
       form,

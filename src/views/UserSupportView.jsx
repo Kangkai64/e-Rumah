@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import '../client_controller/userSupport/UserSupport.css'
 import contactIcon from '../assets/icons/about_us_page/icon_contact.svg'
 import emailIcon from '../assets/icons/about_us_page/icon_email.svg'
+import { useToast } from '../client_controller/common/ToastContext'
 
 export default function UserSupportView({
   inquiries,
@@ -22,6 +23,7 @@ export default function UserSupportView({
   const [selectedFile, setSelectedFile] = useState(null)
   const [sending, setSending] = useState(false)
   const fileInputRef = React.useRef(null)
+  const { showToast } = useToast()
 
   const formatDate = (dateString) => {
     const date = new Date(dateString)
@@ -70,7 +72,7 @@ export default function UserSupportView({
     if (file) {
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB')
+        showToast('File size must be less than 10MB', 'warning')
         return
       }
       setSelectedFile(file)

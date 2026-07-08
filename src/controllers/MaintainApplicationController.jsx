@@ -8,11 +8,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Application from '../models/Application'
 import { getCurrentUser } from '../services/authService'
 import MaintainApplicationView from '../views/MaintainApplicationView'
+import { useToast } from '../client_controller/common/ToastContext'
 
 function MaintainApplicationController() {
   const { applicationId: urlApplicationId } = useParams() // Optional from URL
   const navigate = useNavigate()
   const location = useLocation()
+  const { showToast } = useToast()
   
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -236,7 +238,7 @@ function MaintainApplicationController() {
         setApplicationStatus('underReviewed')
         setError(null)
         // Redirect and refresh page after successful termination submission
-        alert('Termination request submitted successfully. Redirecting...')
+        showToast('Termination request submitted successfully. Redirecting...', 'success')
         window.location.href = '/user/application'
       } else {
         setError('Failed to submit termination request')
@@ -316,6 +318,16 @@ function MaintainApplicationController() {
       )
       if (result.success) {
         setDocuments(result.data)
+
+        // If the application was flagged for a corrected document and none are
+        // missing anymore, clear the flag so the review can continue
+        if (flaggedCode === 'document_flagged' && !result.data.some(doc => doc.status === 'MISSING')) {
+          const clearResult = await Application.clearFlaggedStatus(application.id)
+          if (clearResult.success) {
+            setFlaggedCode(null)
+            setFlaggedReason(null)
+          }
+        }
       }
     } catch (err) {
       console.error('Error refreshing documents:', err)

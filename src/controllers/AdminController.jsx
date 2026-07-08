@@ -6,10 +6,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../client_controller/sessionController/AuthContext";
 import Admin from "../models/Admin";
+import LoanDisbursement from "../models/LoanDisbursement";
 import AdminView from "../views/AdminView";
+import { useToast } from "../client_controller/common/ToastContext";
 
 function AdminController() {
   const { user, userRole, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   // State management
   const [statistics, setStatistics] = useState({
     pending: 0,
@@ -47,6 +50,11 @@ function AdminController() {
   const [newStatus, setNewStatus] = useState("");
   const [statusRemarks, setStatusRemarks] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [mainApplicantDeceased, setMainApplicantDeceased] = useState(false);
+
+  // Apportioned proceeds (deceased-applicant termination) state
+  const [terminationProceeds, setTerminationProceeds] = useState(null);
+  const [loadingProceeds, setLoadingProceeds] = useState(false);
 
   // Approved amount state
   const [approvedAmount, setApprovedAmount] = useState("");
@@ -181,6 +189,17 @@ function AdminController() {
     const result = await Admin.getApplicationDetails(application.id);
     if (result.success) {
       setSelectedApplication(result.data);
+
+      if (result.data.status === "terminated" && result.data.main_applicant_deceased) {
+        setLoadingProceeds(true);
+        const proceedsResult = await LoanDisbursement.getTerminationProceedsSummary(
+          application.id,
+        );
+        setTerminationProceeds(proceedsResult.success ? proceedsResult.data : null);
+        setLoadingProceeds(false);
+      } else {
+        setTerminationProceeds(null);
+      }
     }
   };
 
@@ -191,7 +210,7 @@ function AdminController() {
     if (!selectedApplication) return;
 
     if (selectedApplication.status === "underReviewed" && !approvedAmount) {
-      alert("Please enter the approved amount");
+      showToast("Please enter the approved amount", "warning");
       return;
     }
 
@@ -199,11 +218,11 @@ function AdminController() {
       approved_amount: approvedAmount ? parseFloat(approvedAmount) : null,
     });
     if (result.success) {
-      alert("Application approved successfully!");
+      showToast("Application approved successfully!", "success");
       setApprovedAmount(""); // Reset the field
       loadDashboardData(); // Refresh data
     } else {
-      alert("Error approving application: " + result.error);
+      showToast("Error approving application: " + result.error, "error");
     }
   };
 
@@ -235,14 +254,14 @@ function AdminController() {
         "terminated",
       );
       if (result.success) {
-        alert("Termination approved successfully!");
+        showToast("Termination approved successfully!", "success");
         loadDashboardData();
       } else {
-        alert("Error approving termination: " + result.error);
+        showToast("Error approving termination: " + result.error, "error");
       }
     } catch (err) {
       console.error("Error approving termination:", err);
-      alert("Error approving termination: " + err.message);
+      showToast("Error approving termination: " + err.message, "error");
     } finally {
       setProcessingTermination(false);
     }
@@ -258,22 +277,27 @@ function AdminController() {
       "Please provide a reason for rejecting the termination request:",
     );
     if (reason === null) return; // User cancelled
+    if (!reason.trim()) {
+      showToast("A reason is required to reject a termination request.", "warning");
+      return;
+    }
 
     setProcessingTermination(true);
     try {
       // Update to clear termination fields, set remarks, and set status back to approved
       const result = await Admin.rejectTermination(applicationId, reason);
       if (result.success) {
-        alert(
+        showToast(
           "Termination rejected successfully! Application status restored to Approved.",
+          "success",
         );
         loadDashboardData();
       } else {
-        alert("Error rejecting termination: " + result.error);
+        showToast("Error rejecting termination: " + result.error, "error");
       }
     } catch (err) {
       console.error("Error rejecting termination:", err);
-      alert("Error rejecting termination: " + err.message);
+      showToast("Error rejecting termination: " + err.message, "error");
     } finally {
       setProcessingTermination(false);
     }
@@ -286,6 +310,7 @@ function AdminController() {
     setStatusUpdateApp(application);
     setNewStatus(application.status);
     setStatusRemarks("");
+    setMainApplicantDeceased(false);
     setShowStatusModal(true);
   };
 
@@ -297,7 +322,7 @@ function AdminController() {
 
     // Validate status change
     if (newStatus === statusUpdateApp.status) {
-      alert("Please select a different status");
+      showToast("Please select a different status", "warning");
       return;
     }
 
@@ -308,20 +333,22 @@ function AdminController() {
         statusUpdateApp.id,
         newStatus,
         statusRemarks.trim() || null,
+        { mainApplicantDeceased: newStatus === "terminated" && mainApplicantDeceased },
       );
 
       if (result.success) {
-        alert("Application status updated successfully!");
+        showToast("Application status updated successfully!", "success");
         setShowStatusModal(false);
         setStatusUpdateApp(null);
         setNewStatus("");
         setStatusRemarks("");
+        setMainApplicantDeceased(false);
         loadDashboardData(); // Refresh data
       } else {
-        alert("Error updating status: " + result.error);
+        showToast("Error updating status: " + result.error, "error");
       }
     } catch (err) {
-      alert("Error updating status: " + err.message);
+      showToast("Error updating status: " + err.message, "error");
     } finally {
       setUpdatingStatus(false);
     }
@@ -394,7 +421,7 @@ function AdminController() {
     try {
       const report = reports.find((r) => r.id === reportId);
       if (!report) {
-        alert("Report not found");
+        showToast("Report not found", "error");
         return;
       }
 
@@ -407,7 +434,7 @@ function AdminController() {
             state: { reportData: result.data, report },
           });
         } else {
-          alert("Error loading report: " + result.error);
+          showToast("Error loading report: " + result.error, "error");
         }
       } else if (report.type === "yearly") {
         const result = await Admin.generateYearlyReport();
@@ -417,19 +444,19 @@ function AdminController() {
           });
           await loadDashboardData();
         } else {
-          alert("Error loading report: " + result.error);
+          showToast("Error loading report: " + result.error, "error");
         }
       }
     } catch (err) {
       console.error("Error viewing report:", err);
-      alert("Error viewing report: " + err.message);
+      showToast("Error viewing report: " + err.message, "error");
     }
   };
 
   const handleShareReport = (reportId) => {
     const report = reports.find((r) => r.id === reportId);
     if (!report) {
-      alert("Report not found");
+      showToast("Report not found", "error");
       return;
     }
 
@@ -440,11 +467,11 @@ function AdminController() {
     navigator.clipboard
       .writeText(shareUrl)
       .then(() => {
-        alert("Report link copied to clipboard!");
+        showToast("Report link copied to clipboard!", "success");
       })
       .catch((err) => {
         console.error("Failed to copy:", err);
-        alert("Failed to copy link. Please try again.");
+        showToast("Failed to copy link. Please try again.", "error");
       });
   };
 
@@ -470,7 +497,7 @@ const handleCloseReportGenerator = () => {
           });
           await loadDashboardData();
         } else {
-          alert("Error generating report: " + result.error);
+          showToast("Error generating report: " + result.error, "error");
         }
       } else {
         const result = await Admin.generateMonthlyReport();
@@ -490,12 +517,12 @@ const handleCloseReportGenerator = () => {
           });
           await loadDashboardData();
         } else {
-          alert("Error generating report: " + result.error);
+          showToast("Error generating report: " + result.error, "error");
         }
       }
     } catch (err) {
       console.error("Error generating report:", err);
-      alert("Error generating report: " + err.message);
+      showToast("Error generating report: " + err.message, "error");
     } finally {
       setReportGenerating(false);
       handleCloseReportGenerator();
@@ -570,6 +597,10 @@ const handleCloseReportGenerator = () => {
       newStatus={newStatus}
       statusRemarks={statusRemarks}
       updatingStatus={updatingStatus}
+      mainApplicantDeceased={mainApplicantDeceased}
+      onMainApplicantDeceasedChange={setMainApplicantDeceased}
+      terminationProceeds={terminationProceeds}
+      loadingProceeds={loadingProceeds}
       approvedAmount={approvedAmount}
       onApprovedAmountChange={handleApprovedAmountChange}
       showTerminationModal={showTerminationModal}

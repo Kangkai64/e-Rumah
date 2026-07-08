@@ -1,5 +1,5 @@
 # 🚀 Quick Start Guide
-
+claude --dangerously-skip-permissions
 ## ⚡ Setup in 5 Minutes
 
 ### 1. Create Supabase Project

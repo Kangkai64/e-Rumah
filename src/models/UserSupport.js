@@ -208,9 +208,13 @@ class UserSupport {
             event: 'INSERT',
             schema: 'public',
             table: 'support_conversations',
-            filter: `entity_type=eq.${entityType},entity_id=eq.${inquiryId}`
+            // postgres_changes supports only a single filter expression,
+            // so filter on entity_id and check entity_type in the handler
+            filter: `entity_id=eq.${inquiryId}`
           },
           async (payload) => {
+            if (payload.new?.entity_type !== entityType) return
+
             // Fetch the full conversation data with sender info
             const { data, error } = await supabase
               .from('support_conversations')

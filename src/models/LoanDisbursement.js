@@ -87,6 +87,51 @@ const calcMissedMonths = (approvedAt, disbursementCount) => {
   return Math.max(monthsElapsed - disbursementCount, 0);
 };
 
+// Reverse mortgage is non-recourse: nominees split whatever remains after
+// the sale proceeds settle the amount actually disbursed, never a shortfall.
+const calculateApportionedProceeds = (application, totalDisbursed) => {
+  const propertyValue = resolvePropertyValue(application);
+  const outstandingLoanAmount = toNumber(totalDisbursed);
+  const netProceeds = Math.max(propertyValue - outstandingLoanAmount, 0);
+  const shortfall = Math.max(outstandingLoanAmount - propertyValue, 0);
+
+  const nominees = application?.nominees || [];
+  const flaggedCode = application?.flagged_code;
+  const isEligible = (nominee) => {
+    if (flaggedCode === "both_nominees_inactive") return false;
+    if (flaggedCode === "nominee1_inactive" && nominee.type === "nominee1")
+      return false;
+    if (flaggedCode === "nominee2_inactive" && nominee.type === "nominee2")
+      return false;
+    return true;
+  };
+
+  const eligibleNominees = nominees.filter(isEligible);
+  const shareCount = eligibleNominees.length;
+  const sharePerNominee = shareCount > 0 ? netProceeds / shareCount : 0;
+
+  return {
+    propertyValue,
+    outstandingLoanAmount,
+    netProceeds,
+    shortfall,
+    isNonRecourseShortfall: shortfall > 0,
+    nominees: nominees.map((nominee) => {
+      const eligible = isEligible(nominee);
+      return {
+        id: nominee.id,
+        type: nominee.type,
+        name: nominee.name,
+        eligible,
+        sharePercentage:
+          eligible && shareCount > 0 ? 100 / shareCount : 0,
+        apportionedAmount: eligible ? sharePerNominee : 0,
+      };
+    }),
+    unallocatedAmount: shareCount === 0 ? netProceeds : 0,
+  };
+};
+
 const buildSummary = (application, transactions = []) => {
   const totalEligibleAmount = resolveApprovedAmount(application);
   const monthlyAmount = resolveMonthlyAmount(application);
@@ -122,7 +167,10 @@ const buildSummary = (application, transactions = []) => {
     totalEligibleAmount,
     totalDisbursed,
     remainingBalance,
-    latestDisbursementDate: latestTransaction?.transaction_date || null,
+    latestDisbursementDate:
+      latestTransaction?.transactionDate ||
+      latestTransaction?.transaction_date ||
+      null,
     nextSuggestedDate,
     missedMonths,
     suggestedAmount,
@@ -539,6 +587,58 @@ const LoanDisbursement = {
     }
   },
 
+  /**
+   * Calculate the apportioned proceeds for a terminated (deceased-applicant) application.
+   * Property sale proceeds settle the outstanding disbursed amount first (non-recourse:
+   * any shortfall is absorbed, never owed by the estate); the remainder is split evenly
+   * across nominees still active on the application.
+   * @param {string} applicationId - Application ID
+   * @returns {Promise<{success: boolean, data: Object, error: any}>}
+   */
+  async getTerminationProceedsSummary(applicationId) {
+    try {
+      const { data: application, error } = await supabase
+        .from("applications")
+        .select(
+          `
+          id,
+          flagged_code,
+          main_applicant_deceased,
+          properties(expected_market_value, indicative_market_value),
+          nominees(id, type, name)
+        `,
+        )
+        .eq("id", applicationId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!application) {
+        return { success: false, error: "Application not found" };
+      }
+
+      const { data: transactions, error: transactionError } = await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("application_id", applicationId)
+        .eq("transaction_type", DISBURSEMENT_TYPE);
+
+      if (transactionError) throw transactionError;
+
+      const totalDisbursed = (transactions || []).reduce(
+        (sum, transaction) => sum + toNumber(transaction.amount),
+        0,
+      );
+
+      return {
+        success: true,
+        data: calculateApportionedProceeds(application, totalDisbursed),
+      };
+    } catch (error) {
+      console.error("Error calculating termination proceeds:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
   async saveBankDetails(userId, bankData) {
     try {
       const { data, error } = await supabase
@@ -643,7 +743,8 @@ const LoanDisbursement = {
           )
           .eq("user_id", userId)
           .order("is_primary", { ascending: false })
-          .order("created_at", { ascending: true })
+          // Latest saved details win; saveBankDetails inserts a new row each time
+          .order("created_at", { ascending: false })
           .limit(1);
 
         if (bankError) throw bankError;

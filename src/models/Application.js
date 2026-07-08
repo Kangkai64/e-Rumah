@@ -78,58 +78,48 @@ const Application = {
   },
 
   /**
-   * Get full application details with form data, nominees, and properties
-        const result = await corsProxyUpdate('applications', application.id, {
-          is_flagged: true,
-          flagged_reason: reason,
-          flagged_code: flaggedCode,
-          flagged_at: new Date().toISOString(),
-          flagged_by: staffUserId
-        })
-
-        if (!result.success) throw new Error(result.error)
-        return { success: true, data: result.data }
-
-      if (appError) throw appError
-
-      // Fetch application_data (form_data JSONB)
-      const { data: appData, error: dataError } = await supabase
-        .from('application_data')
-        .select('*')
-        .eq('application_id', applicationId)
-        .maybeSingle()
-
-      if (dataError) throw dataError
-
-      // Fetch nominees
-      const { data: nominees, error: nomineesError } = await supabase
-        .from('nominees')
-        .select('*')
-        .eq('application_id', applicationId)
-
-      if (nomineesError) throw nomineesError
-
-      // Fetch properties
-      const { data: properties, error: propertiesError } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('application_id', applicationId)
-
-      if (propertiesError) throw propertiesError
-
-      // Combine all data
-      const fullApplication = {
-        ...application,
-        application_data: appData,
-        form_data: appData?.form_data || {},
-        current_step: appData?.current_step || 1,
-        nominees: nominees || [],
-        properties: properties || []
+   * Flag a submitted document during admin review.
+   * Deletes the file from storage (so it shows as MISSING and the applicant
+   * must upload a corrected copy) and records the flag reason on the application.
+   * @param {string} applicationId - The application ID
+   * @param {string} documentName - Display name of the flagged document
+   * @param {string} filePath - Storage path of the file (userId/fileName)
+   * @param {string} reason - Reason for flagging
+   * @param {string} userId - The applicant's user ID (owner of the file)
+   * @returns {Promise<Object>} Result with message
+   */
+  async flagDocument(applicationId, documentName, filePath, reason, userId) {
+    try {
+      if (!filePath || (userId && !filePath.startsWith(`${userId}/`))) {
+        throw new Error('Invalid document path for this applicant')
       }
 
-      return { success: true, data: fullApplication }
+      // Remove the document so it appears as MISSING for re-upload
+      const { error: removeError } = await supabase
+        .storage
+        .from('application-documents')
+        .remove([filePath])
+
+      if (removeError) throw removeError
+
+      // Record the flag on the application so the applicant sees the reason
+      const result = await corsProxyUpdate('applications', applicationId, {
+        is_flagged: true,
+        flagged_code: 'document_flagged',
+        flagged_reason: `Document "${documentName}" requires correction: ${reason}`,
+        flagged_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+
+      return {
+        success: true,
+        data: result.data,
+        message: `Document "${documentName}" has been flagged and removed. The applicant must upload a corrected copy.`
+      }
     } catch (error) {
-      console.error('Error fetching full application:', error)
+      console.error('Error flagging document:', error)
       return { success: false, error: error.message }
     }
   },

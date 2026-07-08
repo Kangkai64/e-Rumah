@@ -45,6 +45,11 @@ const PropertyCalculatorController = () => {
 
   const getApiUrl = () => {
     const baseUrl = import.meta.env.VITE_PROPERTY_ESTIMATOR_API_URL;
+    if (!baseUrl) {
+      throw new Error(
+        "Property estimator service is not configured. Please try again later.",
+      );
+    }
     return `${baseUrl.replace(/\/$/, "")}/estimate`;
   };
 
@@ -141,10 +146,14 @@ const PropertyCalculatorController = () => {
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
+        // FastAPI validation errors return detail as an array of field errors
+        const detail = Array.isArray(result?.detail)
+          ? result.detail
+              .map((item) => item?.msg || JSON.stringify(item))
+              .join("; ")
+          : result?.detail;
         throw new Error(
-          result?.detail ||
-            result?.error ||
-            "Failed to estimate property value.",
+          detail || result?.error || "Failed to estimate property value.",
         );
       }
 

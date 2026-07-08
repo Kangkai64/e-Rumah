@@ -1,4 +1,4 @@
-// Admin View
+/// Admin View
 // Presentational component for admin dashboard
 // Receives ALL data and handlers via props from AdminController
 // NO business logic, NO state management (except local UI state), NO model imports
@@ -24,6 +24,10 @@ function AdminView({
   newStatus,
   statusRemarks,
   updatingStatus,
+  mainApplicantDeceased,
+  onMainApplicantDeceasedChange,
+  terminationProceeds,
+  loadingProceeds,
   approvedAmount,
   onApprovedAmountChange,
   showTerminationModal,
@@ -505,6 +509,89 @@ function AdminView({
                               modified.
                             </p>
                           </div>
+
+                          {selectedApplication?.main_applicant_deceased && (
+                            <div className="admin-proceeds-section">
+                              <h3>Apportioned Proceeds</h3>
+                              {loadingProceeds ? (
+                                <p>Calculating proceeds...</p>
+                              ) : terminationProceeds ? (
+                                <>
+                                  <div className="admin-proceeds-summary">
+                                    <p>
+                                      <strong>Property Value:</strong> RM{" "}
+                                      {terminationProceeds.propertyValue.toLocaleString()}
+                                    </p>
+                                    <p>
+                                      <strong>Outstanding Loan Settled:</strong>{" "}
+                                      RM{" "}
+                                      {terminationProceeds.outstandingLoanAmount.toLocaleString()}
+                                    </p>
+                                    <p>
+                                      <strong>Net Proceeds for Distribution:</strong>{" "}
+                                      RM {terminationProceeds.netProceeds.toLocaleString()}
+                                    </p>
+                                    {terminationProceeds.isNonRecourseShortfall && (
+                                      <p className="admin-proceeds-shortfall">
+                                        ⚠️ Sale proceeds do not cover the
+                                        outstanding loan (shortfall RM{" "}
+                                        {terminationProceeds.shortfall.toLocaleString()}
+                                        ). Under the non-recourse terms, the
+                                        estate owes nothing further and
+                                        nominees receive RM 0.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <table className="admin-proceeds-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Nominee</th>
+                                        <th>Type</th>
+                                        <th>Share</th>
+                                        <th>Amount</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {terminationProceeds.nominees.map((nominee) => (
+                                        <tr key={nominee.id}>
+                                          <td>{nominee.name}</td>
+                                          <td>
+                                            {nominee.type === "nominee1"
+                                              ? "Nominee 1"
+                                              : "Nominee 2"}
+                                          </td>
+                                          <td>
+                                            {nominee.eligible
+                                              ? `${nominee.sharePercentage.toFixed(1)}%`
+                                              : "Excluded"}
+                                          </td>
+                                          <td>
+                                            RM{" "}
+                                            {nominee.apportionedAmount.toLocaleString(
+                                              undefined,
+                                              { minimumFractionDigits: 2 },
+                                            )}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+
+                                  {terminationProceeds.unallocatedAmount > 0 && (
+                                    <p className="admin-proceeds-unallocated">
+                                      No eligible nominees on file — RM{" "}
+                                      {terminationProceeds.unallocatedAmount.toLocaleString()}{" "}
+                                      remains unallocated pending next-of-kin
+                                      verification.
+                                    </p>
+                                  )}
+                                </>
+                              ) : (
+                                <p>Unable to calculate proceeds.</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -830,6 +917,28 @@ function AdminView({
                 <div className="status-warning">
                   ⚠️ Terminating this application will end the loan agreement.
                   This action should only be done for approved applications.
+                </div>
+              )}
+
+              {newStatus === "terminated" && (
+                <div className="form-group admin-deceased-checkbox">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={mainApplicantDeceased}
+                      onChange={(e) =>
+                        onMainApplicantDeceasedChange(e.target.checked)
+                      }
+                      disabled={updatingStatus}
+                    />{" "}
+                    Main applicant is deceased
+                  </label>
+                  <p className="admin-deceased-hint">
+                    The property will be sold and the sale proceeds
+                    apportioned to the nominees on file, after settling the
+                    outstanding loan amount. Leave unchecked for a standard
+                    (borrower repays) termination.
+                  </p>
                 </div>
               )}
             </div>

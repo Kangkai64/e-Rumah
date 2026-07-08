@@ -20,6 +20,7 @@ import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 import '../client_controller/health_report/HealthMonitoringView.css'
 import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
+import { useToast } from '../client_controller/common/ToastContext'
 
 // ============================================================================
 // HELPER COMPONENTS
@@ -635,6 +636,7 @@ function UserHealthReportView({
   onReuploadConfirm,
   onReuploadCancel
 }) {
+  const { showToast } = useToast()
   // Add default values to prevent undefined errors
   const defaultStatistics = {
     reminderThisWeek: 0,
@@ -854,7 +856,7 @@ function UserHealthReportView({
         const validation = await validateHealthReportFile(file);
 
         if (!validation.valid) {
-          alert(`❌ Invalid file "${file.name}": ${validation.error}`);
+          showToast(`Invalid file "${file.name}": ${validation.error}`, 'error');
           continue;
         }
 
@@ -871,7 +873,7 @@ function UserHealthReportView({
         }
       } catch (error) {
         console.error('❌ File validation error:', error);
-        alert(`Error validating file "${file.name}": ${error.message}`);
+        showToast(`Error validating file "${file.name}": ${error.message}`, 'error');
       }
     }
 
@@ -889,18 +891,19 @@ function UserHealthReportView({
           const convertedPDF = await convertImagesToPDF(imageFiles, fileName);
           processedFiles.push(convertedPDF);
 
-          alert(
-            `Successfully converted ${imageFiles.length} image(s) to PDF: ${fileName}`
+          showToast(
+            `Successfully converted ${imageFiles.length} image(s) to PDF: ${fileName}`,
+            'success'
           );
         } catch (error) {
           console.error('PDF conversion failed:', error);
-          alert('Failed to convert images to PDF. Please try again or upload a PDF file directly.');
+          showToast('Failed to convert images to PDF. Please try again or upload a PDF file directly.', 'error');
           return;
         } finally {
           setIsConverting(false);
         }
       } else {
-        alert('Please upload PDF files only for health reports.');
+        showToast('Please upload PDF files only for health reports.', 'warning');
         return;
       }
     }
@@ -945,12 +948,12 @@ function UserHealthReportView({
   // Submit function that calls controller method
   const handleSubmit = async () => {
     if (selectedFiles.length === 0) {
-      alert('Please select at least one file to upload.');
+      showToast('Please select at least one file to upload.', 'warning');
       return;
     }
 
     if (!user || !user.id) {
-      alert('User not authenticated. Please log in and try again.');
+      showToast('User not authenticated. Please log in and try again.', 'warning');
       return;
     }
 

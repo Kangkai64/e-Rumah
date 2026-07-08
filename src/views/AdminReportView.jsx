@@ -6,7 +6,8 @@ import '../client_controller/admin/AdminReportView.css'
 
 function AdminReportView({ reportData, report, onPrint, onDownloadPDF, onBackToDashboard }) {
 
-  const isYearlyReport = !reportData.month && reportData.year
+  // month is a 0-based index, so January (0) is still a monthly report
+  const isYearlyReport = (reportData.month === null || reportData.month === undefined || reportData.month < 0) && reportData.year
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                       'July', 'August', 'September', 'October', 'November', 'December']
 

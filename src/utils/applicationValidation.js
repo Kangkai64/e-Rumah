@@ -1,6 +1,7 @@
 // Validation utility functions
 
 import { parseICNumber } from "./icParser";
+import { KL_POSTCODES } from "./klPostcodes";
 
 // IC Number validation: xxxxxx-xx-xxxx with valid date
 export const validateIC = (ic) => {
@@ -13,6 +14,7 @@ export const validateIC = (ic) => {
   const year = cleanIC.substring(0, 2);
   const month = cleanIC.substring(2, 4);
   const day = cleanIC.substring(4, 6);
+  const placeOfBirthCode = cleanIC.substring(6, 8);
 
   const monthInt = parseInt(month);
   const dayInt = parseInt(day);
@@ -26,6 +28,11 @@ export const validateIC = (ic) => {
   // Validate day (01-31)
   if (dayInt < 1 || dayInt > 31) {
     return "IC contains invalid day (must be 01-31)";
+  }
+
+  // Place of birth code (digits 7-8): 00 is not an assigned state/country code
+  if (parseInt(placeOfBirthCode) < 1) {
+    return "IC contains an invalid place of birth code";
   }
 
   // Determine full year
@@ -48,6 +55,29 @@ export const validateIC = (ic) => {
     return "IC contains an invalid date";
   }
 
+  // Reject IC numbers that would imply an age of more than 120 years
+  const today = new Date();
+  let age = today.getFullYear() - fullYear;
+  const hasHadBirthdayThisYear =
+    today.getMonth() > monthInt - 1 ||
+    (today.getMonth() === monthInt - 1 && today.getDate() >= dayInt);
+  if (!hasHadBirthdayThisYear) age -= 1;
+
+  if (age > 120) {
+    return "IC contains a birth year that results in an age over 120 years";
+  }
+
+  return null;
+};
+
+// SSB eligibility: reject IC numbers whose place-of-birth code (60-99)
+// indicates foreign-born / Permanent Resident status - only Malaysian
+// citizens qualify. Assumes the IC is already format-valid.
+export const validateICNotPR = (ic, label = "Applicant") => {
+  const parsed = parseICNumber(ic);
+  if (parsed.isValid && !parsed.placeOfBirth.isMalaysiaBorn) {
+    return `${label} must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.`;
+  }
   return null;
 };
 
@@ -57,6 +87,16 @@ export const validatePhone = (phone) => {
   const phonePattern = /^\d{3}-\d{7,8}$/;
   if (!phonePattern.test(phone))
     return "Phone must be in format xxx-xxxxxxx (10-11 digits)";
+  return null;
+};
+
+// Residence phone validation: optional, but if provided must start with 03
+// followed by 7 digits (e.g. 03-1234567)
+export const validateResidencePhone = (phone) => {
+  if (!phone) return null;
+  const residencePhonePattern = /^03-\d{7}$/;
+  if (!residencePhonePattern.test(phone))
+    return "Residence phone must start with 03 followed by 7 digits (format: 03-xxxxxxx)";
   return null;
 };
 
@@ -171,14 +211,14 @@ const addDuplicatePersonErrors = (
   const targetName = normalizeComparableValue(target.name);
   const targetIc = normalizeComparableValue(target.ic);
 
-  if (!sourceName || !sourceIc || !targetName || !targetIc) {
-    return;
-  }
-
-  if (sourceName === targetName && sourceIc === targetIc) {
+  // An IC number uniquely identifies a person, so a matching IC alone is a
+  // duplicate even when the names differ
+  if (sourceIc && targetIc && sourceIc === targetIc) {
     const message = `${sourceLabel} must not duplicate ${targetLabel} information`;
-    errors[source.nameField] = message;
     errors[source.icField] = message;
+    if (sourceName && targetName && sourceName === targetName) {
+      errors[source.nameField] = message;
+    }
   }
 };
 
@@ -292,14 +332,8 @@ export const validateStep1 = (formData) => {
     "Purpose of Loan",
   );
 
-  // Phone validation (both required)
-  errors.residencePhone = validateRequired(
-    formData.residencePhone,
-    "Residence Phone",
-  );
-  if (formData.residencePhone && !errors.residencePhone) {
-    errors.residencePhone = validatePhone(formData.residencePhone);
-  }
+  // Phone validation (residence phone is optional, H/P is required)
+  errors.residencePhone = validateResidencePhone(formData.residencePhone);
 
   errors.telephone = validateRequired(formData.telephone, "H/P Number");
   if (formData.telephone && !errors.telephone) {
@@ -324,9 +358,6 @@ export const validateStep1 = (formData) => {
       errors[fieldName] = fieldError;
     }
   });
-
-  // Bank account number should be digits only
-  errors.accountNumber = validateAccountNumber(formData.accountNumber);
 
   // Date of birth and age validation
   errors.dob = validateAge(
@@ -364,6 +395,12 @@ export const validateStep1 = (formData) => {
   // Malaysian citizenship required
   if (!formData.malaysian) {
     errors.malaysian = "Malaysian citizenship is required";
+  }
+
+  // SSB eligibility: Permanent Residents are not eligible, only Malaysian citizens
+  if (formData.citizenshipType === "PR") {
+    errors.citizenshipType =
+      "Applicant must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.";
   }
 
   // Keep IC-derived applicant details consistent if the user edits them manually
@@ -519,6 +556,12 @@ export const validateStep2 = (formData) => {
       errors.jMalaysian = "Joint Applicant Malaysian citizenship is required";
     }
 
+    // SSB eligibility: Permanent Residents are not eligible, only Malaysian citizens
+    if (formData.jCitizenshipType === "PR") {
+      errors.jCitizenshipType =
+        "Joint Applicant must be a Malaysian citizen. Permanent Residents (PR) are not eligible for SSB.";
+    }
+
     // Joint applicant NRIC document required
     if (!formData.documents?.jointApplicantNRIC?.url) {
       errors.jointApplicantNRIC = "Joint Applicant NRIC document is required";
@@ -546,10 +589,7 @@ export const validateStep2 = (formData) => {
   // Banking details (always required)
   errors.bankName = validateRequired(formData.bankName, "Bank Name");
   errors.accountType = validateRequired(formData.accountType, "Account Type");
-  errors.accountNumber = validateRequired(
-    formData.accountNumber,
-    "Account Number",
-  );
+  errors.accountNumber = validateAccountNumber(formData.accountNumber);
 
   // If joint applicant, account type must be joint account
   if (formData.isJointApplicant) {
@@ -579,33 +619,26 @@ export const validateStep3 = (formData) => {
   );
   errors.propertyAddress = validateRequired(
     formData.propertyAddress,
-    "Property Address",
+    "Street Address",
   );
   if (formData.propertyAddress && !errors.propertyAddress) {
     errors.propertyAddress = validateAddress(formData.propertyAddress);
   }
+  errors.propertySchemeName = validateRequired(
+    formData.propertySchemeName,
+    "Scheme / Taman Name",
+  );
+  errors.propertyDistrict = validateRequired(
+    formData.propertyDistrict,
+    "District",
+  );
+  errors.propertyMukim = validateRequired(formData.propertyMukim, "Mukim");
   errors.propertyPostcode = validatePostcode(formData.propertyPostcode);
 
   // SSB Requirement 1: Property must be located in Malaysia (Kuala Lumpur only for SSB)
-  // Valid postcodes for Kuala Lumpur
-  const validKLPostcodes = [
-    "41100",
-    "42100",
-    "42000",
-    "45800",
-    "45600",
-    "42500",
-    "42600",
-    "45000",
-    "42700",
-    "43950",
-    "42200",
-    "41300",
-    "41050",
-  ];
   if (
     formData.propertyPostcode &&
-    !validKLPostcodes.includes(formData.propertyPostcode)
+    !KL_POSTCODES.includes(formData.propertyPostcode)
   ) {
     errors.propertyPostcode =
       "Property must be located in Kuala Lumpur (valid postcodes: 41100, 42100, 42000, 45800, 45600, 42500, 42600, 45000, 42700, 43950, 42200, 41300, 41050)";

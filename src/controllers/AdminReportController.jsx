@@ -18,12 +18,14 @@ import { supabase } from '../config/supabase'
 import AdminApplicationReviewView from '../views/AdminApplicationReviewView'
 import AdminReportView from '../views/AdminReportView'
 import { useLocation } from 'react-router-dom'
+import { useToast } from '../client_controller/common/ToastContext'
 
 function AdminReportController({ mode = 'reports' }) {
   const { applicationId, reportId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const { user, userRole } = useAuth()
+  const { showToast } = useToast()
   
   // Common state
   const [isLoading, setIsLoading] = useState(true)
@@ -45,6 +47,7 @@ function AdminReportController({ mode = 'reports' }) {
   const [documents, setDocuments] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [approvalLoading, setApprovalLoading] = useState(false)
+  const [approvedAmount, setApprovedAmount] = useState('')
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   
@@ -92,6 +95,20 @@ function AdminReportController({ mode = 'reports' }) {
         setReportData(location.state.reportData)
         setReport(location.state.report)
         setIsLoading(false)
+      } else if (reportId) {
+        // Opened directly (e.g. via a shared link) - load the report by ID
+        const loadSharedReport = async () => {
+          const result = await Admin.getReportById(reportId)
+          if (result.success) {
+            setReportData(result.data.reportData)
+            setReport(result.data.report)
+          } else {
+            showToast('Report not found', 'error')
+            navigate('/admin/dashboard')
+          }
+          setIsLoading(false)
+        }
+        loadSharedReport()
       } else {
         // No data provided, redirect back
         navigate('/admin/dashboard')
@@ -200,17 +217,24 @@ function AdminReportController({ mode = 'reports' }) {
   }
 
   const handleApprove = async () => {
+    if (application?.status === 'underReviewed' && (!approvedAmount || isNaN(parseFloat(approvedAmount)) || parseFloat(approvedAmount) <= 0)) {
+      showToast('Please enter a valid approved amount before approving', 'warning')
+      return
+    }
+
     setApprovalLoading(true)
     try {
-      const result = await Admin.approveApplication(applicationId)
+      const result = await Admin.approveApplication(applicationId, {
+        approved_amount: approvedAmount ? parseFloat(approvedAmount) : null
+      })
       if (result.success) {
-        alert('Application approved successfully!')
+        showToast('Application approved successfully!', 'success')
         navigate('/admin/dashboard')
       } else {
-        alert('Error approving application: ' + result.error)
+        showToast('Error approving application: ' + result.error, 'error')
       }
     } catch (err) {
-      alert('Error: ' + err.message)
+      showToast('Error: ' + err.message, 'error')
     } finally {
       setApprovalLoading(false)
     }
@@ -222,7 +246,7 @@ function AdminReportController({ mode = 'reports' }) {
 
   const handleConfirmReject = async () => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a rejection reason')
+      showToast('Please provide a rejection reason', 'warning')
       return
     }
 
@@ -230,13 +254,13 @@ function AdminReportController({ mode = 'reports' }) {
     try {
       const result = await Admin.rejectApplication(applicationId, rejectionReason)
       if (result.success) {
-        alert('Application rejected successfully!')
+        showToast('Application rejected successfully!', 'success')
         navigate('/admin/dashboard')
       } else {
-        alert('Error rejecting application: ' + result.error)
+        showToast('Error rejecting application: ' + result.error, 'error')
       }
     } catch (err) {
-      alert('Error: ' + err.message)
+      showToast('Error: ' + err.message, 'error')
     } finally {
       setApprovalLoading(false)
       setShowRejectModal(false)
@@ -279,7 +303,7 @@ function AdminReportController({ mode = 'reports' }) {
 
   const handleConfirmFlagDocument = async () => {
     if (!flagDocumentReason.trim() || !flaggedDocument) {
-      alert('Please provide a reason for flagging')
+      showToast('Please provide a reason for flagging', 'warning')
       return
     }
 
@@ -294,7 +318,7 @@ function AdminReportController({ mode = 'reports' }) {
       )
 
       if (result.success) {
-        alert(result.message || `Document "${flaggedDocument.displayName}" has been flagged and deleted. User will be notified.`)
+        showToast(result.message || `Document "${flaggedDocument.displayName}" has been flagged and deleted. User will be notified.`, 'success')
         
         // Refresh documents
         const documentsResult = await Application.getRequiredDocuments(
@@ -309,10 +333,10 @@ function AdminReportController({ mode = 'reports' }) {
         setFlaggedDocument(null)
         setFlagDocumentReason('')
       } else {
-        alert('Error flagging document: ' + (result.error || 'Unknown error'))
+        showToast('Error flagging document: ' + (result.error || 'Unknown error'), 'error')
       }
     } catch (err) {
-      alert('Error: ' + (err.message || 'Unknown error'))
+      showToast('Error: ' + (err.message || 'Unknown error'), 'error')
     } finally {
       setFlaggingDocument(false)
     }
@@ -331,7 +355,7 @@ function AdminReportController({ mode = 'reports' }) {
   // Add handlers for application PDF
   const handleViewApplicationPDF = async () => {
     if (!application?.id || !application?.user_id) {
-      alert('Application information not available')
+      showToast('Application information not available', 'warning')
       return
     }
 
@@ -348,11 +372,11 @@ function AdminReportController({ mode = 'reports' }) {
         setViewingDocumentName(`Application Form - ${application.users?.full_name || 'User'}`)
         setShowPDFViewer(true)
       } else {
-        alert(result.error || 'Failed to load application PDF')
+        showToast(result.error || 'Failed to load application PDF', 'error')
       }
     } catch (err) {
       console.error('Error viewing application PDF:', err)
-      alert('Failed to load application PDF')
+      showToast('Failed to load application PDF', 'error')
     } finally {
       setLoadingApplicationPDF(false)
     }
@@ -360,7 +384,7 @@ function AdminReportController({ mode = 'reports' }) {
 
   const handleDownloadApplicationPDF = async () => {
     if (!application?.id || !application?.user_id) {
-      alert('Application information not available')
+      showToast('Application information not available', 'warning')
       return
     }
 
@@ -373,12 +397,12 @@ function AdminReportController({ mode = 'reports' }) {
       )
 
       if (!result.success) {
-        alert(result.error || 'Failed to download application PDF')
+        showToast(result.error || 'Failed to download application PDF', 'error')
       }
       // If successful, window.open was already called by the model method
     } catch (err) {
       console.error('Error downloading application PDF:', err)
-      alert('Failed to download application PDF')
+      showToast('Failed to download application PDF', 'error')
     } finally {
       setLoadingApplicationPDF(false)
     }
@@ -608,7 +632,7 @@ function AdminReportController({ mode = 'reports' }) {
 
   const handleDownloadPDF = async () => {
     if (!reportData || !report) {
-      alert('Report data not available')
+      showToast('Report data not available', 'warning')
       return
     }
 
@@ -621,7 +645,7 @@ function AdminReportController({ mode = 'reports' }) {
       const reportElement = document.querySelector('.report-container')
       
       if (!reportElement) {
-        alert('Report element not found')
+        showToast('Report element not found', 'error')
         return
       }
 
@@ -683,7 +707,7 @@ function AdminReportController({ mode = 'reports' }) {
 
     } catch (err) {
       console.error('Error downloading PDF:', err)
-      alert('Failed to download report PDF: ' + err.message)
+      showToast('Failed to download report PDF: ' + err.message, 'error')
     }
   }
 
@@ -713,6 +737,8 @@ function AdminReportController({ mode = 'reports' }) {
         error={error}
         activeTab={activeTab}
         approvalLoading={approvalLoading}
+        approvedAmount={approvedAmount}
+        onApprovedAmountChange={setApprovedAmount}
         showRejectModal={showRejectModal}
         rejectionReason={rejectionReason}
         showFlagDocumentModal={showFlagDocumentModal}

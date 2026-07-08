@@ -245,8 +245,9 @@ export const downloadDocument = async (fileUrl, fileName) => {
     
     window.URL.revokeObjectURL(url)
     console.log('✅ File downloaded successfully')
+    return { success: true, error: null }
   } catch (error) {
     console.error('❌ Download error:', error)
-    alert('Failed to download file. Please try again.')
+    return { success: false, error: { message: 'Failed to download file. Please try again.' } }
   }
 }

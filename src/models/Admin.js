@@ -290,7 +290,12 @@ const Admin = {
    * @param {string} remarks - Optional remarks
    * @returns {Promise<Object>} Updated application
    */
-  async updateApplicationStatus(applicationId, status, remarks = null) {
+  async updateApplicationStatus(
+    applicationId,
+    status,
+    remarks = null,
+    { mainApplicantDeceased = false } = {},
+  ) {
     try {
       const updates = {
         status: status,
@@ -307,6 +312,10 @@ const Admin = {
       if (status === "terminated") {
         updates.termination_update_at = new Date().toISOString();
         updates.termination_submitted_at = null;
+        // Deceased-applicant terminations trigger the apportioned-proceeds
+        // flow (property sold, nominees split what's left after settling
+        // the outstanding loan) instead of the standard payback flow.
+        updates.main_applicant_deceased = mainApplicantDeceased;
       }
 
       const result = await corsProxyUpdate(
@@ -504,6 +513,72 @@ const Admin = {
       return { success: true, data: mapped };
     } catch (error) {
       console.error("Error fetching reports:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get a single report by ID (for direct/shared report links).
+   * Accepts a reports-table UUID, the synthetic "monthly-YYYY-M" ID used
+   * right after generation, or "yearly" for the latest yearly report.
+   * @param {string} reportId - Report identifier
+   * @returns {Promise<Object>} { report, reportData } for AdminReportView
+   */
+  async getReportById(reportId) {
+    try {
+      let query = supabase.from("reports").select("*");
+
+      const monthlyMatch = /^monthly-(\d{4})-(\d{1,2})$/.exec(reportId || "");
+      if (reportId === "yearly") {
+        query = query
+          .eq("report_type", "yearly")
+          .order("generated_at", { ascending: false })
+          .limit(1);
+      } else if (monthlyMatch) {
+        query = query
+          .eq("report_type", "monthly")
+          .eq("year", parseInt(monthlyMatch[1]))
+          .eq("month", parseInt(monthlyMatch[2]))
+          .limit(1);
+      } else {
+        query = query.eq("id", reportId).limit(1);
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error("Report not found");
+
+      const isYearly = data.report_type === "yearly";
+      const monthIndex = data.month ?? -1;
+      const monthName =
+        isYearly || monthIndex < 0 ? null : MONTH_NAMES[monthIndex] || "Unknown";
+
+      return {
+        success: true,
+        data: {
+          report: {
+            id: data.id,
+            name:
+              data.name ||
+              (isYearly
+                ? `Annual Application Analysis Report - ${data.year}`
+                : `Monthly Application Report - ${monthName} ${data.year}`),
+            generatedOn: data.generated_at,
+            type: data.report_type,
+          },
+          reportData: {
+            total: data.total ?? 0,
+            approved: data.approved ?? 0,
+            rejected: data.rejected ?? 0,
+            pending: data.pending ?? 0,
+            year: data.year,
+            month: isYearly || monthIndex < 0 ? null : monthIndex,
+          },
+        },
+      };
+    } catch (error) {
+      console.error("Error fetching report by ID:", error);
       return { success: false, error: error.message };
     }
   },

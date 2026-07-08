@@ -126,6 +126,32 @@ export function formatBirthDate(birthDate) {
 }
 
 /**
+ * Calculate age in whole years from a birthdate
+ * @param {Object} birthDate - {day, month, year}
+ * @returns {number|null} age, or null if birthDate is incomplete
+ */
+export function calculateAge(birthDate) {
+  if (!birthDate?.day || !birthDate?.month || !birthDate?.year) {
+    return null
+  }
+
+  const dob = new Date(
+    parseInt(birthDate.year, 10),
+    parseInt(birthDate.month, 10) - 1,
+    parseInt(birthDate.day, 10)
+  )
+  const today = new Date()
+  let age = today.getFullYear() - dob.getFullYear()
+  const monthDiff = today.getMonth() - dob.getMonth()
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--
+  }
+
+  return age
+}
+
+/**
  * Get current date in separate components
  * @returns {Object} {day, month, year}
  */
@@ -136,4 +162,32 @@ export function getCurrentDate() {
     month: (now.getMonth() + 1).toString().padStart(2, '0'),
     year: now.getFullYear().toString()
   }
+}
+
+/**
+ * Format raw digits into the YYMMDD-PB-###G IC layout as the user types
+ * @param {string} value - raw input value (digits, possibly with dashes already)
+ * @returns {string} dash-formatted IC string
+ */
+export function formatICInput(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 12)
+  const parts = [digits.slice(0, 6), digits.slice(6, 8), digits.slice(8, 12)]
+  return parts.filter(Boolean).join('-')
+}
+
+/**
+ * Map a digit count (cursor position measured in raw digits typed) back to
+ * a caret index within the dash-formatted string, so the cursor doesn't
+ * jump to the end when editing in the middle of the IC number
+ * @param {string} formatted - dash-formatted IC string
+ * @param {number} digitCount - number of digits before the original cursor position
+ * @returns {number} caret index within the formatted string
+ */
+export function getICCursorPosition(formatted, digitCount) {
+  let seen = 0
+  for (let i = 0; i < formatted.length; i++) {
+    if (seen === digitCount) return i
+    if (/\d/.test(formatted[i])) seen++
+  }
+  return formatted.length
 }

@@ -54,22 +54,20 @@ export const corsProxyUpdate = async (table, id, patch) => {
   }
 }
 
-// Generic CORS proxy fetch for Edge Functions (POST body passthrough)
-// Allows invoking other Supabase functions without browser preflight failures
+// Generic fetch for Edge Functions (POST body passthrough)
+// Targets the Supabase functions endpoint directly; functionName may
+// include a sub-path (e.g. "reminder-processor/run").
 export const corsProxyFunctionInvoke = async (functionName, payload = {}, method = 'POST') => {
   try {
     const { data: { session } } = await supabase.auth.getSession()
 
     const headers = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
     }
 
-    if (session?.access_token) {
-      headers['Authorization'] = `Bearer ${session.access_token}`;
-    }
-
-    // Call the proxy endpoint for the target function
-    const response = await fetch(`/functions/v1/${functionName}-proxy`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`, {
       method,
       headers,
       body: JSON.stringify(payload),

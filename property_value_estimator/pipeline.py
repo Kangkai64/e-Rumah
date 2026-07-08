@@ -4,9 +4,6 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-import shap
-import optuna
-import matplotlib.pyplot as plt
 
 from pathlib import Path
 from datetime import datetime
@@ -18,8 +15,11 @@ from sklearn.preprocessing import LabelEncoder
 
 import xgboost as xgb
 
+# optuna, shap and matplotlib are training-only dependencies; they are
+# imported lazily inside tune_xgboost() / shap_analysis() so the API can
+# serve predictions without them installed.
+
 warnings.filterwarnings("ignore")
-optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 # ─────────────────────────────────────────────
 # 0. PATHS
@@ -302,6 +302,9 @@ TARGET = "log_price"
 # ─────────────────────────────────────────────
 def tune_xgboost(X_train: pd.DataFrame, y_train: pd.Series,
                  n_trials: int = 60) -> dict:
+    import optuna
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
 
     def objective(trial):
@@ -356,6 +359,9 @@ def evaluate(y_true_log, y_pred_log, label=""):
 # 7. SHAP ANALYSIS
 # ─────────────────────────────────────────────
 def shap_analysis(model, X_sample: pd.DataFrame):
+    import shap
+    import matplotlib.pyplot as plt
+
     explainer   = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_sample)
 

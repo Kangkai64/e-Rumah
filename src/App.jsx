@@ -1,7 +1,8 @@
-import "./App.css";
+﻿import "./App.css";
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useParams } from "react-router-dom";
 import { AuthProvider } from "./client_controller/sessionController/AuthContext";
+import { ToastProvider } from "./client_controller/common/ToastContext";
 import { supabase } from "./config/supabase";
 import Header from "./layouts/Header";
 import Footer from "./layouts/Footer";
@@ -491,247 +492,249 @@ const SharedReportPage = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <ScrollToTop />
-      <div className="app">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <Header />
-                <HomePage />
-                <Footer />
-              </>
-            }
-          />
-
-          <Route
-            path="/about"
-            element={
-              <>
-                <Header />
-                <AboutUs />
-                <Footer />
-              </>
-            }
-          />
-
-          <Route path="/eligibility-check" element={<EligibilityCheck />} />
-          <Route path="/login" element={<UserLoginPage />} />
-          <Route path="/staff-login" element={<StaffLoginPage />} />
-          <Route path="/register" element={<RegistrationPage />} />
-
-          <Route
-            path="/application"
-            element={
-              <ProtectedRoute>
+    <ToastProvider>
+      <AuthProvider>
+        <ScrollToTop />
+        <div className="app">
+          <Routes>
+            <Route
+              path="/"
+              element={
                 <>
                   <Header />
-                  <ApplicationController />
+                  <HomePage />
                   <Footer />
                 </>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          <Route
-            path="/application/edit-nominees/:applicationId"
-            element={
-              <ProtectedRoute requireRole="user">
+            <Route
+              path="/about"
+              element={
                 <>
                   <Header />
-                  <ApplicationController editNomineeOnly={true} />
+                  <AboutUs />
                   <Footer />
                 </>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* User Dashboard Routes */}
-          <Route
-            path="/user/dashboard"
-            element={
-              <ProtectedRoute requireRole="user">
+            <Route path="/eligibility-check" element={<EligibilityCheck />} />
+            <Route path="/login" element={<UserLoginPage />} />
+            <Route path="/staff-login" element={<StaffLoginPage />} />
+            <Route path="/register" element={<RegistrationPage />} />
+
+            <Route
+              path="/application"
+              element={
+                <ProtectedRoute>
+                  <>
+                    <Header />
+                    <ApplicationController />
+                    <Footer />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/application/edit-nominees/:applicationId"
+              element={
+                <ProtectedRoute requireRole="user">
+                  <>
+                    <Header />
+                    <ApplicationController editNomineeOnly={true} />
+                    <Footer />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* User Dashboard Routes */}
+            <Route
+              path="/user/dashboard"
+              element={
+                <ProtectedRoute requireRole="user">
+                  <>
+                    <Header />
+                    <UserDashboardController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/user/application"
+              element={
+                <ProtectedRoute requireRole="user">
+                  <>
+                    <Header />
+                    <MaintainApplicationController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/user/support"
+              element={
+                <ProtectedRoute requireRole="user">
+                  <>
+                    <Header />
+                    <UserSupportController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/step-by-step"
+              element={
                 <>
                   <Header />
-                  <UserDashboardController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/user/application"
-            element={
-              <ProtectedRoute requireRole="user">
-                <>
-                  <Header />
-                  <MaintainApplicationController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/user/support"
-            element={
-              <ProtectedRoute requireRole="user">
-                <>
-                  <Header />
-                  <UserSupportController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/step-by-step"
-            element={
-              <>
-                <Header />
-                <StepByStep />
-                <Footer />
-              </>
-            }
-          />
-
-          <Route
-            path="/faqs"
-            element={
-              <>
-                <Header />
-                <FAQs />
-                <Footer />
-              </>
-            }
-          />
-
-          <Route
-            path="/maintainApplication/:applicationId"
-            element={
-              <ProtectedRoute>
-                <>
-                  <Header />
-                  <MaintainApplicationController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/property-calculator"
-            element={
-              <>
-                <Header />
-                <PropertyCalculatorController />
-                <Footer />
-              </>
-            }
-          />
-
-          <Route
-            path="/user/health-reports"
-            element={
-              <ProtectedRoute requireRole="user">
-                <>
-                  <Header />
-                  <HealthReportController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/maintainApplication/:applicationId/health-reports"
-            element={
-              <ProtectedRoute>
-                <>
-                  <Header />
-                  <HealthReportController />
+                  <StepByStep />
                   <Footer />
                 </>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedRoute requireRole="admin">
-                <Header />
-                <AdminController />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/admin/disbursements"
-            element={
-              <ProtectedRoute requireRole="admin">
+            <Route
+              path="/faqs"
+              element={
                 <>
                   <Header />
-                  <LoanDisbursementController />
+                  <FAQs />
+                  <Footer />
                 </>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          <Route
-            path="/admin/report/:reportId"
-            element={
-              <ProtectedRoute requireRole="admin">
+            <Route
+              path="/maintainApplication/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <>
+                    <Header />
+                    <MaintainApplicationController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/property-calculator"
+              element={
                 <>
                   <Header />
-                  <AdminReportController mode="viewReport" />
+                  <PropertyCalculatorController />
+                  <Footer />
                 </>
-              </ProtectedRoute>
-            }
-          />
+              }
+            />
 
-          <Route
-            path="/admin/review/:applicationId"
-            element={
-              <ProtectedRoute requireRole="admin">
-                <>
+            <Route
+              path="/user/health-reports"
+              element={
+                <ProtectedRoute requireRole="user">
+                  <>
+                    <Header />
+                    <HealthReportController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/maintainApplication/:applicationId/health-reports"
+              element={
+                <ProtectedRoute>
+                  <>
+                    <Header />
+                    <HealthReportController />
+                    <Footer />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute requireRole="admin">
                   <Header />
-                  <AdminReportController mode="review" />
-                </>
-              </ProtectedRoute>
-            }
-          />
+                  <AdminController />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/health-reports"
-            element={
-              <ProtectedRoute requireRole="admin">
-                <>
-                  <Header />
-                  <HealthReportController />
-                </>
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/disbursements"
+              element={
+                <ProtectedRoute requireRole="admin">
+                  <>
+                    <Header />
+                    <LoanDisbursementController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Public Shared Report Route - No authentication required */}
-          <Route path="/shared-report/:token" element={<SharedReportPage />} />
+            <Route
+              path="/admin/report/:reportId"
+              element={
+                <ProtectedRoute requireRole="admin">
+                  <>
+                    <Header />
+                    <AdminReportController mode="viewReport" />
+                  </>
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Customer Support Routes */}
-          <Route
-            path="/support/dashboard"
-            element={
-              <ProtectedRoute requireRole="support">
-                <>
-                  <Header />
-                  <CustomerSupportController />
-                </>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </div>
-    </AuthProvider>
+            <Route
+              path="/admin/review/:applicationId"
+              element={
+                <ProtectedRoute requireRole="admin">
+                  <>
+                    <Header />
+                    <AdminReportController mode="review" />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/health-reports"
+              element={
+                <ProtectedRoute requireRole="admin">
+                  <>
+                    <Header />
+                    <HealthReportController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Public Shared Report Route - No authentication required */}
+            <Route path="/shared-report/:token" element={<SharedReportPage />} />
+
+            {/* Customer Support Routes */}
+            <Route
+              path="/support/dashboard"
+              element={
+                <ProtectedRoute requireRole="support">
+                  <>
+                    <Header />
+                    <CustomerSupportController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </div>
+      </AuthProvider>
+    </ToastProvider>
   );
 }
 
