@@ -1,36 +1,4 @@
-// List of common temporary email domains
-const TEMP_EMAIL_DOMAINS = [
-  'tempmail.com',
-  '10minutemail.com',
-  'guerrillamail.com',
-  'mailinator.com',
-  'temp-mail.org',
-  'throwaway.email',
-  'sharklasers.com',
-  'yopmail.com',
-  'maildrop.cc',
-  'mintemail.com',
-  'trashmail.com',
-  'temp-mail.io',
-  'disposablemail.com',
-  'spam4.me',
-  'grr.la',
-  'harakirimail.com',
-  'moakt.com',
-  'pokemail.net',
-  'tempmail.email',
-  'throwawaymail.com',
-  'fakemail.net',
-  'fakeinbox.com',
-  'mailnesia.com',
-  'temp-mail.net',
-  'mytempemail.com',
-  'tempemails.com',
-  '10minutemail.de',
-  'mailay.com',
-  'mailbox.click',
-  'maildme.com',
-]
+import { isTempEmail } from './emailBlacklist'
 
 const MALAYSIAN_PHONE_REGEX = /^(\+?6?01)[0|1|2|3|4|6|7|8|9]\-*[0-9]{7,8}$/
 
@@ -83,11 +51,6 @@ export const isValidEmail = (email) => {
   // RFC 5322 compliant email regex
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
-}
-
-export const isTempEmail = (email) => {
-  const domain = email.toLowerCase().split('@')[1]
-  return TEMP_EMAIL_DOMAINS.includes(domain)
 }
 
 export const MALAYSIAN_PHONE_PATTERN = MALAYSIAN_PHONE_REGEX

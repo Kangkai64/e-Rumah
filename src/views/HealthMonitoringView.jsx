@@ -140,7 +140,7 @@ function DragDropArea({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
+        accept=".pdf,.jpg,.jpeg,.png,.webp"
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
@@ -650,6 +650,8 @@ function UserHealthReportView({
     ...(statistics && typeof statistics === 'object' ? statistics : defaultStatistics)
   };
 
+  const disabledReminders = (reminders || []).filter((reminder) => !reminder.is_enabled);
+
   // Safe event handlers with default functions
   const safeOnDragEnter = onDragEnter || ((e) => e.preventDefault());
   const safeOnDragLeave = onDragLeave || ((e) => e.preventDefault());
@@ -680,6 +682,7 @@ function UserHealthReportView({
   const [successModalData, setSuccessModalData] = useState({ fileNames: '', fileCount: 0 });
   const [showDatePicker, setShowDatePicker] = useState({ start: false, end: false });
   const [selectedDates, setSelectedDates] = useState({ startDate: '', endDate: '' });
+  const [showDisabledReminders, setShowDisabledReminders] = useState(false);
 
   // Disable background scrolling when any overlay/modal is open
   useEffect(() => {
@@ -934,6 +937,14 @@ function UserHealthReportView({
   // Remove file from selection
   const removeFile = (index) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Clear all selected files and reset the file input
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   // Format file size
@@ -1273,7 +1284,7 @@ function UserHealthReportView({
 
             <input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
               multiple
               style={{ display: 'none' }}
               ref={fileInputRef}
@@ -1283,9 +1294,29 @@ function UserHealthReportView({
             {/* File Preview Section */}
             {selectedFiles.length > 0 && (
               <div className="file-preview-section">
-                <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
-                  Selected Files ({selectedFiles.length})
-                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0 0.5rem 0' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+                    Selected Files ({selectedFiles.length})
+                  </h4>
+                  <button
+                    type="button"
+                    className="btn-clear-all-files"
+                    onClick={clearAllFiles}
+                    disabled={isConverting}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#A8202D',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      cursor: isConverting ? 'not-allowed' : 'pointer',
+                      opacity: isConverting ? 0.6 : 1,
+                      padding: '0.25rem 0.5rem'
+                    }}
+                  >
+                    Clear All
+                  </button>
+                </div>
                 <div className="file-preview-list">
                   {selectedFiles.map((file, index) => (
                     <div key={`${file.name}-${index}`} className="file-preview-item">
@@ -1354,7 +1385,6 @@ function UserHealthReportView({
           <div className="reminders-card">
             <div className="reminders-header">
               <h3>Reminders</h3>
-              <span className="tab-indicator">Health & appointments</span>
               <button
                 className="btn-add-reminder"
                 onClick={() => onCreateReminder?.()}
@@ -1486,6 +1516,55 @@ function UserHealthReportView({
                 All
               </button>
             </div>
+
+            {disabledReminders.length > 0 && (
+              <div className="disabled-reminders-section" style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDisabledReminders((prev) => !prev)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    color: '#A8202D',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {showDisabledReminders ? '▾' : '▸'} Disabled reminders ({disabledReminders.length})
+                </button>
+
+                {showDisabledReminders && (
+                  <div className="disabled-reminders-list" style={{ marginTop: '0.5rem' }}>
+                    {disabledReminders.map((reminder) => (
+                      <div key={reminder.id} className="reminder-item" style={{ opacity: 0.7 }}>
+                        <div className="reminder-content">
+                          <div className="reminder-title">{reminder.reminder_title || reminder.reminder_type}</div>
+                          <div className="reminder-description">
+                            {new Date(reminder.reminder_date).toLocaleDateString('en-GB')} at{' '}
+                            {new Date(reminder.reminder_date).toLocaleTimeString('en-GB', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                        <div className="reminder-toggle">
+                          <label className="switch">
+                            <input
+                              type="checkbox"
+                              checked={reminder.is_enabled || false}
+                              onChange={(e) => onToggleReminder?.(reminder.id, e.target.checked)}
+                            />
+                            <span className="slider"></span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="archived-reports-card">

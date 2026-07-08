@@ -8,8 +8,8 @@ const DocumentUpload = ({
   onUpload,
   onDelete,
   uploading = false,
-  accept = ".pdf,.jpg,.jpeg,.png",
-  hint = "PDF, JPG, PNG (Max 10MB)",
+  accept = ".pdf,.jpg,.jpeg,.png,.webp",
+  hint = "PDF, JPG, PNG, WEBP (Max 10MB)",
   error = null
 }) => {
   const [isDragging, setIsDragging] = useState(false)

@@ -1025,16 +1025,16 @@ function HealthReportController() {
   }, [currentUser?.id])
 
   // Load upcoming reminders
-  const loadUpcomingReminders = useCallback(async (userId = currentUser?.id) => {
+  const loadUpcomingReminders = useCallback(async (userId = currentUser?.id, category = selectedReminderCategory) => {
     if (!userId) return
 
     try {
       const result = await RemindersService.getUpcomingReminders(userId)
       if (result.success) {
         // Apply category filter if selected
-        const filteredData = selectedReminderCategory === 'all' 
-          ? result.data 
-          : result.data.filter(reminder => reminder.category === selectedReminderCategory)
+        const filteredData = category === 'all'
+          ? result.data
+          : result.data.filter(reminder => reminder.category === category)
         setUpcomingReminders(filteredData)
       } else {
         console.error('Error loading upcoming reminders:', result.error)
@@ -1045,16 +1045,16 @@ function HealthReportController() {
   }, [currentUser?.id, selectedReminderCategory])
 
   // Load overdue reminders
-  const loadOverdueReminders = useCallback(async (userId = currentUser?.id) => {
+  const loadOverdueReminders = useCallback(async (userId = currentUser?.id, category = selectedReminderCategory) => {
     if (!userId) return
 
     try {
       const result = await RemindersService.getOverdueReminders(userId)
       if (result.success) {
         // Apply category filter if selected
-        const filteredData = selectedReminderCategory === 'all' 
-          ? result.data 
-          : result.data.filter(reminder => reminder.category === selectedReminderCategory)
+        const filteredData = category === 'all'
+          ? result.data
+          : result.data.filter(reminder => reminder.category === category)
         setOverdueReminders(filteredData)
       } else {
         console.error('Error loading overdue reminders:', result.error)
@@ -1090,11 +1090,11 @@ function HealthReportController() {
   // Handle reminder category filter
   const handleReminderCategoryFilter = useCallback((category) => {
     setSelectedReminderCategory(category)
-    
-    // Reload upcoming and overdue reminders with the new category filter
-    // The loadUpcomingReminders and loadOverdueReminders functions will apply the filter
-    loadUpcomingReminders(currentUser?.id)
-    loadOverdueReminders(currentUser?.id)
+
+    // Reload upcoming and overdue reminders, passing the new category directly
+    // since setSelectedReminderCategory hasn't taken effect yet on this render
+    loadUpcomingReminders(currentUser?.id, category)
+    loadOverdueReminders(currentUser?.id, category)
   }, [currentUser?.id, loadUpcomingReminders, loadOverdueReminders])
 
   // Open reminder modal for creation
@@ -1282,12 +1282,12 @@ function HealthReportController() {
           }
 
           // Trigger reminder processor; the deployed function only
-          // processes notifications on its /run route
-          try {
-            await corsProxyFunctionInvoke('reminder-processor/run', { action: 'run' })
-          } catch (err) {
+          // processes notifications on its /run route.
+          // Fire-and-forget: don't block the UI on this (can be slow on cold start)
+          // since the reminder and its notifications are already saved above.
+          corsProxyFunctionInvoke('reminder-processor/run', { action: 'run' }).catch(err => {
             console.error('Error invoking reminder processor function:', err)
-          }
+          })
         }
 
         // Set success message
@@ -1532,7 +1532,7 @@ function HealthReportController() {
       // Create a file input for the user to select a new file
       const fileInput = document.createElement('input')
       fileInput.type = 'file'
-      fileInput.accept = '.pdf,.jpg,.jpeg,.png' // Accept multiple file types
+      fileInput.accept = '.pdf,.jpg,.jpeg,.png,.webp' // Accept multiple file types
       
       fileInput.onchange = async (e) => {
         const file = e.target.files?.[0]

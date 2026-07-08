@@ -6,7 +6,8 @@
 import { useRef, useEffect } from 'react'
 import '../client_controller/application/applicationForm.css'
 import DocumentUpload from '../client_controller/application/DocumentUpload'
-import { calculateAge, formatICInput, getICCursorPosition } from '../utils/icParser'
+import { calculateAge, formatICInput, getICCursorPosition, SALUTATION_GENDER } from '../utils/icParser'
+import { MALAYSIAN_BANKS } from '../utils/malaysianBanks'
 
 // SSB eligibility: applicant/joint applicant must be a Malaysian citizen
 // (not a PR) aged 55 or above. Returns a human-readable reason when
@@ -51,6 +52,20 @@ function useICChangeHandler(name, handleChange) {
   return [inputRef, onChange]
 }
 
+// Salutations that are specific to one gender are only offered once the IC
+// has confirmed that gender; gender-neutral entries (Dr, Other) always show.
+// Before the IC confirms a sex, the full list is shown so the field isn't blocked.
+const APPLICANT_SALUTATIONS = ['Mr', 'Mdm', 'Ms', 'Tan Sri', "Dato'", 'Other']
+const NOMINEE_SALUTATIONS = ['Mr', 'Mrs', 'Ms', 'Dr']
+
+function getSalutationOptions(baseOptions, sex) {
+  if (sex !== 'Male' && sex !== 'Female') return baseOptions
+  return baseOptions.filter((option) => {
+    const gender = SALUTATION_GENDER[option]
+    return !gender || gender === sex
+  })
+}
+
 // ============================================================================
 // HELPER COMPONENTS (All inline - no separate files)
 // ============================================================================
@@ -74,6 +89,38 @@ function ErrorSummary({ errors }) {
         ))}
       </ul>
     </div>
+  )
+}
+
+// Calendar Date Input Component
+// The underlying form state keeps a date split across three fields
+// (dayName/monthName/yearName, zero-padded strings) because the PDF
+// generator fills separate DD/MM/YYYY form fields. This component presents
+// that state as a single native calendar picker and decomposes/recomposes
+// the ISO value on change.
+function DateInput({ dayName, monthName, yearName, formData, handleChange, error, disabled, min, max }) {
+  const day = formData[dayName]
+  const month = formData[monthName]
+  const year = formData[yearName]
+  const value = day && month && year ? `${year}-${month}-${day}` : ''
+
+  const onChange = (e) => {
+    const [y = '', m = '', d = ''] = e.target.value.split('-')
+    handleChange({ target: { name: yearName, value: y } })
+    handleChange({ target: { name: monthName, value: m } })
+    handleChange({ target: { name: dayName, value: d } })
+  }
+
+  return (
+    <input
+      type="date"
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      min={min}
+      max={max}
+      className={error ? 'error' : ''}
+    />
   )
 }
 
@@ -205,26 +252,26 @@ function WizardNavigation({ currentStep, totalSteps, onNext, onBack, onSubmit, i
       <div className="wizard-buttons">
         {editNomineeOnly ? (
           <div style={{display: 'flex', gap: '1rem', width: '100%'}}>
-            <button type="button" className="wizard-btn wizard-btn-back" onClick={handleBackToMaintainApplication} style={{flex: 1}}>
+            <button type="button" className="wizard-btn wizard-btn-back" onClick={(e) => { e.currentTarget.blur(); handleBackToMaintainApplication(e) }} style={{flex: 1}}>
               ← BACK
             </button>
-            <button type="button" className="wizard-btn wizard-btn-next" onClick={handleNominateConfirm} style={{flex: 1}}>
+            <button type="button" className="wizard-btn wizard-btn-next" onClick={(e) => { e.currentTarget.blur(); handleNominateConfirm(e) }} style={{flex: 1}}>
               Nominate New Nominee
             </button>
           </div>
         ) : (
           <>
             {currentStep > 1 && (
-              <button type="button" className="wizard-btn wizard-btn-back" onClick={onBack} disabled={isSubmitting}>
+              <button type="button" className="wizard-btn wizard-btn-back" onClick={(e) => { e.currentTarget.blur(); onBack(e) }} disabled={isSubmitting}>
                 ← Back
               </button>
             )}
             {!isLastStep ? (
-              <button type="button" className="wizard-btn wizard-btn-next" onClick={onNext} disabled={isSubmitting}>
+              <button type="button" className="wizard-btn wizard-btn-next" onClick={(e) => { e.currentTarget.blur(); onNext(e) }} disabled={isSubmitting}>
                 Next →
               </button>
             ) : (
-              <button type="button" className="wizard-btn wizard-btn-submit" onClick={onSubmit} disabled={isSubmitting}>
+              <button type="button" className="wizard-btn wizard-btn-submit" onClick={(e) => { e.currentTarget.blur(); onSubmit(e) }} disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <span className="spinner"></span>
@@ -346,12 +393,9 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           }
         }} required>
           <option value="">Select</option>
-          <option value="Mr">Mr</option>
-          <option value="Mdm">Mdm</option>
-          <option value="Ms">Ms</option>
-          <option value="Tan Sri">Tan Sri</option>
-          <option value="Dato'">Dato'</option>
-          <option value="Other">Other</option>
+          {getSalutationOptions(APPLICANT_SALUTATIONS, formData.sex).map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
         </select>
         {formData.salutation.startsWith('Other:') && (
           <input
@@ -680,7 +724,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           onUpload={(e) => handleFileUpload(e, 'applicantNRIC')}
           onDelete={() => handleFileDelete('applicantNRIC')}
           uploading={uploadProgress?.applicantNRIC}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload a clear copy of your NRIC (Max 10MB)"
           error={errors.applicantNRIC}
         />
@@ -693,7 +737,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
             onUpload={(e) => handleFileUpload(e, 'jointApplicantNRIC')}
             onDelete={() => handleFileDelete('jointApplicantNRIC')}
             uploading={uploadProgress?.jointApplicantNRIC}
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             hint="Upload a clear copy of joint applicant's NRIC (Max 10MB)"
             error={errors.jointApplicantNRIC}
           />
@@ -706,7 +750,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           onUpload={(e) => handleFileUpload(e, 'birthCertificate')}
           onDelete={() => handleFileDelete('birthCertificate')}
           uploading={uploadProgress?.birthCertificate}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload birth certificate (Max 10MB)"
           error={errors.birthCertificate}
         />
@@ -718,7 +762,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
             onUpload={(e) => handleFileUpload(e, 'marriageCertificate')}
             onDelete={() => handleFileDelete('marriageCertificate')}
             uploading={uploadProgress?.marriageCertificate}
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             hint="Upload marriage certificate (Max 10MB)"
             error={errors.marriageCertificate}
           />
@@ -740,7 +784,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
               onUpload={(e) => handleFileUpload(e, 'payslips', index)}
               onDelete={() => handleFileDelete('payslips', index)}
               uploading={uploadProgress?.[`payslips_${index}`]}
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
               hint={`Upload payslip for month ${index + 1} (Max 10MB)`}
               error={errors[`payslip${index + 1}`]}
             />
@@ -758,7 +802,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
               onUpload={(e) => handleFileUpload(e, 'bankStatements', index)}
               onDelete={() => handleFileDelete('bankStatements', index)}
               uploading={uploadProgress?.[`bankStatements_${index}`]}
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
               hint={`Upload bank statement for month ${index + 1} (Max 10MB)`}
               error={errors[`bankStatement${index + 1}`]}
             />
@@ -772,7 +816,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           onUpload={(e) => handleFileUpload(e, 'epfStatement')}
           onDelete={() => handleFileDelete('epfStatement')}
           uploading={uploadProgress?.epfStatement}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload your latest EPF statement (Max 10MB)"
           error={errors.epfStatement}
         />
@@ -841,12 +885,9 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
               }
             }} required>
               <option value="">Select</option>
-              <option value="Mr">Mr</option>
-              <option value="Mdm">Mdm</option>
-              <option value="Ms">Ms</option>
-              <option value="Tan Sri">Tan Sri</option>
-              <option value="Dato'">Dato'</option>
-              <option value="Other">Other</option>
+              {getSalutationOptions(APPLICANT_SALUTATIONS, formData.jSex).map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
             </select>
             {formData.jSalutation?.startsWith('Other:') && (
               <input
@@ -1016,15 +1057,14 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Telephone No. (Residence) *</label>
-              <input 
-                type="tel" 
-                name="jResidencePhone" 
-                value={formData.jResidencePhone} 
-                onChange={handleChange} 
+              <label>Telephone No. (Residence)</label>
+              <input
+                type="tel"
+                name="jResidencePhone"
+                value={formData.jResidencePhone}
+                onChange={handleChange}
                 className={errors.jResidencePhone ? 'error' : ''}
-                placeholder="xxx-xxxxxxx"
-                required
+                placeholder="03-xxxxxxx"
               />
               <ErrorMessage error={errors.jResidencePhone} />
             </div>
@@ -1114,13 +1154,33 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
         
         <div className="form-group">
           <label>Name of Bank</label>
-          <input 
-            type="text" 
-            name="bankName" 
-            value={formData.bankName} 
-            onChange={handleChange} 
-          />
+          <select
+            name="bankName"
+            value={formData.bankName}
+            onChange={handleChange}
+            className={errors.bankName ? 'error' : ''}
+          >
+            <option value="">-- Select Bank --</option>
+            {MALAYSIAN_BANKS.map(bank => (
+              <option key={bank} value={bank}>{bank}</option>
+            ))}
+          </select>
+          {errors.bankName && <ErrorMessage error={errors.bankName} />}
         </div>
+
+        {formData.bankName === 'Other' && (
+          <div className="form-group">
+            <label>Please Specify Bank Name</label>
+            <input
+              type="text"
+              name="otherBankName"
+              value={formData.otherBankName}
+              onChange={handleChange}
+              className={errors.otherBankName ? 'error' : ''}
+            />
+            {errors.otherBankName && <ErrorMessage error={errors.otherBankName} />}
+          </div>
+        )}
 
         <div className="form-group">
           <label>Account Type *</label>
@@ -1164,6 +1224,13 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
 // Step 3: Property Details
 function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
+  const currentYear = new Date().getFullYear()
+  const todayISO = new Date().toISOString().split('T')[0]
+  // Valuation/purchase dates: property transactions older than 50 years are implausible for this scheme
+  const minPastDateISO = `${currentYear - 50}-01-01`
+  // Lease expiry: cap the picker at a century out to keep the calendar usable
+  const maxLeaseExpiryISO = `${currentYear + 100}-12-31`
+
   return (
     <div className="step-container">
       <h2>Property Information</h2>
@@ -1234,20 +1301,21 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           <ErrorMessage error={errors.propertyAddress} />
         </div>
 
+        <div className="form-group">
+          <label>Scheme / Taman Name *</label>
+          <input
+            type="text"
+            name="propertySchemeName"
+            value={formData.propertySchemeName}
+            onChange={handleChange}
+            placeholder="e.g. Taman Pandan Indah"
+            className={errors.propertySchemeName ? 'error' : ''}
+          />
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Used to estimate the property's market value</small>
+          <ErrorMessage error={errors.propertySchemeName} />
+        </div>
+
         <div className="form-row">
-          <div className="form-group">
-            <label>Scheme / Taman Name *</label>
-            <input
-              type="text"
-              name="propertySchemeName"
-              value={formData.propertySchemeName}
-              onChange={handleChange}
-              placeholder="e.g. Taman Pandan Indah"
-              className={errors.propertySchemeName ? 'error' : ''}
-            />
-            <small style={{color: '#666', fontSize: '0.85rem'}}>Used to estimate the property's market value</small>
-            <ErrorMessage error={errors.propertySchemeName} />
-          </div>
           <div className="form-group">
             <label>District *</label>
             <input
@@ -1276,28 +1344,14 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
         <div className="form-group">
           <label>Postcode *</label>
-          <select 
-            name="propertyPostcode" 
-            value={formData.propertyPostcode} 
-            onChange={handleChange} 
+          <input
+            type="text"
+            name="propertyPostcode"
+            value={formData.propertyPostcode}
+            onChange={handleChange}
             className={errors.propertyPostcode ? 'error' : ''}
-            required
-          >
-            <option value="">Select postcode</option>
-            <option value="41100">41100</option>
-            <option value="42100">42100</option>
-            <option value="42000">42000</option>
-            <option value="45800">45800</option>
-            <option value="45600">45600</option>
-            <option value="42500">42500</option>
-            <option value="42600">42600</option>
-            <option value="45000">45000</option>
-            <option value="42700">42700</option>
-            <option value="43950">43950</option>
-            <option value="42200">42200</option>
-            <option value="41300">41300</option>
-            <option value="41050">41050</option>
-          </select>
+            placeholder="5 digits"
+          />
           <ErrorMessage error={errors.propertyPostcode} />
         </div>
 
@@ -1314,21 +1368,18 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             <ErrorMessage error={errors.indicativeMarketValue} />
           </div>
           <div className="form-group">
-            <label>Valuation Date (DD/MM/YYYY)</label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="valuationDay" value={formData.valuationDay} onChange={handleChange} style={{width: '70px'}}>
-                <option value="">DD</option>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-              </select>
-              <select name="valuationMonth" value={formData.valuationMonth} onChange={handleChange} style={{width: '70px'}}>
-                <option value="">MM</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-              </select>
-              <select name="valuationYear" value={formData.valuationYear} onChange={handleChange} style={{width: '90px'}}>
-                <option value="">YYYY</option>
-                {Array.from({length: 50}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
+            <label>Valuation Date</label>
+            <DateInput
+              dayName="valuationDay"
+              monthName="valuationMonth"
+              yearName="valuationYear"
+              formData={formData}
+              handleChange={handleChange}
+              error={errors.valuationDate}
+              min={minPastDateISO}
+              max={todayISO}
+            />
+            <ErrorMessage error={errors.valuationDate} />
           </div>
         </div>
 
@@ -1343,21 +1394,18 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             <input type="text" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>S & P Date (DD/MM/YYYY)</label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="purchaseDay" value={formData.purchaseDay} onChange={handleChange} style={{width: '70px'}}>
-                <option value="">DD</option>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-              </select>
-              <select name="purchaseMonth" value={formData.purchaseMonth} onChange={handleChange} style={{width: '70px'}}>
-                <option value="">MM</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-              </select>
-              <select name="purchaseYear" value={formData.purchaseYear} onChange={handleChange} style={{width: '90px'}}>
-                <option value="">YYYY</option>
-                {Array.from({length: 50}, (_, i) => 2025 - i).map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
+            <label>Sale & Purchase Date</label>
+            <DateInput
+              dayName="purchaseDay"
+              monthName="purchaseMonth"
+              yearName="purchaseYear"
+              formData={formData}
+              handleChange={handleChange}
+              error={errors.purchaseDate}
+              min={minPastDateISO}
+              max={todayISO}
+            />
+            <ErrorMessage error={errors.purchaseDate} />
           </div>
         </div>
 
@@ -1369,21 +1417,18 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           </div>
           {errors.tenureTitle && <ErrorMessage error={errors.tenureTitle} />}
           <div className="form-group" style={{marginTop: '0.5rem', opacity: formData.tenureTitle === 'leasehold' ? 1 : 0.5}}>
-            <label>Specify Expiry Date of Lease (DD/MM/YYYY) {formData.tenureTitle === 'leasehold' && '*'}</label>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <select name="expiryDay" value={formData.expiryDay} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
-                <option value="">DD</option>
-                {Array.from({length: 31}, (_, i) => i + 1).map(day => <option key={day} value={String(day).padStart(2, '0')}>{String(day).padStart(2, '0')}</option>)}
-              </select>
-              <select name="expiryMonth" value={formData.expiryMonth} onChange={handleChange} style={{width: '70px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
-                <option value="">MM</option>
-                {Array.from({length: 12}, (_, i) => i + 1).map(month => <option key={month} value={String(month).padStart(2, '0')}>{String(month).padStart(2, '0')}</option>)}
-              </select>
-              <select name="expiryYear" value={formData.expiryYear} onChange={handleChange} style={{width: '90px'}} disabled={formData.tenureTitle !== 'leasehold'} className={errors.expiryDate ? 'error' : ''}>
-                <option value="">YYYY</option>
-                {Array.from({length: 100}, (_, i) => 2025 + i).map(year => <option key={year} value={year}>{year}</option>)}
-              </select>
-            </div>
+            <label>Specify Expiry Date of Lease {formData.tenureTitle === 'leasehold' && '*'}</label>
+            <DateInput
+              dayName="expiryDay"
+              monthName="expiryMonth"
+              yearName="expiryYear"
+              formData={formData}
+              handleChange={handleChange}
+              error={errors.expiryDate}
+              disabled={formData.tenureTitle !== 'leasehold'}
+              min={todayISO}
+              max={maxLeaseExpiryISO}
+            />
             {errors.expiryDate && <ErrorMessage error={errors.expiryDate} />}
             {formData.tenureTitle === 'leasehold' && !errors.expiryDate && (
               <div style={{
@@ -1403,11 +1448,11 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
         <div className="form-row">
           <div className="form-group">
-            <label>Build up area (in sq)</label>
+            <label>Build up area (in sqm)</label>
             <input type="text" name="buildUpArea" value={formData.buildUpArea} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Land area (in sq)</label>
+            <label>Land area (in sqm)</label>
             <input type="text" name="landArea" value={formData.landArea} onChange={handleChange} />
           </div>
         </div>
@@ -1536,7 +1581,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           onUpload={(e) => handleFileUpload(e, 'grantTitle')}
           onDelete={() => handleFileDelete('grantTitle')}
           uploading={uploadProgress?.grantTitle}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload copy of Grant or Title Deed (Max 10MB)"
           error={errors.grantTitle}
         />
@@ -1548,7 +1593,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           onUpload={(e) => handleFileUpload(e, 'saleAgreement')}
           onDelete={() => handleFileDelete('saleAgreement')}
           uploading={uploadProgress?.saleAgreement}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload Sale & Purchase Agreement or Deed of Assignment (Max 10MB)"
           error={errors.saleAgreement}
         />
@@ -1560,7 +1605,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           onUpload={(e) => handleFileUpload(e, 'valuationReport')}
           onDelete={() => handleFileDelete('valuationReport')}
           uploading={uploadProgress?.valuationReport}
-          accept=".pdf,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png,.webp"
           hint="Upload property valuation report (Max 10MB)"
           error={errors.valuationReport}
         />
@@ -1574,7 +1619,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             onUpload={(e) => handleFileUpload(e, 'fireInsurance')}
             onDelete={() => handleFileDelete('fireInsurance')}
             uploading={uploadProgress?.fireInsurance}
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             hint="Upload copy of fire insurance policy (Max 10MB)"
             error={errors.fireInsuranceDoc}
           />
@@ -1589,7 +1634,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             onUpload={(e) => handleFileUpload(e, 'propertyLoanStatement')}
             onDelete={() => handleFileDelete('propertyLoanStatement')}
             uploading={uploadProgress?.propertyLoanStatement}
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
             hint="Upload property loan statement (Max 10MB)"
             error={errors.propertyLoanStatement}
           />
@@ -1637,10 +1682,9 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           <label>Salutation</label>
           <select name="nominee1Salutation" value={formData.nominee1Salutation} onChange={handleChange}>
             <option value="">Select</option>
-            <option value="Mr">Mr</option>
-            <option value="Mrs">Mrs</option>
-            <option value="Ms">Ms</option>
-            <option value="Dr">Dr</option>
+            {getSalutationOptions(NOMINEE_SALUTATIONS, formData.nominee1Sex).map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
           </select>
         </div>
 
@@ -1717,14 +1761,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               style={{marginTop: '0.5rem'}}
             />
           )}
-        </div>
-
-        <div className="form-group">
-          <label className={`checkbox-label ${errors.nominee1Malaysian ? 'error' : ''}`}>
-            <input type="checkbox" name="nominee1Malaysian" checked={formData.nominee1Malaysian} onChange={handleChange} required />
-            <span>Malaysian *</span>
-          </label>
-          {errors.nominee1Malaysian && <ErrorMessage error={errors.nominee1Malaysian} />}
         </div>
 
         <div className="form-group">
@@ -1810,15 +1846,14 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
         <div className="form-row">
           <div className="form-group">
-            <label>Telephone No. (Residence) *</label>
-            <input 
-              type="tel" 
-              name="nominee1ResidencePhone" 
-              value={formData.nominee1ResidencePhone} 
-              onChange={handleChange} 
+            <label>Telephone No. (Residence)</label>
+            <input
+              type="tel"
+              name="nominee1ResidencePhone"
+              value={formData.nominee1ResidencePhone}
+              onChange={handleChange}
               className={errors.nominee1ResidencePhone ? 'error' : ''}
-              placeholder="xxx-xxxxxxx"
-              required
+              placeholder="03-xxxxxxx"
             />
             <ErrorMessage error={errors.nominee1ResidencePhone} />
           </div>
@@ -1878,10 +1913,9 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
             <label>Salutation</label>
             <select name="nominee2Salutation" value={formData.nominee2Salutation} onChange={handleChange}>
               <option value="">Select</option>
-              <option value="Mr">Mr</option>
-              <option value="Mrs">Mrs</option>
-              <option value="Ms">Ms</option>
-              <option value="Dr">Dr</option>
+              {getSalutationOptions(NOMINEE_SALUTATIONS, formData.nominee2Sex).map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
             </select>
           </div>
 
@@ -1958,14 +1992,6 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
                 style={{marginTop: '0.5rem'}}
               />
             )}
-          </div>
-
-          <div className="form-group">
-            <label className={`checkbox-label ${errors.nominee2Malaysian ? 'error' : ''}`}>
-              <input type="checkbox" name="nominee2Malaysian" checked={formData.nominee2Malaysian} onChange={handleChange} required />
-              <span>Malaysian *</span>
-            </label>
-            {errors.nominee2Malaysian && <ErrorMessage error={errors.nominee2Malaysian} />}
           </div>
 
           <div className="form-group">
@@ -2051,15 +2077,14 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
 
           <div className="form-row">
             <div className="form-group">
-              <label>Telephone No. (Residence) *</label>
-              <input 
-                type="tel" 
-                name="nominee2ResidencePhone" 
-                value={formData.nominee2ResidencePhone} 
-                onChange={handleChange} 
+              <label>Telephone No. (Residence)</label>
+              <input
+                type="tel"
+                name="nominee2ResidencePhone"
+                value={formData.nominee2ResidencePhone}
+                onChange={handleChange}
                 className={errors.nominee2ResidencePhone ? 'error' : ''}
-                placeholder="xxx-xxxxxxx"
-                required
+                placeholder="03-xxxxxxx"
               />
               <ErrorMessage error={errors.nominee2ResidencePhone} />
             </div>
@@ -2174,7 +2199,7 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
       {/* Signature Section */}
       <div className="info-section">
         <h3>Signatures</h3>
-        <div className="signature-grid">
+        <div className={`signature-grid${formData.isJointApplicant ? '' : ' signature-grid-single'}`}>
           {/* Applicant Signature */}
           <div className="signature-column">
             <h4>Applicant</h4>
@@ -2216,52 +2241,46 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
           </div>
 
           {/* Joint Applicant Signature */}
-          <div 
-            className="signature-column"
-            style={{
-              opacity: formData.isJointApplicant ? 1 : 0.5,
-              pointerEvents: formData.isJointApplicant ? 'auto' : 'none'
-            }}
-          >
-            <h4>Joint Applicant</h4>
-            <SignaturePad
-              label={formData.isJointApplicant ? "Signed by Joint Applicant *" : "Signed by Joint Applicant"}
-              value={formData.jApplicant_signature}
-              onChange={handleSignatureChange('jApplicant_signature')}
-            />
-            <ErrorMessage error={errors.jApplicant_signature} />
-            <div className="form-group">
-              <label>{formData.isJointApplicant ? "Name *" : "Name"}</label>
-              <input
-                type="text"
-                name="jApplicant_signature_name"
-                value={formData.jApplicant_signature_name}
-                readOnly
-                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
-                placeholder="Full name"
-                disabled={!formData.isJointApplicant}
-                required={formData.isJointApplicant}
-                className={errors.jApplicant_signature_name ? 'error' : ''}
+          {formData.isJointApplicant && (
+            <div className="signature-column">
+              <h4>Joint Applicant</h4>
+              <SignaturePad
+                label="Signed by Joint Applicant *"
+                value={formData.jApplicant_signature}
+                onChange={handleSignatureChange('jApplicant_signature')}
               />
-              {formData.isJointApplicant && <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from joint applicant name</small>}
-              <ErrorMessage error={errors.jApplicant_signature_name} />
+              <ErrorMessage error={errors.jApplicant_signature} />
+              <div className="form-group">
+                <label>Name *</label>
+                <input
+                  type="text"
+                  name="jApplicant_signature_name"
+                  value={formData.jApplicant_signature_name}
+                  readOnly
+                  style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
+                  placeholder="Full name"
+                  required
+                  className={errors.jApplicant_signature_name ? 'error' : ''}
+                />
+                <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from joint applicant name</small>
+                <ErrorMessage error={errors.jApplicant_signature_name} />
+              </div>
+              <div className="form-group">
+                <label>Date *</label>
+                <input
+                  type="text"
+                  name="jApplicant_signature_date"
+                  value={formData.jApplicant_signature_date}
+                  readOnly
+                  style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
+                  required
+                  className={errors.jApplicant_signature_date ? 'error' : ''}
+                />
+                <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>
+                <ErrorMessage error={errors.jApplicant_signature_date} />
+              </div>
             </div>
-            <div className="form-group">
-              <label>{formData.isJointApplicant ? "Date *" : "Date"}</label>
-              <input
-                type="text"
-                name="jApplicant_signature_date"
-                value={formData.jApplicant_signature_date}
-                readOnly
-                style={{backgroundColor: '#f5f5f5', cursor: 'not-allowed'}}
-                disabled={!formData.isJointApplicant}
-                required={formData.isJointApplicant}
-                className={errors.jApplicant_signature_date ? 'error' : ''}
-              />
-              {formData.isJointApplicant && <small style={{color: '#666', fontSize: '0.85rem'}}>Current date (auto-filled)</small>}
-              <ErrorMessage error={errors.jApplicant_signature_date} />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -2644,7 +2663,7 @@ function Step7Review({ formData }) {
 
           <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Banking Information</h4>
           <div className="review-grid">
-            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
+            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName === 'Other' ? formData.otherBankName : formData.bankName)}</div>
             <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
             <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
             <div className="review-field"><strong>Account Preference:</strong> {getValue(formData.accountPreference)}</div>
@@ -2657,7 +2676,7 @@ function Step7Review({ formData }) {
         <div className="review-section">
           <h3>Step 2: Banking Information</h3>
           <div className="review-grid">
-            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName)}</div>
+            <div className="review-field"><strong>Bank Name:</strong> {getValue(formData.bankName === 'Other' ? formData.otherBankName : formData.bankName)}</div>
             <div className="review-field"><strong>Account Type:</strong> {getValue(formData.accountType)}</div>
             <div className="review-field"><strong>Account Number:</strong> {getValue(formData.accountNumber)}</div>
             <div className="review-field"><strong>Account Preference:</strong> {getValue(formData.accountPreference)}</div>
@@ -2685,8 +2704,8 @@ function Step7Review({ formData }) {
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Measurements</h4>
         <div className="review-grid">
-          <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} {formData.landArea ? 'sq ft' : ''}</div>
-          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.buildUpArea)} {formData.buildUpArea ? 'sq ft' : ''}</div>
+          <div className="review-field"><strong>Land Area:</strong> {getValue(formData.landArea)} {formData.landArea ? 'sqm' : ''}</div>
+          <div className="review-field"><strong>Built-up Area:</strong> {getValue(formData.buildUpArea)} {formData.buildUpArea ? 'sqm' : ''}</div>
         </div>
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Valuation & Purchase</h4>
@@ -2695,7 +2714,7 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>Valuation Date:</strong> {formatDate(formData.valuationDay, formData.valuationMonth, formData.valuationYear)}</div>
           <div className="review-field"><strong>Expected Market Value:</strong> {formatCurrency(formData.expectedMarketValue)}</div>
           <div className="review-field"><strong>Purchase Price:</strong> {formatCurrency(formData.purchasePrice)}</div>
-          <div className="review-field"><strong>Purchase Date:</strong> {formatDate(formData.purchaseDay, formData.purchaseMonth, formData.purchaseYear)}</div>
+          <div className="review-field"><strong>Sale & Purchase Date:</strong> {formatDate(formData.purchaseDay, formData.purchaseMonth, formData.purchaseYear)}</div>
         </div>
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Financing</h4>
@@ -2736,7 +2755,6 @@ function Step7Review({ formData }) {
           <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee1Sex)}</div>
           <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee1Race)}</div>
           <div className="review-field"><strong>Citizenship Status:</strong> {formData.nominee1CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : (formData.nominee1CitizenshipType === 'Citizen' ? 'Malaysian Citizen' : '—')}</div>
-          <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee1Malaysian)}</div>
           <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee1Marital)}</div>
           <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee1Relationship)}</div>
         </div>
@@ -2760,7 +2778,6 @@ function Step7Review({ formData }) {
               <div className="review-field"><strong>Sex:</strong> {getValue(formData.nominee2Sex)}</div>
               <div className="review-field"><strong>Race:</strong> {getValue(formData.nominee2Race)}</div>
               <div className="review-field"><strong>Citizenship Status:</strong> {formData.nominee2CitizenshipType === 'PR' ? 'Permanent Resident (PR)' : (formData.nominee2CitizenshipType === 'Citizen' ? 'Malaysian Citizen' : '—')}</div>
-              <div className="review-field"><strong>Malaysian Citizen:</strong> {getValue(formData.nominee2Malaysian)}</div>
               <div className="review-field"><strong>Marital Status:</strong> {getValue(formData.nominee2Marital)}</div>
               <div className="review-field"><strong>Relationship to Applicant:</strong> {getValue(formData.nominee2Relationship)}</div>
             </div>

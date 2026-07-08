@@ -5,11 +5,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFName, PDFDict, PDFRawStream } from "pdf-lib";
 import Application from "../models/Application";
 import { validateStep } from "../utils/applicationValidation";
 import ApplicationFormView from "../views/ApplicationFormView";
-import { parseICNumber, getCurrentDate, calculateAge } from "../utils/icParser";
+import { parseICNumber, getCurrentDate, calculateAge, isSalutationCompatibleWithSex } from "../utils/icParser";
 import { getCurrentUser } from "../services/authService";
 import {
   loadApplicationData,
@@ -22,6 +22,62 @@ import {
 import { uploadDocument, deleteDocument } from "../services/fileUploadService";
 import { supabase } from "../config/supabase";
 import { useToast } from "../client_controller/common/ToastContext";
+
+// Radio fields whose widgets sit directly on top of the printed option text
+// (e.g. "Sex : Male / Female"). Their default PDF appearance fills a dot over
+// a letter and obscures it, so we redraw the "on" state as an underline instead.
+const UNDERLINE_RADIO_FIELDS = [
+  "applicant_sex",
+  "jApplicant_sex",
+  "nominee_sex",
+  "nominee2_sex",
+  "applicant_presentHouse",
+  "applicant_bankAccType",
+  "applicant_prefer",
+  "jApplicant_relationship",
+  "property_type",
+  "property_tenureTitle",
+  "property_encumbered",
+];
+
+const applyUnderlineAppearanceForDotFields = (pdfDoc, form) => {
+  const { context } = pdfDoc;
+  for (const fieldName of UNDERLINE_RADIO_FIELDS) {
+    let field;
+    try {
+      field = form.getRadioGroup(fieldName);
+    } catch (e) {
+      continue; // Field doesn't exist in this template, skip
+    }
+    for (const widget of field.acroField.getWidgets()) {
+      const apRef = widget.dict.get(PDFName.of("AP"));
+      if (!apRef) continue;
+      const apDict = context.lookup(apRef, PDFDict);
+      const nRef = apDict.get(PDFName.of("N"));
+      const nDict = context.lookup(nRef, PDFDict);
+      for (const state of nDict.keys()) {
+        if (state.toString() === "/Off") continue;
+        const streamRef = nDict.get(state);
+        const stream = context.lookup(streamRef);
+        const bbox = stream.dict.get(PDFName.of("BBox"));
+        const width = bbox ? bbox.get(2).asNumber() : 13;
+        const height = bbox ? bbox.get(3).asNumber() : 13;
+        const y = height * 0.12;
+        const content = `q\n0 G\n1 w\n${width * 0.08} ${y} m\n${width * 0.92} ${y} l\nS\nQ`;
+        const newDict = context.obj({
+          Type: "XObject",
+          Subtype: "Form",
+          FormType: 1,
+          BBox: [0, 0, width, height],
+        });
+        context.assign(
+          streamRef,
+          PDFRawStream.of(newDict, new TextEncoder().encode(content)),
+        );
+      }
+    }
+  }
+};
 
 function ApplicationController({ editNomineeOnly = false }) {
   const navigate = useNavigate();
@@ -111,6 +167,7 @@ function ApplicationController({ editNomineeOnly = false }) {
 
     // Banking
     bankName: "",
+    otherBankName: "",
     accountType: "",
     accountPreference: "",
     accountNumber: "",
@@ -568,6 +625,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         sex: parsed.sex,
         malaysian: true,
         citizenshipType,
+        salutation: isSalutationCompatibleWithSex(prev.salutation, parsed.sex)
+          ? prev.salutation
+          : "",
       }));
     }
 
@@ -680,6 +740,56 @@ function ApplicationController({ editNomineeOnly = false }) {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
+    // Determined here (from the `formData` closure, not `prev` inside the
+    // setFormData updater) so it's available synchronously — React does not
+    // guarantee the updater runs before this function returns, so mutating
+    // an outer variable from inside it and reading that variable right after
+    // setFormData() is unreliable.
+    let salutationClearedMessage = null;
+    if (value) {
+      if (name === "nricNo") {
+        const parsed = parseICNumber(value);
+        if (
+          parsed.isValid &&
+          parsed.birthDate &&
+          !isSalutationCompatibleWithSex(formData.salutation, parsed.sex)
+        ) {
+          salutationClearedMessage =
+            "Your salutation has been cleared because it no longer matches the gender detected from the IC number. Please select your salutation again.";
+        }
+      } else if (name === "jIc") {
+        const parsed = parseICNumber(value);
+        if (
+          parsed.isValid &&
+          parsed.birthDate &&
+          !isSalutationCompatibleWithSex(formData.jSalutation, parsed.sex)
+        ) {
+          salutationClearedMessage =
+            "The joint applicant's salutation has been cleared because it no longer matches the gender detected from the IC number. Please select the salutation again.";
+        }
+      } else if (name === "nominee1Ic") {
+        const parsed = parseICNumber(value);
+        if (
+          parsed.isValid &&
+          parsed.birthDate &&
+          !isSalutationCompatibleWithSex(formData.nominee1Salutation, parsed.sex)
+        ) {
+          salutationClearedMessage =
+            "Nominee 1's salutation has been cleared because it no longer matches the gender detected from the IC number. Please select the salutation again.";
+        }
+      } else if (name === "nominee2Ic") {
+        const parsed = parseICNumber(value);
+        if (
+          parsed.isValid &&
+          parsed.birthDate &&
+          !isSalutationCompatibleWithSex(formData.nominee2Salutation, parsed.sex)
+        ) {
+          salutationClearedMessage =
+            "Nominee 2's salutation has been cleared because it no longer matches the gender detected from the IC number. Please select the salutation again.";
+        }
+      }
+    }
+
     // Clear error for this field when it changes
     setErrors((prev) => {
       const newErrors = { ...prev };
@@ -707,6 +817,7 @@ function ApplicationController({ editNomineeOnly = false }) {
 
         let ageError = null;
         let citizenshipError = null;
+        let icFormatError = null;
 
         if (value) {
           const parsed = parseICNumber(value);
@@ -715,6 +826,10 @@ function ApplicationController({ editNomineeOnly = false }) {
             updates.dobMonth = parsed.birthDate.month;
             updates.dobYear = parsed.birthDate.year;
             updates.sex = parsed.sex;
+
+            if (!isSalutationCompatibleWithSex(prev.salutation, parsed.sex)) {
+              updates.salutation = "";
+            }
 
             // Auto-check Malaysian checkbox
             updates.malaysian = true;
@@ -734,6 +849,9 @@ function ApplicationController({ editNomineeOnly = false }) {
             if (applicantAge < 55) {
               ageError = "Applicant must be at least 55 years old";
             }
+          } else if (value.replace(/[-\s]/g, "").length === 12) {
+            icFormatError =
+              "Invalid IC number. Please check the digits and try again.";
           }
         }
 
@@ -741,6 +859,8 @@ function ApplicationController({ editNomineeOnly = false }) {
           const next = { ...prev };
           if (ageError) {
             next.nricNo = ageError;
+          } else if (icFormatError) {
+            next.nricNo = icFormatError;
           } else {
             delete next.nricNo;
           }
@@ -763,6 +883,7 @@ function ApplicationController({ editNomineeOnly = false }) {
 
         let jointAgeError = null;
         let jointCitizenshipError = null;
+        let jointIcFormatError = null;
 
         if (value) {
           const parsed = parseICNumber(value);
@@ -771,6 +892,10 @@ function ApplicationController({ editNomineeOnly = false }) {
             updates.jDobMonth = parsed.birthDate.month;
             updates.jDobYear = parsed.birthDate.year;
             updates.jSex = parsed.sex;
+
+            if (!isSalutationCompatibleWithSex(prev.jSalutation, parsed.sex)) {
+              updates.jSalutation = "";
+            }
 
             // Auto-check Malaysian checkbox
             updates.jMalaysian = true;
@@ -788,6 +913,9 @@ function ApplicationController({ editNomineeOnly = false }) {
             if (jointApplicantAge < 55) {
               jointAgeError = "Joint Applicant must be at least 55 years old";
             }
+          } else if (value.replace(/[-\s]/g, "").length === 12) {
+            jointIcFormatError =
+              "Invalid IC number. Please check the digits and try again.";
           }
         }
 
@@ -795,6 +923,8 @@ function ApplicationController({ editNomineeOnly = false }) {
           const next = { ...prev };
           if (jointAgeError) {
             next.jIc = jointAgeError;
+          } else if (jointIcFormatError) {
+            next.jIc = jointIcFormatError;
           } else {
             delete next.jIc;
           }
@@ -814,6 +944,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         updates.nominee1DobYear = "";
         updates.nominee1Sex = "";
         updates.nominee1CitizenshipType = "";
+        updates.nominee1Malaysian = false;
+
+        let nominee1IcFormatError = null;
 
         if (value) {
           const parsed = parseICNumber(value);
@@ -823,14 +956,34 @@ function ApplicationController({ editNomineeOnly = false }) {
             updates.nominee1DobYear = parsed.birthDate.year;
             updates.nominee1Sex = parsed.sex;
 
+            if (!isSalutationCompatibleWithSex(prev.nominee1Salutation, parsed.sex)) {
+              updates.nominee1Salutation = "";
+            }
+
+            // Nominee holds a Malaysian IC, so citizenship is already verified
+            updates.nominee1Malaysian = true;
+
             // Set Citizenship Type for Nominee 1
             if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
               updates.nominee1CitizenshipType = "PR";
             } else {
               updates.nominee1CitizenshipType = "Citizen";
             }
+          } else if (value.replace(/[-\s]/g, "").length === 12) {
+            nominee1IcFormatError =
+              "Invalid IC number. Please check the digits and try again.";
           }
         }
+
+        setErrors((prev) => {
+          const next = { ...prev };
+          if (nominee1IcFormatError) {
+            next.nominee1Ic = nominee1IcFormatError;
+          } else {
+            delete next.nominee1Ic;
+          }
+          return next;
+        });
       }
 
       // Auto-fill: Parse IC number and fill birthdate + sex + citizenship for nominee 2
@@ -840,6 +993,9 @@ function ApplicationController({ editNomineeOnly = false }) {
         updates.nominee2DobYear = "";
         updates.nominee2Sex = "";
         updates.nominee2CitizenshipType = "";
+        updates.nominee2Malaysian = false;
+
+        let nominee2IcFormatError = null;
 
         if (value) {
           const parsed = parseICNumber(value);
@@ -849,14 +1005,34 @@ function ApplicationController({ editNomineeOnly = false }) {
             updates.nominee2DobYear = parsed.birthDate.year;
             updates.nominee2Sex = parsed.sex;
 
+            if (!isSalutationCompatibleWithSex(prev.nominee2Salutation, parsed.sex)) {
+              updates.nominee2Salutation = "";
+            }
+
+            // Nominee holds a Malaysian IC, so citizenship is already verified
+            updates.nominee2Malaysian = true;
+
             // Set Citizenship Type for Nominee 2
             if (parsed.placeOfBirth && !parsed.placeOfBirth.isMalaysiaBorn) {
               updates.nominee2CitizenshipType = "PR";
             } else {
               updates.nominee2CitizenshipType = "Citizen";
             }
+          } else if (value.replace(/[-\s]/g, "").length === 12) {
+            nominee2IcFormatError =
+              "Invalid IC number. Please check the digits and try again.";
           }
         }
+
+        setErrors((prev) => {
+          const next = { ...prev };
+          if (nominee2IcFormatError) {
+            next.nominee2Ic = nominee2IcFormatError;
+          } else {
+            delete next.nominee2Ic;
+          }
+          return next;
+        });
       }
 
       // Auto-fill: Signature names and dates for applicant
@@ -920,6 +1096,10 @@ function ApplicationController({ editNomineeOnly = false }) {
         ...updates,
       };
     });
+
+    if (salutationClearedMessage) {
+      showToast(salutationClearedMessage, "info");
+    }
   };
 
   /**
@@ -1565,6 +1745,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     );
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     const form = pdfDoc.getForm();
+    applyUnderlineAppearanceForDotFields(pdfDoc, form);
 
     // Helper to fill radio groups safely
     const fillRadio = (form, fieldName, value) => {
@@ -1665,7 +1846,11 @@ function ApplicationController({ editNomineeOnly = false }) {
     }
 
     // Banking Information
-    fillTextField(form, "applicant_bankName", data.bankName);
+    fillTextField(
+      form,
+      "applicant_bankName",
+      data.bankName === "Other" ? data.otherBankName : data.bankName,
+    );
     fillTextField(form, "applicant_accNumber", data.accountNumber);
     fillRadio(form, "applicant_bankAccType", data.accountType);
     fillRadio(form, "applicant_prefer", data.accountPreference);

@@ -375,6 +375,7 @@ CREATE TABLE public.reminder_notifications (
   is_sent boolean NOT NULL DEFAULT false,
   sent_at timestamp with time zone NULL,
   created_at timestamp with time zone NULL DEFAULT now(),
+  skipped_reason text NULL,
   CONSTRAINT reminder_notifications_pkey PRIMARY KEY (id),
   CONSTRAINT reminder_notifications_reminder_id_fkey FOREIGN KEY (reminder_id) REFERENCES public.reminders (id) ON DELETE CASCADE
 );
@@ -872,3 +873,19 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- =============================================================
+-- REMINDER / HEALTH-REPORT AUTOMATION (see migrations/018_*.sql)
+-- =============================================================
+
+CREATE TABLE IF NOT EXISTS public.health_report_type_validity (
+  report_type text PRIMARY KEY,
+  valid_months integer NOT NULL DEFAULT 3
+);
+
+-- archive_old_health_reports(), update_health_reports_due_status(),
+-- generate_reminder_notifications(), invoke_update_health_reports_runner()
+-- and invoke_reminder_processor() are defined in
+-- migrations/018_reminder_and_health_report_automation.sql (kept there rather
+-- than duplicated here since that file also carries the pg_cron schedule
+-- calls and vault-secret setup notes needed to actually run them).

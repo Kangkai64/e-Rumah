@@ -2,6 +2,8 @@
 
 import { parseICNumber } from "./icParser";
 import { KL_POSTCODES } from "./klPostcodes";
+import { findMatchingListedBank } from "./malaysianBanks";
+import { isTempEmail } from "./emailBlacklist";
 
 // IC Number validation: xxxxxx-xx-xxxx with valid date
 export const validateIC = (ic) => {
@@ -128,6 +130,7 @@ export const validateEmail = (email) => {
   if (!email) return "Email is required";
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailPattern.test(email)) return "Invalid email format";
+  if (isTempEmail(email)) return "Temporary email addresses are not allowed";
   return null;
 };
 
@@ -515,14 +518,8 @@ export const validateStep2 = (formData) => {
     }
     errors.jEmployerPostcode = validatePostcode(formData.jEmployerPostcode);
 
-    // Phone validation (both required)
-    errors.jResidencePhone = validateRequired(
-      formData.jResidencePhone,
-      "Joint Applicant Residence Phone",
-    );
-    if (formData.jResidencePhone && !errors.jResidencePhone) {
-      errors.jResidencePhone = validatePhone(formData.jResidencePhone);
-    }
+    // Phone validation (residence phone is optional, H/P is required)
+    errors.jResidencePhone = validateResidencePhone(formData.jResidencePhone);
 
     errors.jTelephone = validateRequired(
       formData.jTelephone,
@@ -588,6 +585,15 @@ export const validateStep2 = (formData) => {
 
   // Banking details (always required)
   errors.bankName = validateRequired(formData.bankName, "Bank Name");
+  if (formData.bankName === "Other") {
+    errors.otherBankName = validateRequired(formData.otherBankName, "Bank Name");
+    if (!errors.otherBankName) {
+      const matchedBank = findMatchingListedBank(formData.otherBankName);
+      if (matchedBank) {
+        errors.otherBankName = `"${matchedBank}" is already in the bank list above. Please select "${matchedBank}" from the dropdown instead of typing it manually.`;
+      }
+    }
+  }
   errors.accountType = validateRequired(formData.accountType, "Account Type");
   errors.accountNumber = validateAccountNumber(formData.accountNumber);
 
@@ -635,13 +641,14 @@ export const validateStep3 = (formData) => {
   errors.propertyMukim = validateRequired(formData.propertyMukim, "Mukim");
   errors.propertyPostcode = validatePostcode(formData.propertyPostcode);
 
-  // SSB Requirement 1: Property must be located in Malaysia (Kuala Lumpur only for SSB)
+  // SSB Requirement 1: Property must not be in an excluded postcode
   if (
     formData.propertyPostcode &&
-    !KL_POSTCODES.includes(formData.propertyPostcode)
+    !errors.propertyPostcode &&
+    KL_POSTCODES.includes(formData.propertyPostcode)
   ) {
     errors.propertyPostcode =
-      "Property must be located in Kuala Lumpur (valid postcodes: 41100, 42100, 42000, 45800, 45600, 42500, 42600, 45000, 42700, 43950, 42200, 41300, 41050)";
+      "This postcode is excluded from eligibility (excluded postcodes: 41100, 42100, 42000, 45800, 45600, 42500, 42600, 45000, 42700, 43950, 42200, 41300, 41050)";
   }
 
   errors.indicativeMarketValue = validateNumeric(
@@ -784,16 +791,10 @@ export const validateStep4 = (formData) => {
   );
   errors.nominee1Sex = validateRequired(formData.nominee1Sex, "Nominee 1 Sex");
 
-  // Phone validation (both required)
-  errors.nominee1ResidencePhone = validateRequired(
+  // Phone validation (residence phone is optional, H/P is required)
+  errors.nominee1ResidencePhone = validateResidencePhone(
     formData.nominee1ResidencePhone,
-    "Nominee 1 Residence Phone",
   );
-  if (formData.nominee1ResidencePhone && !errors.nominee1ResidencePhone) {
-    errors.nominee1ResidencePhone = validatePhone(
-      formData.nominee1ResidencePhone,
-    );
-  }
 
   errors.nominee1Telephone = validateRequired(
     formData.nominee1Telephone,
@@ -879,16 +880,10 @@ export const validateStep4 = (formData) => {
       "Nominee 2 Sex",
     );
 
-    // Phone validation (both required)
-    errors.nominee2ResidencePhone = validateRequired(
+    // Phone validation (residence phone is optional, H/P is required)
+    errors.nominee2ResidencePhone = validateResidencePhone(
       formData.nominee2ResidencePhone,
-      "Nominee 2 Residence Phone",
     );
-    if (formData.nominee2ResidencePhone && !errors.nominee2ResidencePhone) {
-      errors.nominee2ResidencePhone = validatePhone(
-        formData.nominee2ResidencePhone,
-      );
-    }
 
     errors.nominee2Telephone = validateRequired(
       formData.nominee2Telephone,

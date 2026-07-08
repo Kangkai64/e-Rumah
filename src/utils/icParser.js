@@ -116,6 +116,35 @@ export function parseICNumber(icNumber) {
 }
 
 /**
+ * Salutations that are specific to one gender, keyed by the salutation value.
+ * Gender-neutral salutations (Dr, Other) are intentionally absent.
+ */
+export const SALUTATION_GENDER = {
+  Mr: 'Male',
+  'Tan Sri': 'Male',
+  "Dato'": 'Male',
+  Mdm: 'Female',
+  Ms: 'Female',
+  Mrs: 'Female',
+}
+
+/**
+ * Whether a salutation is still valid for a given (IC-confirmed) sex.
+ * Gender-neutral salutations, custom "Other:" entries, and an unconfirmed
+ * sex are always considered compatible.
+ * @param {string} salutation
+ * @param {string} sex - 'Male' | 'Female' | ''
+ * @returns {boolean}
+ */
+export function isSalutationCompatibleWithSex(salutation, sex) {
+  if (!salutation || salutation.startsWith('Other:')) return true
+  const gender = SALUTATION_GENDER[salutation]
+  if (!gender) return true
+  if (sex !== 'Male' && sex !== 'Female') return true
+  return gender === sex
+}
+
+/**
  * Format date for display
  * @param {Object} birthDate - {day, month, year}
  * @returns {string} Formatted date string

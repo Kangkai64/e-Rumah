@@ -402,13 +402,13 @@ function AdminView({
                         {selectedApplication.property?.build_up_area && (
                           <div className="admin-eligibility-item">
                             • Build-up Area:{" "}
-                            {selectedApplication.property.build_up_area} sq ft
+                            {selectedApplication.property.build_up_area} sqm
                           </div>
                         )}
                         {selectedApplication.property?.land_area && (
                           <div className="admin-eligibility-item">
                             • Land Area:{" "}
-                            {selectedApplication.property.land_area} sq ft
+                            {selectedApplication.property.land_area} sqm
                           </div>
                         )}
                         {selectedApplication.property?.tenure_title && (

@@ -1,6 +1,21 @@
 # Testing Session Handoff — e-Rumah Verification Checklist
 
-**Last session:** 2026-07-06 (session 2 — completed the code-verification sweep of all remaining modules).
+**Last session:** 2026-07-08 (session 3 — code-verified the batch of work that landed between sessions 2 and 3: Toast notifications, KL postcode/eligibility logic flip, salutation/gender consistency, bank-name dropdown, WEBP support, drag-and-drop uploads, disabled-reminders UI, and the new reminder/health-report automation migrations+edge functions. No browser-automation tool is available in this environment, so "testing" here is the same code-tracing approach as sessions 1-2, not live clicking — live UI passes are still needed from a human.).
+
+### Session 3 summary
+A large batch of uncommitted work (not covered by the session-2 write-up below) had accumulated on top of commits `b6a0831`/`5c5c4e1`/`b80a9ac`: WEBP file-type support end-to-end, a KL-postcode eligibility logic flip (the field was a restrictive dropdown of 13 postcodes labelled "must be in this list"; it's now a free-text postcode validated against the same 13 as an **exclusion** list — this matches `applicationValidation.js`'s actual check, which was already `!KL_POSTCODES.includes(...)` semantics before this session, so the code behavior didn't change, only the mislabeled UI/comments), salutation auto-clear when IC-derived sex no longer matches (`isSalutationCompatibleWithSex` in `icParser.js`), a bank-name dropdown (`malaysianBanks.js`) with "Other" free-text + duplicate-detection, `<input type="date">` pickers replacing the old DD/MM/YYYY triple-select, a disabled-reminders collapsible section with re-enable toggle, and a new automation layer for reminders/health-report status (migrations 018/019 + `archive-old-health-reports`... wait, see fix below).
+
+Traced all of it against the schema and call sites; found the code internally consistent with one exception:
+
+**Fix (session 3):** two new edge functions, `archive-old-health-reports` and `archive-old-health-reports-schedule`, both wrapped `archive_old_health_reports()` behind an HTTP endpoint — but migration 018's actual cron job (`archive-old-health-reports-daily`) calls `select public.archive_old_health_reports();` directly as SQL, and nothing in the frontend invoked either edge function. Both were dead code. Deleted both directories; the SQL-direct cron path is the one that actually runs.
+
+`npm run build` still passes cleanly after the deletion.
+
+**Still needs a live pass** (all of it code-verified only, not clicked through): WEBP upload end-to-end (both single-file `HealthReport.uploadHealthReport` path and multi-file wizard/health-report paths), the postcode field now accepting free text instead of a dropdown (confirm the 13-postcode exclusion message reads correctly and a non-excluded 5-digit KL postcode passes), salutation auto-clear + toast on IC edit, bank "Other" duplicate-match message, the new `<input type="date">` pickers (browser-native calendar UI, min/max bounds), disabled-reminders toggle round-trip, and — most importantly — the pg_cron automation itself (migration 018 requires manually enabling `pg_cron`/`pg_net` and filling in vault secrets in the Supabase dashboard; nothing here confirms the cron jobs actually fire in the live project).
+
+---
+
+**Previous session:** 2026-07-06 (session 2 — completed the code-verification sweep of all remaining modules).
 **Goal:** Execute the "e-Rumah Testing and Verification Checklist" Google Sheet (101 test items, 7 module sheets), fix all bugs found, then fill in Pass/Fail statuses.
 **Checklist spreadsheet:** Google Drive fileId `1WHmVKzM5BE71fQfbV03UGde4I9-IuYcY` (read via the Google Drive MCP tool `read_file_content`).
 
@@ -165,6 +180,7 @@ Legend: statuses below are from code verification + the live ML API tests. "Pass
 - `src/views/MaintainApplicationView.jsx` — rejection + flagged-document banners
 
 ## Outstanding work
+0. **(session 3)** Nothing is committed from the session-2-to-3 batch either — nominee/health/automation work described above plus the archive-function deletion are all still sitting in the working tree alongside the older session-2 fixes that *did* get committed in `b6a0831`. Review and commit when ready.
 1. **Live UI testing** of the items marked Pass*/Not tested (needs `npm run dev` + Supabase test accounts for elder/admin/support).
 2. **Sync the filled xlsx back to the Google Sheet** — done locally in `e-Rumah_Testing_Verification_Checklist.xlsx`; upload/import it to Drive (the MCP tools here can't write Sheets). Update the remaining "Not Tested" rows after live UI runs.
 3. **Decide on genuine feature gaps** (implement or accept as Fail): AD-08 nominee approve/reject, UM-07 apportioned proceeds, UM-14 verified-value update UI, AM-13 notifications, NF-08 idle timeout, NF-12 audit logging, report archive (AD-07).

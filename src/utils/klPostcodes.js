@@ -1,4 +1,5 @@
-// SSB properties must be located in Kuala Lumpur, within this fixed set of postcodes.
+// SSB properties must be located in Kuala Lumpur, but properties within this fixed
+// set of postcodes are excluded from eligibility.
 export const KL_POSTCODES = [
   '41100',
   '42100',

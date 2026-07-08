@@ -1,0 +1,34 @@
+
+-- FIXED 2026-07-08: two bugs -
+-- 1) pg_net's functions live in the `net` schema, not `pg_net` (that's just the
+--    extension name) - `pg_net.http_post` doesn't exist and would raise
+--    "function pg_net.http_post does not exist".
+-- 2) net.http_post() is async and returns a bigint request id, not a jsonb
+--    response body - assigning it into a jsonb variable would fail. The real
+--    HTTP response (if you need it) is written later into net._http_response,
+--    keyed by this request id.
+-- 3) vault.secrets stores the *encrypted* value - reading it directly hands you
+--    ciphertext. Use vault.decrypted_secrets to get the plaintext.
+-- This function has NOT been re-applied in Supabase yet - re-run the
+-- CREATE OR REPLACE FUNCTION statement in the SQL editor.
+DECLARE
+  v_url text;
+  v_key text;
+  v_request_id bigint;
+BEGIN
+  SELECT decrypted_secret INTO v_url FROM vault.decrypted_secrets WHERE name = 'health_reports_runner_url';
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'health_reports_runner_key';
+
+  IF v_url IS NULL THEN
+    RAISE EXCEPTION 'Vault secret health_reports_runner_url not found';
+  END IF;
+
+  SELECT net.http_post(
+    url := v_url,
+    body := jsonb_build_object('run', true),
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_key
+    )
+  ) INTO v_request_id;
+END;

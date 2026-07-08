@@ -1,0 +1,13 @@
+
+DECLARE
+  updated_count integer;
+BEGIN
+  UPDATE public.health_reports
+  SET health_report_status = 'Archived',
+      updated_at = now()
+  WHERE health_report_status = 'Reviewed'
+    AND COALESCE(report_date, created_at::date) <= (current_date - INTERVAL '2 years');
+
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RETURN updated_count;
+END;

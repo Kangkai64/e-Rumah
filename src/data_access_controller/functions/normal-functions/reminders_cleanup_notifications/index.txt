@@ -1,0 +1,7 @@
+
+BEGIN
+  DELETE FROM public.reminder_notifications
+  WHERE reminder_id = OLD.id;
+
+  RETURN OLD;
+END;

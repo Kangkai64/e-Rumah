@@ -701,6 +701,10 @@ h1 {
   margin-top: 1rem;
 }
 
+.signature-grid-single {
+  grid-template-columns: 1fr;
+}
+
 .signature-column h4 {
   color: #161519;
   margin-bottom: 1rem;

@@ -1,0 +1,41 @@
+
+BEGIN
+  WITH computed AS (
+    SELECT
+      h.id,
+      h.report_date,
+      h.report_type,
+      COALESCE(v.valid_months, 3) AS valid_months,
+      CASE WHEN h.report_date IS NOT NULL THEN (h.report_date + (COALESCE(v.valid_months, 3) || ' months')::interval)::date ELSE NULL END AS expiry_date
+    FROM public.health_reports h
+    LEFT JOIN public.health_report_type_validity v
+      ON v.report_type = h.report_type
+  ),
+  calculated AS (
+    SELECT
+      id,
+      report_date,
+      report_type,
+      valid_months,
+      expiry_date,
+      CASE
+        WHEN report_date IS NULL THEN NULL
+        WHEN expiry_date <= CURRENT_DATE THEN 'Overdue'
+        WHEN expiry_date > CURRENT_DATE AND expiry_date <= (CURRENT_DATE + INTERVAL '1 month') THEN 'Due Soon'
+        ELSE 'Up to Date'
+      END AS new_due_status
+    FROM computed
+  ),
+  to_update AS (
+    SELECT c.id, c.new_due_status
+    FROM calculated c
+    JOIN public.health_reports h ON h.id = c.id
+    WHERE (h.due_status IS DISTINCT FROM c.new_due_status)
+  )
+  UPDATE public.health_reports h
+  SET
+    due_status = t.new_due_status,
+    updated_at = now()
+  FROM to_update t
+  WHERE h.id = t.id;
+END;

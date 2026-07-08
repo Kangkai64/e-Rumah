@@ -17,8 +17,9 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
     const allowedTypes = options.allowedTypes || [
       'application/pdf',
       'image/jpeg',
-      'image/jpg', 
-      'image/png'
+      'image/jpg',
+      'image/png',
+      'image/webp'
     ]
 
     // Validate file size (max 10MB)
@@ -40,6 +41,7 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
           case 'image/jpeg':
           case 'image/jpg': return 'JPG'
           case 'image/png': return 'PNG'
+          case 'image/webp': return 'WEBP'
           default: return type
         }
       }).join(', ')

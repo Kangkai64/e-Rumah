@@ -74,6 +74,25 @@ function AdminApplicationReviewView({
     )
   }
 
+  // form_data holds the applicant's submitted snapshot; properties/users are the DB fallback
+  const fd = application.application_data?.form_data || {}
+  const prop = application.properties || {}
+
+  const gv = (value) => {
+    if (value === true) return 'Yes'
+    if (value === false) return 'No'
+    if (value === '' || value === undefined || value === null) return 'N/A'
+    return value
+  }
+
+  const formatDMY = (day, month, year, fallbackDate) => {
+    if (day && month && year) return `${day}/${month}/${year}`
+    if (fallbackDate) return formatDate(fallbackDate)
+    return 'N/A'
+  }
+
+  const isJointApplicant = fd.isJointApplicant
+
   return (
     <div className="admin-review-view">
       <div className="review-container">
@@ -144,30 +163,222 @@ function AdminApplicationReviewView({
               {/* Applicant Information */}
               <div className="info-section">
                 <h2>Application Information</h2>
+                <h4 className="info-subheading">Basic Information</h4>
                 <div className="info-grid">
                   <div className="info-item">
                     <span className="info-label">Full Name</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.nameAsPerNRIC || application.users?.full_name || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.nameAsPerNRIC || application.users?.full_name || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">IC Number</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.nricNo || application.users?.ic_number || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.nricNo || application.users?.ic_number || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Sex</span>
+                    <span className="info-value">{gv(fd.sex)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Race</span>
+                    <span className="info-value">{gv(fd.race)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Malaysian Citizen</span>
+                    <span className="info-value">{gv(fd.malaysian)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Marital Status</span>
+                    <span className="info-value">{gv(fd.maritalStatus)}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Contact Information</h4>
+                <div className="info-grid">
+                  <div className="info-item full-width">
+                    <span className="info-label">Address</span>
+                    <span className="info-value">{gv(fd.address)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Postcode</span>
+                    <span className="info-value">{gv(fd.postcode)}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Email</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.email || application.users?.email || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.email || application.users?.email || 'N/A'}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-label">Phone</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.telephone || application.users?.phone || 'N/A'}
-                    </span>
+                    <span className="info-label">Residence Phone</span>
+                    <span className="info-value">{gv(fd.residencePhone)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Mobile Phone</span>
+                    <span className="info-value">{fd.telephone || application.users?.phone || 'N/A'}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Family & Housing</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Number of Dependents</span>
+                    <span className="info-value">{gv(fd.numOfDependents)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Present House Ownership</span>
+                    <span className="info-value">{gv(fd.presentHouse)}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Employment Details</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Occupation</span>
+                    <span className="info-value">{gv(fd.occupation)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Employer Name</span>
+                    <span className="info-value">{gv(fd.employerName)}</span>
+                  </div>
+                  <div className="info-item full-width">
+                    <span className="info-label">Employer Address</span>
+                    <span className="info-value">{gv(fd.employerAddress)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Employer Postcode</span>
+                    <span className="info-value">{gv(fd.employerPostcode)}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Application Preferences</h4>
+                <div className="info-grid">
+                  <div className="info-item full-width">
+                    <span className="info-label">Purpose of Application</span>
+                    <span className="info-value">{gv(fd.purposeOfApplication)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">How Did You Hear About SSB</span>
+                    <span className="info-value">{gv(fd.howDidYouKnow)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Preferred Scheme</span>
+                    <span className="info-value">{gv(fd.preferredScheme)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Payout Option</span>
+                    <span className="info-value">{gv(fd.payoutOption)}</span>
+                  </div>
+                  {fd.payoutOption === 'monthlyPayout_lumpSum' && (
+                    <div className="info-item">
+                      <span className="info-label">Lump Sum Usage</span>
+                      <span className="info-value">{gv(fd.lumpSumUsage)}</span>
+                    </div>
+                  )}
+                  <div className="info-item">
+                    <span className="info-label">Payment Option</span>
+                    <span className="info-value">{gv(fd.paymentOption)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Joint Applicant Information */}
+              {isJointApplicant && (
+                <div className="info-section">
+                  <h2>Joint Applicant Information</h2>
+                  <h4 className="info-subheading">Basic Information</h4>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="info-label">Full Name</span>
+                      <span className="info-value">{gv(fd.jName)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">IC Number</span>
+                      <span className="info-value">{gv(fd.jIc)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Sex</span>
+                      <span className="info-value">{gv(fd.jSex)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Race</span>
+                      <span className="info-value">{gv(fd.jRace)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Malaysian Citizen</span>
+                      <span className="info-value">{gv(fd.jMalaysian)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Marital Status</span>
+                      <span className="info-value">{gv(fd.jMarital)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Relationship to Applicant</span>
+                      <span className="info-value">{gv(fd.jRelationship)}</span>
+                    </div>
+                  </div>
+
+                  <h4 className="info-subheading">Contact Information</h4>
+                  <div className="info-grid">
+                    <div className="info-item full-width">
+                      <span className="info-label">Address</span>
+                      <span className="info-value">{gv(fd.jAddress)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Postcode</span>
+                      <span className="info-value">{gv(fd.jPostcode)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Email</span>
+                      <span className="info-value">{gv(fd.jEmail)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Residence Phone</span>
+                      <span className="info-value">{gv(fd.jResidencePhone)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Mobile Phone</span>
+                      <span className="info-value">{gv(fd.jTelephone)}</span>
+                    </div>
+                  </div>
+
+                  <h4 className="info-subheading">Employment Details</h4>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="info-label">Occupation</span>
+                      <span className="info-value">{gv(fd.jOccupation)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Employer Name</span>
+                      <span className="info-value">{gv(fd.jEmployerName)}</span>
+                    </div>
+                    <div className="info-item full-width">
+                      <span className="info-label">Employer Address</span>
+                      <span className="info-value">{gv(fd.jEmployerAddress)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Employer Postcode</span>
+                      <span className="info-value">{gv(fd.jEmployerPostcode)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Banking Information */}
+              <div className="info-section">
+                <h2>Banking Information</h2>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Bank Name</span>
+                    <span className="info-value">{gv(fd.bankName === 'Other' ? fd.otherBankName : fd.bankName)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Account Type</span>
+                    <span className="info-value">{gv(fd.accountType)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Account Number</span>
+                    <span className="info-value">{gv(fd.accountNumber)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Account Preference</span>
+                    <span className="info-value">{gv(fd.accountPreference)}</span>
                   </div>
                 </div>
               </div>
@@ -175,42 +386,121 @@ function AdminApplicationReviewView({
               {/* Property Information */}
               <div className="info-section">
                 <h2>Property Information</h2>
+                <h4 className="info-subheading">Property Details</h4>
                 <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Property Type</span>
+                    <span className="info-value">{fd.propertyType || prop.property_type || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Tenure / Title</span>
+                    <span className="info-value">{fd.tenureTitle || prop.tenure_title || 'N/A'}</span>
+                  </div>
+                  {(fd.tenureTitle === 'leasehold' || prop.tenure_title === 'leasehold') && (
+                    <div className="info-item">
+                      <span className="info-label">Lease Expiry Date</span>
+                      <span className="info-value">{formatDMY(fd.expiryDay, fd.expiryMonth, fd.expiryYear, prop.expiry_date)}</span>
+                    </div>
+                  )}
                   <div className="info-item full-width">
-                    <span className="info-label">Address</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.propertyAddress || application.properties?.address || 'N/A'}
-                    </span>
+                    <span className="info-label">Street Address</span>
+                    <span className="info-value">{fd.propertyAddress || prop.address || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Scheme / Taman Name</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.propertySchemeName || application.properties?.scheme_name || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.propertySchemeName || prop.scheme_name || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">District</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.propertyDistrict || application.properties?.district || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.propertyDistrict || prop.district || 'N/A'}</span>
                   </div>
                   <div className="info-item">
                     <span className="info-label">Mukim</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.propertyMukim || application.properties?.mukim || 'N/A'}
-                    </span>
+                    <span className="info-value">{fd.propertyMukim || prop.mukim || 'N/A'}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-label">Market Value</span>
-                    <span className="info-value">
-                      {formatCurrency(application.application_data?.form_data?.indicativeMarketValue || application.properties?.indicative_market_value)}
-                    </span>
+                    <span className="info-label">Postcode</span>
+                    <span className="info-value">{fd.propertyPostcode || prop.postcode || 'N/A'}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Property Measurements</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Land Area</span>
+                    <span className="info-value">{fd.landArea || prop.land_area ? `${fd.landArea || prop.land_area} sqm` : 'N/A'}</span>
                   </div>
                   <div className="info-item">
-                    <span className="info-label">Tenure</span>
-                    <span className="info-value">
-                      {application.application_data?.form_data?.tenureTitle || application.properties?.tenure_title || 'N/A'}
-                    </span>
+                    <span className="info-label">Built-up Area</span>
+                    <span className="info-value">{fd.buildUpArea || prop.build_up_area ? `${fd.buildUpArea || prop.build_up_area} sqm` : 'N/A'}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Valuation & Purchase</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Indicative Market Value</span>
+                    <span className="info-value">{formatCurrency(fd.indicativeMarketValue || prop.indicative_market_value)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Valuation Date</span>
+                    <span className="info-value">{formatDMY(fd.valuationDay, fd.valuationMonth, fd.valuationYear, prop.valuation_date)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Applicant Expected Market Value</span>
+                    <span className="info-value">{formatCurrency(fd.expectedMarketValue || prop.expected_market_value)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Sale & Purchase Price</span>
+                    <span className="info-value">{formatCurrency(fd.purchasePrice || prop.purchase_price)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Sale & Purchase Date</span>
+                    <span className="info-value">{formatDMY(fd.purchaseDay, fd.purchaseMonth, fd.purchaseYear, prop.purchase_date)}</span>
+                  </div>
+                </div>
+
+                <h4 className="info-subheading">Property Financing</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Property Encumbered</span>
+                    <span className="info-value">{gv(fd.propertyEncumbered) !== 'N/A' ? gv(fd.propertyEncumbered) : gv(prop.is_encumbered)}</span>
+                  </div>
+                  {(fd.propertyEncumbered === 'yes' || prop.is_encumbered) && (
+                    <>
+                      <div className="info-item">
+                        <span className="info-label">Bank / Financial Institution</span>
+                        <span className="info-value">{fd.propertyBankName || prop.bank_name || 'N/A'}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Est. Outstanding Balance</span>
+                        <span className="info-value">{formatCurrency(fd.estOutstandingBalance || prop.est_outstanding_balance)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <h4 className="info-subheading">Fire Insurance</h4>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Fire Insurance Status</span>
+                    <span className="info-value">{gv(fd.fireInsurance) !== 'N/A' ? gv(fd.fireInsurance) : gv(prop.has_fire_insurance)}</span>
+                  </div>
+                  {(fd.fireInsurance === 'inForce' || prop.has_fire_insurance) && (
+                    <>
+                      <div className="info-item">
+                        <span className="info-label">Insurance Company</span>
+                        <span className="info-value">{fd.insuranceCompany || prop.insurance_company || 'N/A'}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Period of Validity</span>
+                        <span className="info-value">{fd.periodValidity || prop.insurance_period_validity || 'N/A'}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="info-item">
+                    <span className="info-label">Renewal Status</span>
+                    <span className="info-value">{gv(fd.renewalFireInsurance)}</span>
                   </div>
                 </div>
               </div>

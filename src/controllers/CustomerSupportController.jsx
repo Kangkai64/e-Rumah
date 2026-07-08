@@ -222,6 +222,45 @@ export default function CustomerSupportController() {
     }
   }
 
+  // Subscribe to real-time inquiry list updates (new inquiries + status changes)
+  useEffect(() => {
+    if (activeTab !== 'inquiries') return
+
+    const subscription = Inquiry.subscribeToInquiries('inquiries', {
+      onInsert: (newItem) => {
+        // Respect the currently active filter, if any
+        if (filterValue && newItem[filterField] !== filterValue) return
+
+        const formatted = { ...newItem, displayText: newItem.message || newItem.subject }
+        setInquiries((prev) => {
+          if (prev.some((inq) => inq.id === formatted.id)) return prev
+          return [formatted, ...prev]
+        })
+      },
+      onUpdate: (updatedItem) => {
+        setInquiries((prev) => {
+          // Drop the row if it no longer matches the active filter
+          if (filterValue && updatedItem[filterField] !== filterValue) {
+            return prev.filter((inq) => inq.id !== updatedItem.id)
+          }
+          return prev.map((inq) =>
+            inq.id === updatedItem.id
+              ? { ...inq, ...updatedItem, displayText: updatedItem.message || updatedItem.subject }
+              : inq
+          )
+        })
+        setSelectedItem((prev) => (prev?.id === updatedItem.id ? { ...prev, ...updatedItem } : prev))
+      },
+      onDelete: (deletedItem) => {
+        setInquiries((prev) => prev.filter((inq) => inq.id !== deletedItem.id))
+      }
+    })
+
+    return () => {
+      Inquiry.unsubscribeFromInquiries(subscription)
+    }
+  }, [activeTab, filterField, filterValue])
+
   // Subscribe to real-time conversation updates when a chat is open
   useEffect(() => {
     if (!selectedItem?.id) return

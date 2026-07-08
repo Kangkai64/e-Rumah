@@ -1,0 +1,72 @@
+
+-- FIXED 2026-07-08: reminder_frequencies is stored by the app as an object of
+-- boolean flags ({"enabled_1_week":true,...}), never as a JSON array of interval
+-- strings. jsonb_array_elements_text() on that object threw "cannot extract
+-- elements from an object", aborting the whole run. Replaced the array-based
+-- loop with a VALUES-based lookup over the known flag names.
+-- This function has NOT been re-applied in Supabase yet - re-run the
+-- CREATE OR REPLACE FUNCTION statement in the SQL editor.
+DECLARE
+  r RECORD;
+  flag RECORD;
+  freq_interval INTERVAL;
+  sched TIMESTAMPTZ;
+  horizon_start TIMESTAMPTZ := now() - (p_backfill_days || ' days')::interval;
+  horizon_end TIMESTAMPTZ := CASE WHEN p_horizon_days IS NULL OR p_horizon_days <= 0 THEN NULL ELSE now() + (p_horizon_days || ' days')::interval END;
+  v_count INT := 0;
+BEGIN
+  FOR r IN
+    SELECT id, reminder_date, reminder_frequencies
+    FROM public.reminders
+    WHERE is_enabled = true AND reminder_date IS NOT NULL
+  LOOP
+    -- skip if no frequencies
+    IF r.reminder_frequencies IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    -- iterate over the known boolean flags (object shape, not a JSON array)
+    FOR flag IN
+      SELECT * FROM (VALUES
+        ('enabled_1_week', interval '7 days'),
+        ('enabled_3_days', interval '3 days'),
+        ('enabled_1_day',  interval '1 day')
+      ) AS t(key, iv)
+    LOOP
+      IF NOT COALESCE((r.reminder_frequencies->>flag.key)::boolean, false) THEN
+        CONTINUE;
+      END IF;
+
+      freq_interval := flag.iv;
+      sched := r.reminder_date - freq_interval;
+
+      -- Check horizon criteria
+      IF horizon_end IS NOT NULL THEN
+        IF NOT (sched BETWEEN horizon_start AND horizon_end) THEN
+          CONTINUE;
+        END IF;
+      ELSE
+        -- if no horizon_end provided, only create if sched >= horizon_start AND sched <= r.reminder_date
+        IF NOT (sched >= horizon_start AND sched <= r.reminder_date) THEN
+          CONTINUE;
+        END IF;
+      END IF;
+
+      -- idempotent insert: skip if exists same reminder_id and scheduled_time (rounded to seconds)
+      IF EXISTS (
+        SELECT 1 FROM public.reminder_notifications rn
+        WHERE rn.reminder_id = r.id AND date_trunc('second', rn.scheduled_time) = date_trunc('second', sched)
+      ) THEN
+        CONTINUE;
+      END IF;
+
+      INSERT INTO public.reminder_notifications (reminder_id, scheduled_time, notification_offset)
+      VALUES (r.id, sched, freq_interval);
+
+      v_count := v_count + 1;
+    END LOOP;
+  END LOOP;
+
+  inserted_count := v_count;
+  RETURN NEXT;
+END;

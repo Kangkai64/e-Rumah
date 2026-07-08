@@ -140,6 +140,60 @@ class Inquiry {
   }
 
   /**
+   * Subscribe to real-time changes on customer_support_inquiries for a given subject
+   * @param {string} subject - 'inquiries' | 'nominee' | 'health_report'
+   * @param {Object} handlers - { onInsert, onUpdate, onDelete }
+   * @returns {Object} Subscription channel
+   */
+  static subscribeToInquiries(subject, { onInsert, onUpdate, onDelete } = {}) {
+    try {
+      const channel = supabase
+        .channel(`customer_support_inquiries:${subject}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'customer_support_inquiries',
+            filter: `subject=eq.${subject}`
+          },
+          async (payload) => {
+            if (payload.eventType === 'INSERT') {
+              // Fetch full row with joined user info
+              const { data, error } = await supabase
+                .from('customer_support_inquiries')
+                .select(`*, user:users(id, full_name, email, phone)`)
+                .eq('id', payload.new.id)
+                .single()
+
+              if (!error && data && onInsert) onInsert(data)
+            } else if (payload.eventType === 'UPDATE') {
+              if (onUpdate) onUpdate(payload.new)
+            } else if (payload.eventType === 'DELETE') {
+              if (onDelete) onDelete(payload.old)
+            }
+          }
+        )
+        .subscribe()
+
+      return channel
+    } catch (error) {
+      console.error('Error subscribing to inquiries:', error)
+      return null
+    }
+  }
+
+  /**
+   * Unsubscribe from inquiry real-time updates
+   * @param {Object} subscription - Subscription returned from subscribeToInquiries
+   */
+  static unsubscribeFromInquiries(subscription) {
+    if (subscription) {
+      supabase.removeChannel(subscription)
+    }
+  }
+
+  /**
    * Search inquiries (by subject or message)
    * @param {string} searchTerm - Search keyword
    * @returns {Promise<{success: boolean, data: Array, error: any}>}

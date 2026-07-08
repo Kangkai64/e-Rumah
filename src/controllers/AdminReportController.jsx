@@ -158,7 +158,13 @@ function AdminReportController({ mode = 'reports' }) {
             land_area,
             is_encumbered,
             bank_name,
-            est_outstanding_balance
+            est_outstanding_balance,
+            has_fire_insurance,
+            insurance_company,
+            insurance_period_validity,
+            scheme_name,
+            district,
+            mukim
           ),
           nominees (
             id,

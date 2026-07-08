@@ -507,7 +507,7 @@ export const shareHealthReport = async (reportId, shareOption, shareData) => {
 
 function validateFile(file) {
   const maxSize = 10 * 1024 * 1024 // 10MB
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 
   if (!file) {
     return { valid: false, error: 'No file selected' }
@@ -518,7 +518,7 @@ function validateFile(file) {
   }
 
   if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Invalid file type. Only PDF and JPG files are allowed' }
+    return { valid: false, error: 'Invalid file type. Only PDF, JPG, PNG, and WEBP files are allowed' }
   }
 
   return { valid: true }

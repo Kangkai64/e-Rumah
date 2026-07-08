@@ -102,7 +102,15 @@ function BankDetailsModal({
   const [touched, setTouched] = useState({});
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+
+    if (name === "bankAccountNumber") {
+      const rule = BANK_ACCOUNT_RULES[form.bankName === "Other" ? "" : form.bankName];
+      value = value.replace(/\D/g, "");
+      if (rule) value = value.slice(0, rule.max);
+    }
+
     const updated = { ...form, [name]: value };
     // Clear account number error when bank changes (different length rule)
     if (name === "bankName") updated.bankAccountNumber = "";
@@ -224,11 +232,13 @@ function BankDetailsModal({
               id="bankAccountNumber"
               name="bankAccountNumber"
               type="text"
+              inputMode="numeric"
               value={form.bankAccountNumber}
               onChange={handleChange}
               onBlur={handleBlur}
               placeholder="e.g. 1234567890"
               disabled={submitting}
+              maxLength={BANK_ACCOUNT_RULES[form.bankName]?.max}
               className={fieldErrors.bankAccountNumber ? "input-error" : ""}
             />
             {fieldErrors.bankAccountNumber && (
@@ -567,7 +577,9 @@ function UserProfileView({
                       className="no-data"
                       style={{ gridColumn: "1 / -1", textAlign: "center" }}
                     >
-                      No disbursement records found
+                      {loanOverview?.hasLoan
+                        ? "No disbursement records found"
+                        : "No disbursements yet — payout records will appear here once you have an approved loan application."}
                     </span>
                   </div>
                 )}
@@ -618,7 +630,7 @@ function UserProfileView({
               </div>
 
               <div className="payout-content">
-                <>
+                {loanOverview?.hasLoan ? (
                   <div className="payout-info-section">
                     <div className="payout-info-left">
                       <p className="info-label">Estimated monthly payout</p>
@@ -626,15 +638,9 @@ function UserProfileView({
                         {formatCurrency(payoutDetails?.monthlyAmount || 0)}
                       </p>
                       <p className="info-period">
-                        From{" "}
-                        {payoutDetails?.startDate
-                          ? formatDate(payoutDetails.startDate)
-                          : "Jan 2026"}{" "}
-                        to{" "}
-                        {payoutDetails?.endDate
-                          ? formatDate(payoutDetails.endDate)
-                          : "Dec 2030"}{" "}
-                        ({payoutDetails?.totalMonths || 0} months)
+                        {payoutDetails?.startDate && payoutDetails?.endDate
+                          ? `From ${formatDate(payoutDetails.startDate)} to ${formatDate(payoutDetails.endDate)} (${payoutDetails?.totalMonths || 0} months)`
+                          : "Payout period not yet available."}
                       </p>
                     </div>
 
@@ -643,7 +649,7 @@ function UserProfileView({
                       <p className="info-next-date">
                         {payoutDetails?.nextPayoutDate
                           ? formatDate(payoutDetails.nextPayoutDate)
-                          : "02 Jan 2026"}
+                          : "Not yet scheduled"}
                       </p>
                       <p className="info-bank">
                         Deposited into{" "}
@@ -652,7 +658,13 @@ function UserProfileView({
                       </p>
                     </div>
                   </div>
-                </>
+                ) : (
+                  <p className="no-data">
+                    No payout schedule yet — this will populate once your
+                    application is approved and your loan disbursement plan is
+                    set up.
+                  </p>
+                )}
               </div>
             </div>
           </div>

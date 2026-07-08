@@ -1,0 +1,28 @@
+
+-- NEW 2026-07-08: wrapper that invokes the reminder-processor edge function's
+-- /run route via pg_net, mirroring invoke_update_health_reports_runner's
+-- vault-secret pattern. This exists so the pg_cron job that fires every
+-- minute doesn't need the service-role key embedded in plaintext inside
+-- cron.job (which any role with SELECT on cron.job could read).
+-- This function has NOT been created in Supabase yet.
+DECLARE
+  v_url text;
+  v_key text;
+  v_request_id bigint;
+BEGIN
+  SELECT decrypted_secret INTO v_url FROM vault.decrypted_secrets WHERE name = 'reminder_processor_url';
+  SELECT decrypted_secret INTO v_key FROM vault.decrypted_secrets WHERE name = 'reminder_processor_key';
+
+  IF v_url IS NULL THEN
+    RAISE EXCEPTION 'Vault secret reminder_processor_url not found';
+  END IF;
+
+  SELECT net.http_post(
+    url := v_url,
+    body := '{}'::jsonb,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_key
+    )
+  ) INTO v_request_id;
+END;

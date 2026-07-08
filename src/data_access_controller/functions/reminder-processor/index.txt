@@ -1,6 +1,8 @@
 ========================================================================================================
 
-The function is already deployed on the Supabase server. Do not uncomment or deploy it again!
+MODIFIED 2026-07-08: sendEmail payload fixed to match enquiry-form-confirmation-email's
+required fields (name/message/emailType). This version has NOT been redeployed yet -
+you must redeploy this function to Supabase for the fix to take effect.
 
 ========================================================================================================
 
@@ -15,10 +17,11 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-async function sendEmail(to: string, subject: string, html: string) {
-  // Reuse 'enquiry-form-confirmation-email' if present
+async function sendEmail(to: string, name: string, subject: string, html: string) {
+  // Reuse 'enquiry-form-confirmation-email'; it requires {to, name, subject, message}
+  // and 'emailType' picks the raw-HTML template (message is embedded as-is, no enquiry wording).
   const res = await supabase.functions.invoke('enquiry-form-confirmation-email', {
-    body: JSON.stringify({ to, subject, html }),
+    body: { to, name, subject, message: html, emailType: 'health_report_share' },
   }).catch((e: any) => ({ error: e }));
   return res;
 }
@@ -40,13 +43,14 @@ async function processNotifications() {
 
   for (const row of data as any[]) {
     try {
-      const userRes = await supabase.from('users').select('email').eq('id', row.reminder.user_id).single();
+      const userRes = await supabase.from('users').select('email, full_name').eq('id', row.reminder.user_id).single();
       if (userRes.error) throw userRes.error;
       const to = userRes.data.email;
+      const name = userRes.data.full_name || 'there';
       const subject = `Reminder: ${row.reminder.reminder_title}`;
       const html = `<p>${row.reminder.notes || ''}</p><p>Due: ${row.reminder.reminder_date}</p>`;
 
-      const sendRes = await sendEmail(to, subject, html);
+      const sendRes = await sendEmail(to, name, subject, html);
       if (sendRes?.error) throw sendRes.error;
 
       const upd = await supabase
