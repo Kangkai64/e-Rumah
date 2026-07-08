@@ -33,7 +33,7 @@ This is a React 19 + Vite SPA backed entirely by Supabase (auth, database, stora
 | `src/services/`                         | Stateless service functions (auth, file upload, email, application CRUD)     |
 | `src/client_controller/`               | Shared UI, landing pages, auth pages, session management                     |
 | `src/config/supabase.js`               | Single Supabase client instance used everywhere                              |
-| `src/data_access_controller/migrations/` | SQL migration files (table schema definitions)                             |
+| `src/data_access_controller/migrations/` | `schema.sql` - the full current database schema, run manually in the Supabase SQL Editor (no migration runner/tracking table) |
 | `src/data_access_controller/functions/` | Source of Supabase edge functions (deployed separately)                     |
 
 > `src/data_access_controller/` and `src/external_service_interface/` are otherwise empty stubs.
