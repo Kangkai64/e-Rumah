@@ -1,11 +1,18 @@
 // Auth Context Provider
 // Manages authentication state globally
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { onAuthStateChange } from "../../services/authService";
 import { supabase } from "../../config/supabase";
 
 const AuthContext = createContext({});
+
+// Routine/informational auth logs - silenced in production, kept for local debugging
+const devLog = (...args) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
@@ -27,6 +34,10 @@ export function AuthProvider({ children }) {
     return localStorage.getItem("applicationStatus") || null;
   });
   const [loading, setLoading] = useState(true);
+  // Tracks which user's data is currently loaded so repeated SIGNED_IN events
+  // for the same user (tab refocus, multi-tab localStorage sync) don't
+  // trigger a redundant admin/support DB lookup + timeout race.
+  const currentUserIdRef = useRef(null);
 
   const buildUserProfile = (authUser) => ({
     id: authUser.id,
@@ -41,6 +52,8 @@ export function AuthProvider({ children }) {
     authUser?.user_metadata?.role || authUser?.app_metadata?.role || null;
 
   const fetchUserData = async (authUser) => {
+    currentUserIdRef.current = authUser?.id ?? null;
+
     if (!authUser) {
       setUser(null);
       setUserRole(null);
@@ -52,10 +65,14 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      console.log("🔍 Fetching user data for:", authUser.id);
+      devLog("🔍 Fetching user data for:", authUser.id);
       const metadataRole = getMetadataRole(authUser);
 
-      if (metadataRole === "admin" || metadataRole === "support") {
+      if (
+        metadataRole === "admin" ||
+        metadataRole === "support" ||
+        metadataRole === "provider"
+      ) {
         setUserRole(metadataRole);
         localStorage.setItem("userRole", metadataRole);
         setApplicationStatus(null);
@@ -65,7 +82,7 @@ export function AuthProvider({ children }) {
           ...buildUserProfile(authUser),
           role: metadataRole,
         });
-        console.log("✅ Staff role from auth metadata:", metadataRole);
+        devLog("✅ Staff role from auth metadata:", metadataRole);
         return;
       }
 
@@ -74,7 +91,7 @@ export function AuthProvider({ children }) {
           setTimeout(() => reject(new Error(label)), 3000),
         );
 
-      const [adminResult, supportResult] = await Promise.all([
+      const [adminResult, supportResult, providerResult] = await Promise.all([
         Promise.race([
           supabase
             .from("admins")
@@ -103,6 +120,20 @@ export function AuthProvider({ children }) {
           );
           return { data: null, error };
         }),
+        Promise.race([
+          supabase
+            .from("providers")
+            .select("id, email, company_name, phone")
+            .eq("id", authUser.id)
+            .maybeSingle(),
+          createTimeout("ProviderTimeout"),
+        ]).catch((error) => {
+          console.warn(
+            "⚠️ Timeout or error fetching provider data:",
+            error.message,
+          );
+          return { data: null, error };
+        }),
       ]);
 
       const cachedRole = localStorage.getItem("userRole");
@@ -110,16 +141,22 @@ export function AuthProvider({ children }) {
         ? "admin"
         : supportResult.data
           ? "support"
-          : null;
+          : providerResult.data
+            ? "provider"
+            : null;
 
       if (staffRole) {
         setUserRole(staffRole);
         localStorage.setItem("userRole", staffRole);
         setApplicationStatus(null);
         localStorage.removeItem("applicationStatus");
-        console.log(
+        devLog(
           "✅ Staff data from database:",
-          staffRole === "admin" ? adminResult.data : supportResult.data,
+          staffRole === "admin"
+            ? adminResult.data
+            : staffRole === "support"
+              ? supportResult.data
+              : providerResult.data,
         );
         setUser({
           ...authUser,
@@ -133,13 +170,15 @@ export function AuthProvider({ children }) {
       const role =
         metadataRole === "user"
           ? "user"
-          : cachedRole === "admin" || cachedRole === "support"
+          : cachedRole === "admin" ||
+              cachedRole === "support" ||
+              cachedRole === "provider"
             ? cachedRole
             : "user";
       setUserRole(role);
       localStorage.setItem("userRole", role);
       setUser({ ...authUser, ...profile, role });
-      console.log("✅ User profile from auth metadata:", profile);
+      devLog("✅ User profile from auth metadata:", profile);
 
       // Check if user has completed application (for 'user' role) - with timeout
       if (role === "user") {
@@ -155,13 +194,14 @@ export function AuthProvider({ children }) {
             "submitted",
             "underReviewed",
             "approved",
+            "auctioning",
             "terminated",
           ])
           .maybeSingle();
 
         const result = await Promise.race([appFetchPromise, appTimeout]).catch(
           (err) => {
-            console.log("ℹ️ Timeout checking application status");
+            devLog("ℹ️ Timeout checking application status");
             return { data: null, error: err, timedOut: true };
           },
         );
@@ -174,7 +214,7 @@ export function AuthProvider({ children }) {
             appStatus =
               result.data.status === "terminated" ? "terminated" : "complete";
           }
-          console.log(
+          devLog(
             "📊 Application status:",
             appStatus,
             "- App data:",
@@ -187,13 +227,13 @@ export function AuthProvider({ children }) {
           // Use cached status on timeout
           const cachedStatus = localStorage.getItem("applicationStatus");
           if (cachedStatus) {
-            console.log(
+            devLog(
               "⚠️ Timeout - using cached application status:",
               cachedStatus,
             );
             setApplicationStatus(cachedStatus);
           } else {
-            console.log(
+            devLog(
               "⚠️ Keeping existing application status due to timeout",
             );
           }
@@ -242,10 +282,19 @@ export function AuthProvider({ children }) {
     } = onAuthStateChange(async (event, session) => {
       // Only fetch full user data on SIGNED_IN or SIGNED_OUT events
       // Don't refetch on TOKEN_REFRESHED to avoid unnecessary queries
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        await fetchUserData(session?.user ?? null);
+      if (event === "SIGNED_IN") {
+        const incomingUserId = session?.user?.id ?? null;
+        if (incomingUserId && incomingUserId === currentUserIdRef.current) {
+          // Same user re-firing SIGNED_IN (tab refocus, multi-tab sync) -
+          // data is already loaded, skip the admin/support lookup + timeouts
+          devLog("ℹ️ SIGNED_IN for already-loaded user, skipping refetch");
+        } else {
+          await fetchUserData(session?.user ?? null);
+        }
+      } else if (event === "SIGNED_OUT") {
+        await fetchUserData(null);
       } else if (event === "TOKEN_REFRESHED") {
-        console.log("🔄 Token refreshed, keeping existing user data");
+        devLog("🔄 Token refreshed, keeping existing user data");
       }
       setLoading(false);
     });

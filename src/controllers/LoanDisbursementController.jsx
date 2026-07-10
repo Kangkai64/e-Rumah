@@ -17,6 +17,8 @@ function LoanDisbursementController() {
   const [selectedSummary, setSelectedSummary] = useState(null);
   const [disbursementRecords, setDisbursementRecords] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingSchedules, setPendingSchedules] = useState([]);
+  const [activeScheduleId, setActiveScheduleId] = useState(null);
   const [formState, setFormState] = useState({
     amount: "",
     transactionDate: todayIso,
@@ -27,6 +29,7 @@ function LoanDisbursementController() {
   useEffect(() => {
     if (user && userRole === "admin") {
       loadApprovedApplications();
+      loadPendingSchedules();
     } else if (user && userRole && userRole !== "admin") {
       setError("Access denied. Administrator role required.");
       setLoading(false);
@@ -70,7 +73,8 @@ function LoanDisbursementController() {
     }
   };
 
-  const loadSelectedApplication = async (applicationId) => {
+  const loadSelectedApplication = async (applicationId, options = {}) => {
+    const { forceSuggestion = false } = options;
     try {
       const result =
         await LoanDisbursement.getApplicationDisbursementSummary(applicationId);
@@ -82,16 +86,23 @@ function LoanDisbursementController() {
       const { summary, records } = result.data;
       setSelectedSummary(summary);
       setDisbursementRecords(records || []);
-      const catchUpDesc =
-        summary.missedMonths > 0
-          ? `Catch-up disbursement (${summary.missedMonths} missed + current month)`
-          : "Loan disbursement payout";
-      setFormState({
-        amount: summary.canDisburse ? summary.suggestedAmount.toFixed(2) : "",
-        transactionDate: summary.nextSuggestedDate || todayIso,
-        description: catchUpDesc,
-        referenceNumber: "",
-      });
+
+      // Skip the client-computed suggestion when a "Review" click on the
+      // auto-scheduled queue already pre-filled the form from the persisted
+      // schedule row - that's the source of truth being confirmed. After a
+      // submit resolves (forceSuggestion), always refresh to the next suggestion.
+      if (forceSuggestion || !activeScheduleId) {
+        const catchUpDesc =
+          summary.missedMonths > 0
+            ? `Catch-up disbursement (${summary.missedMonths} missed + current month)`
+            : "Loan disbursement payout";
+        setFormState({
+          amount: summary.canDisburse ? summary.suggestedAmount.toFixed(2) : "",
+          transactionDate: summary.nextSuggestedDate || todayIso,
+          description: catchUpDesc,
+          referenceNumber: "",
+        });
+      }
     } catch (err) {
       console.error("Failed to load selected application:", err);
       setError("Failed to load the selected application.");
@@ -99,6 +110,7 @@ function LoanDisbursementController() {
   };
 
   const handleSelectApplication = (applicationId) => {
+    setActiveScheduleId(null);
     setSelectedApplicationId(applicationId);
   };
 
@@ -107,6 +119,61 @@ function LoanDisbursementController() {
       ...current,
       [field]: value,
     }));
+  };
+
+  const loadPendingSchedules = async () => {
+    try {
+      const result = await LoanDisbursement.getPendingSchedules();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      setPendingSchedules(result.data || []);
+    } catch (err) {
+      console.error("Failed to load pending disbursement schedules:", err);
+    }
+  };
+
+  const handleReviewSchedule = (schedule) => {
+    setActiveScheduleId(schedule.id);
+    setSelectedApplicationId(schedule.applicationId);
+    setFormState({
+      amount: schedule.amount.toFixed(2),
+      transactionDate: schedule.scheduledDate,
+      description: `Auto-scheduled disbursement #${schedule.disbursementNumber}`,
+      referenceNumber: "",
+    });
+
+    setTimeout(() => {
+      const el = document.getElementById("disbursement-form-section");
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 60);
+  };
+
+  const handleSkipSchedule = async (scheduleId) => {
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await LoanDisbursement.skipScheduledDisbursement(
+        scheduleId,
+      );
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      if (activeScheduleId === scheduleId) {
+        setActiveScheduleId(null);
+      }
+      await loadPendingSchedules();
+    } catch (err) {
+      console.error("Failed to skip scheduled disbursement:", err);
+      setError(err.message || "Failed to skip the scheduled disbursement.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCreateDisbursement = async () => {
@@ -122,25 +189,43 @@ function LoanDisbursementController() {
     setError(null);
 
     try {
-      const result = await LoanDisbursement.createDisbursement(
-        selectedApplicationId,
-        {
-          amount,
-          transactionDate: formState.transactionDate,
-          description: formState.description,
-          referenceNumber: formState.referenceNumber,
-        },
-      );
+      const payload = {
+        amount,
+        transactionDate: formState.transactionDate,
+        description: formState.description,
+        referenceNumber: formState.referenceNumber,
+      };
+
+      const result = activeScheduleId
+        ? await LoanDisbursement.confirmScheduledDisbursement(
+            activeScheduleId,
+            user.id,
+            payload,
+          )
+        : await LoanDisbursement.createDisbursement(
+            selectedApplicationId,
+            payload,
+          );
 
       if (!result.success) {
         throw new Error(result.error);
       }
 
+      setActiveScheduleId(null);
       await loadApprovedApplications();
-      await loadSelectedApplication(selectedApplicationId);
+      await loadSelectedApplication(selectedApplicationId, {
+        forceSuggestion: true,
+      });
+      await loadPendingSchedules();
     } catch (err) {
       console.error("Failed to create disbursement:", err);
       setError(err.message || "Failed to record disbursement.");
+      // A failed confirm (e.g. "already resolved" from a race with another
+      // admin/tab) means the schedule's status changed underneath us - refresh
+      // the pending list so the stale row doesn't linger in the UI.
+      if (activeScheduleId) {
+        await loadPendingSchedules();
+      }
     } finally {
       setSubmitting(false);
     }
@@ -179,9 +264,13 @@ function LoanDisbursementController() {
       disbursementRecords={disbursementRecords}
       formState={formState}
       submitting={submitting}
+      pendingSchedules={pendingSchedules}
+      activeScheduleId={activeScheduleId}
       onSelectApplication={handleSelectApplication}
       onFormChange={handleFormChange}
       onCreateDisbursement={handleCreateDisbursement}
+      onReviewSchedule={handleReviewSchedule}
+      onSkipSchedule={handleSkipSchedule}
       onBackToDashboard={handleBackToDashboard}
       formatCurrency={formatCurrency}
       formatDate={formatDate}

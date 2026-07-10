@@ -66,6 +66,43 @@ CREATE TABLE public.customer_supports (
   CONSTRAINT customer_support_email_key UNIQUE (email)
 );
 
+-- Reverse mortgage providers (see migrations/023_*.sql) - a third staff-like
+-- role, manually provisioned exactly like admins/customer_supports, that
+-- submits competing loan_offers on applications an admin has opened for
+-- auction.
+CREATE TABLE public.providers (
+  id uuid NOT NULL,
+  email text NULL,
+  company_name text NOT NULL,
+  contact_person text NULL,
+  phone text NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL DEFAULT now(),
+  CONSTRAINT providers_pkey PRIMARY KEY (id),
+  CONSTRAINT providers_email_key UNIQUE (email),
+  CONSTRAINT providers_id_fkey FOREIGN KEY (id) REFERENCES auth.users (id) ON UPDATE CASCADE ON DELETE RESTRICT
+);
+CREATE INDEX idx_providers_is_active ON public.providers USING btree (is_active);
+
+ALTER TABLE public.providers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Providers can view own profile" ON public.providers
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Providers can update own profile" ON public.providers
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Admins can view all providers" ON public.providers
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Admins can manage providers" ON public.providers
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
 CREATE TABLE public.caregivers (
   id uuid NOT NULL,
   license_number text NULL,
@@ -160,6 +197,7 @@ CREATE TABLE public.applications (
   submitted_at timestamp with time zone NULL,
   reviewed_at timestamp with time zone NULL,
   approved_at timestamp with time zone NULL,
+  rejected_at timestamp with time zone NULL,
   created_at timestamp with time zone NULL DEFAULT now(),
   updated_at timestamp with time zone NULL DEFAULT now(),
   is_flagged boolean NULL DEFAULT false,
@@ -172,19 +210,29 @@ CREATE TABLE public.applications (
   termination_update_at timestamp with time zone NULL,
   approved_amount numeric NULL,
   reject_termination_reason text NULL,
+  loan_term_months integer NULL,
+  interest_rate numeric(5, 2) NULL,
+  accepted_offer_id uuid NULL,
+  auction_opened_at timestamp with time zone NULL,
+  auction_opened_by uuid NULL,
   CONSTRAINT applications_pkey PRIMARY KEY (id),
   CONSTRAINT applications_flagged_by_fkey FOREIGN KEY (flagged_by) REFERENCES public.admins (id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT applications_joint_user_id_fkey FOREIGN KEY (joint_user_id) REFERENCES public.users (id) ON DELETE SET NULL,
   CONSTRAINT applications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE CASCADE,
+  CONSTRAINT applications_auction_opened_by_fkey FOREIGN KEY (auction_opened_by) REFERENCES public.admins (id) ON DELETE SET NULL,
   CONSTRAINT applications_approved_amount_check CHECK ((approved_amount > (0)::numeric)),
   CONSTRAINT applications_status_check CHECK (
-    status = ANY (ARRAY['draft'::text, 'submitted'::text, 'underReviewed'::text, 'approved'::text, 'rejected'::text, 'terminated'::text])
+    status = ANY (ARRAY['draft'::text, 'submitted'::text, 'underReviewed'::text, 'approved'::text, 'auctioning'::text, 'rejected'::text, 'terminated'::text])
   )
+  -- accepted_offer_id -> public.loan_offers (id) ON DELETE SET NULL is added
+  -- as a separate ALTER TABLE after loan_offers is created below, since
+  -- loan_offers itself references applications (see migrations/023_*.sql).
 );
 CREATE INDEX idx_applications_flagged ON public.applications USING btree (is_flagged) WHERE (is_flagged = true);
 CREATE INDEX idx_applications_user_id ON public.applications USING btree (user_id);
 CREATE INDEX idx_applications_status ON public.applications USING btree (status);
-CREATE UNIQUE INDEX idx_one_active_application ON public.applications USING btree (user_id) WHERE (status = ANY (ARRAY['approved'::text, 'underReviewed'::text]));
+-- 'auctioning' included so a user can't have two applications mid-auction.
+CREATE UNIQUE INDEX idx_one_active_application ON public.applications USING btree (user_id) WHERE (status = ANY (ARRAY['approved'::text, 'underReviewed'::text, 'auctioning'::text]));
 
 CREATE TABLE public.application_data (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -255,6 +303,60 @@ CREATE INDEX idx_properties_application_id ON public.properties(application_id);
 COMMENT ON COLUMN public.properties.scheme_name IS 'Scheme / Taman name, used as an input to the property value estimator';
 COMMENT ON COLUMN public.properties.district IS 'District, used as an input to the property value estimator';
 COMMENT ON COLUMN public.properties.mukim IS 'Mukim, used as an input to the property value estimator';
+
+-- Property valuation scheduling (see migrations/022_*.sql): admin-managed
+-- appointments for a partner valuer, used when an applicant leaves the
+-- Valuation Report document blank at submission.
+CREATE TABLE public.property_valuation_schedules (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  application_id uuid NOT NULL REFERENCES public.applications (id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.users (id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'scheduled',
+  scheduled_date timestamp with time zone NOT NULL,
+  valuer_name text NULL,
+  valuer_contact text NULL,
+  location_notes text NULL,
+  scheduled_by uuid NULL REFERENCES public.admins (id) ON DELETE SET NULL,
+  completed_at timestamp with time zone NULL,
+  completed_by uuid NULL REFERENCES public.admins (id) ON DELETE SET NULL,
+  result_value numeric(15, 2) NULL,
+  cancelled_reason text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT property_valuation_schedules_pkey PRIMARY KEY (id),
+  CONSTRAINT property_valuation_schedules_status_check CHECK (
+    status = ANY (ARRAY['scheduled'::text, 'completed'::text, 'cancelled'::text])
+  )
+);
+CREATE INDEX idx_property_valuation_schedules_application_id ON public.property_valuation_schedules USING btree (application_id);
+CREATE INDEX idx_property_valuation_schedules_status ON public.property_valuation_schedules USING btree (status);
+CREATE INDEX idx_property_valuation_schedules_scheduled_date ON public.property_valuation_schedules USING btree (scheduled_date);
+
+ALTER TABLE public.property_valuation_schedules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own valuation schedule" ON public.property_valuation_schedules
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.applications
+      WHERE applications.id = property_valuation_schedules.application_id
+      AND (applications.user_id = auth.uid() OR applications.joint_user_id = auth.uid())
+    )
+  );
+
+CREATE POLICY "Admins can view all valuation schedules" ON public.property_valuation_schedules
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Admins can insert valuation schedules" ON public.property_valuation_schedules
+  FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Admins can update valuation schedules" ON public.property_valuation_schedules
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
 
 CREATE TABLE public.transactions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -453,6 +555,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
   approved integer NOT NULL DEFAULT 0,
   rejected integer NOT NULL DEFAULT 0,
   pending integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT reports_pkey PRIMARY KEY (id),
   CONSTRAINT reports_type_check CHECK (report_type = ANY (ARRAY['monthly'::text, 'yearly'::text])),
   CONSTRAINT reports_month_check CHECK (month >= -1 AND month <= 11),
@@ -461,6 +564,7 @@ CREATE TABLE IF NOT EXISTS public.reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_type ON public.reports USING btree (report_type);
 CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON public.reports USING btree (generated_at);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON public.reports USING btree (created_at);
 CREATE INDEX IF NOT EXISTS idx_reports_year_month ON public.reports USING btree (year, month);
 
 -- =============================================================
@@ -644,6 +748,15 @@ CREATE POLICY "Users can update properties for own applications" ON public.prope
     )
   );
 
+-- Admins need to write indicative_market_value/valuation_date once a
+-- scheduled valuation is completed (see migrations/022_*.sql). No existing
+-- admin bypass is confirmed for this table (unlike public.applications, see
+-- the KNOWN GAPS note at the top of this file), so this is explicit.
+CREATE POLICY "Admins can update properties" ON public.properties
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
 -- Transactions: Users can view/create their own transactions
 CREATE POLICY "Users can view own transactions" ON public.transactions
   FOR SELECT USING (auth.uid() = user_id);
@@ -822,6 +935,10 @@ BEGIN
     SELECT 1 FROM customer_supports
       WHERE public.normalize_email(email) = normalized
         AND (exclude_user_id IS NULL OR id != exclude_user_id)
+    UNION ALL
+    SELECT 1 FROM providers
+      WHERE public.normalize_email(email) = normalized
+        AND (exclude_user_id IS NULL OR id != exclude_user_id)
   ) INTO exists_flag;
 
   RETURN exists_flag;
@@ -889,3 +1006,198 @@ CREATE TABLE IF NOT EXISTS public.health_report_type_validity (
 -- migrations/018_reminder_and_health_report_automation.sql (kept there rather
 -- than duplicated here since that file also carries the pg_cron schedule
 -- calls and vault-secret setup notes needed to actually run them).
+
+-- =============================================================
+-- LOAN DISBURSEMENT AUTOMATION (see migrations/021_*.sql)
+-- =============================================================
+
+CREATE TABLE public.loan_disbursement_schedules (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  application_id uuid NOT NULL REFERENCES public.applications (id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.users (id) ON DELETE CASCADE,
+  disbursement_number integer NOT NULL,
+  scheduled_date date NOT NULL,
+  amount numeric(15, 2) NOT NULL,
+  status text NOT NULL DEFAULT 'pending',
+  transaction_id uuid NULL REFERENCES public.transactions (id) ON DELETE SET NULL,
+  confirmed_by uuid NULL REFERENCES public.admins (id) ON DELETE SET NULL,
+  confirmed_at timestamp with time zone NULL,
+  notified_at timestamp with time zone NULL,
+  notes text NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_disbursement_schedules_pkey PRIMARY KEY (id),
+  CONSTRAINT loan_disbursement_schedules_app_number_unique UNIQUE (application_id, disbursement_number),
+  CONSTRAINT loan_disbursement_schedules_status_check CHECK (
+    status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'skipped'::text, 'cancelled'::text])
+  )
+);
+CREATE INDEX idx_loan_disbursement_schedules_application_id ON public.loan_disbursement_schedules USING btree (application_id);
+CREATE INDEX idx_loan_disbursement_schedules_status ON public.loan_disbursement_schedules USING btree (status);
+CREATE INDEX idx_loan_disbursement_schedules_scheduled_date ON public.loan_disbursement_schedules USING btree (scheduled_date);
+CREATE INDEX idx_loan_disbursement_schedules_pending_notify ON public.loan_disbursement_schedules USING btree (status, notified_at) WHERE (status = 'pending');
+
+ALTER TABLE public.loan_disbursement_schedules ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can view all disbursement schedules" ON public.loan_disbursement_schedules
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Admins can update disbursement schedules" ON public.loan_disbursement_schedules
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+-- generate_due_loan_disbursements() and invoke_loan_disbursement_notifier() are
+-- defined in migrations/021_loan_disbursement_automation.sql (kept there rather
+-- than duplicated here since that file also carries the pg_cron schedule calls
+-- and vault-secret setup notes needed to actually run them). Migration 023
+-- updates generate_due_loan_disbursements() in place to prefer an accepted
+-- offer's loan_term_months over the hardcoded 240 - see that file.
+
+-- =============================================================
+-- PROVIDER AUCTION SYSTEM (see migrations/023_*.sql)
+-- =============================================================
+
+-- One row per (application, provider), upserted in place as a provider
+-- submits/withdraws/resubmits - no bid-history ledger, only the current
+-- offer per provider matters for this auction model.
+CREATE TABLE public.loan_offers (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  application_id uuid NOT NULL REFERENCES public.applications (id) ON DELETE CASCADE,
+  provider_id uuid NOT NULL REFERENCES public.providers (id) ON DELETE CASCADE,
+  offer_amount numeric(15, 2) NOT NULL,
+  interest_rate numeric(5, 2) NULL,
+  loan_term_months integer NOT NULL DEFAULT 240,
+  notes text NULL,
+  status text NOT NULL DEFAULT 'submitted',
+  submitted_at timestamp with time zone NOT NULL DEFAULT now(),
+  decided_at timestamp with time zone NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT loan_offers_pkey PRIMARY KEY (id),
+  CONSTRAINT loan_offers_application_provider_unique UNIQUE (application_id, provider_id),
+  CONSTRAINT loan_offers_offer_amount_check CHECK (offer_amount > 0),
+  CONSTRAINT loan_offers_loan_term_months_check CHECK (loan_term_months > 0),
+  CONSTRAINT loan_offers_status_check CHECK (
+    status = ANY (ARRAY['submitted'::text, 'withdrawn'::text, 'accepted'::text, 'rejected'::text])
+  )
+);
+CREATE INDEX idx_loan_offers_application_id ON public.loan_offers USING btree (application_id);
+CREATE INDEX idx_loan_offers_provider_id ON public.loan_offers USING btree (provider_id);
+CREATE INDEX idx_loan_offers_status ON public.loan_offers USING btree (status);
+
+-- Deferred from the applications table above since loan_offers references
+-- applications and didn't exist yet.
+ALTER TABLE public.applications
+  ADD CONSTRAINT applications_accepted_offer_id_fkey FOREIGN KEY (accepted_offer_id) REFERENCES public.loan_offers (id) ON DELETE SET NULL;
+
+ALTER TABLE public.loan_offers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Providers can view own offers" ON public.loan_offers
+  FOR SELECT USING (auth.uid() = provider_id);
+
+-- Bid floor (offer_amount >= the admin's already-approved ceiling) is
+-- enforced here in WITH CHECK, not just client-side, so it can't be
+-- bypassed by a modified request.
+CREATE POLICY "Providers can create own offers" ON public.loan_offers
+  FOR INSERT WITH CHECK (
+    auth.uid() = provider_id
+    AND EXISTS (
+      SELECT 1 FROM public.applications
+      WHERE applications.id = loan_offers.application_id
+        AND applications.status = 'auctioning'
+        AND loan_offers.offer_amount >= applications.approved_amount
+    )
+  );
+
+CREATE POLICY "Providers can update own offers" ON public.loan_offers
+  FOR UPDATE USING (auth.uid() = provider_id)
+  WITH CHECK (
+    auth.uid() = provider_id
+    AND EXISTS (
+      SELECT 1 FROM public.applications
+      WHERE applications.id = loan_offers.application_id
+        AND applications.status = 'auctioning'
+        AND loan_offers.offer_amount >= applications.approved_amount
+    )
+  );
+
+CREATE POLICY "Applicants can view offers on own application" ON public.loan_offers
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.applications
+      WHERE applications.id = loan_offers.application_id
+        AND applications.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can view all offers" ON public.loan_offers
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+-- Deliberately no applicant UPDATE policy on loan_offers: acceptance goes
+-- through accept_loan_offer() below, never a raw client UPDATE, because it
+-- must atomically touch both applications and multiple loan_offers rows.
+
+-- Atomic accept + reject-the-rest + status flip. SECURITY DEFINER RPC (not
+-- 2-3 separate client PATCH calls) because acceptance must rewrite
+-- applications AND flip the winning offer AND reject every other submitted
+-- offer, atomically. FOR UPDATE row locks plus the status guards make this
+-- race-safe against double-clicks/tabs, mirroring the claim-then-act pattern
+-- LoanDisbursement.confirmScheduledDisbursement already uses at the JS
+-- layer, done properly at the DB layer since this needs atomicity across
+-- two tables.
+CREATE OR REPLACE FUNCTION public.accept_loan_offer(p_offer_id uuid)
+RETURNS public.applications
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_offer public.loan_offers;
+  v_application public.applications;
+BEGIN
+  SELECT * INTO v_offer FROM loan_offers WHERE id = p_offer_id FOR UPDATE;
+  IF v_offer IS NULL THEN
+    RAISE EXCEPTION 'Offer not found';
+  END IF;
+
+  SELECT * INTO v_application FROM applications WHERE id = v_offer.application_id FOR UPDATE;
+
+  IF v_application.user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Not authorized to accept offers on this application';
+  END IF;
+  IF v_application.status != 'auctioning' THEN
+    RAISE EXCEPTION 'Application is not open for offer selection';
+  END IF;
+  IF v_offer.status != 'submitted' THEN
+    RAISE EXCEPTION 'Offer is no longer available';
+  END IF;
+
+  UPDATE applications SET
+    status = 'approved',
+    approved_amount = v_offer.offer_amount,
+    loan_term_months = v_offer.loan_term_months,
+    interest_rate = v_offer.interest_rate,
+    accepted_offer_id = v_offer.id,
+    updated_at = now()
+  WHERE id = v_application.id
+  RETURNING * INTO v_application;
+
+  UPDATE loan_offers SET status = 'accepted', decided_at = now(), updated_at = now()
+  WHERE id = v_offer.id;
+
+  UPDATE loan_offers SET status = 'rejected', decided_at = now(), updated_at = now()
+  WHERE application_id = v_application.id AND id != v_offer.id AND status = 'submitted';
+
+  RETURN v_application;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.accept_loan_offer(uuid) FROM public;
+GRANT EXECUTE ON FUNCTION public.accept_loan_offer(uuid) TO authenticated;
+
+COMMENT ON FUNCTION public.accept_loan_offer IS 'Applicant accepts one submitted loan_offer: atomically rewrites applications terms, flips the winner to accepted, rejects every other submitted offer for that application, and returns applications.status to approved.';

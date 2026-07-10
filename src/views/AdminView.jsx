@@ -28,6 +28,10 @@ function AdminView({
   onMainApplicantDeceasedChange,
   terminationProceeds,
   loadingProceeds,
+  applicationOffers,
+  loadingOffers,
+  openingAuction,
+  onOpenForAuction,
   approvedAmount,
   onApprovedAmountChange,
   showTerminationModal,
@@ -39,6 +43,7 @@ function AdminView({
   onSearch,
   onFilterFieldChange,
   onFilterValueChange,
+  onPendingQuickFilter,
   onSortChange,
   onApplicationClick,
   onApproveApplication,
@@ -64,6 +69,7 @@ function AdminView({
   formatDate,
   getStatusBadgeClass,
   getStatusDisplayText,
+  getDaysWaiting,
 }) {
   const { user, userRole, loading: authLoading } = useAuth();
 
@@ -127,16 +133,34 @@ function AdminView({
 
           {/* Statistics Cards */}
           <div className="admin-statistics-cards">
-            <div className="admin-stat-card">
+            <div
+              className="admin-stat-card admin-stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={onPendingQuickFilter}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onPendingQuickFilter();
+                }
+              }}
+              title="Show pending applications only"
+            >
               <div className="admin-stat-label">Pending Applications</div>
               <div className="admin-stat-value">{statistics.pending || 0}</div>
-              <div className="admin-stat-subtitle">Awaiting review</div>
+              <div className="admin-stat-subtitle">Awaiting review &mdash; click to filter</div>
             </div>
 
             <div className="admin-stat-card">
               <div className="admin-stat-label">Approved</div>
               <div className="admin-stat-value">{statistics.approved || 0}</div>
               <div className="admin-stat-subtitle">Active loan agreements</div>
+            </div>
+
+            <div className="admin-stat-card">
+              <div className="admin-stat-label">In Auction</div>
+              <div className="admin-stat-value">{statistics.auctioning || 0}</div>
+              <div className="admin-stat-subtitle">Open to provider bidding</div>
             </div>
 
             <div className="admin-stat-card">
@@ -181,6 +205,14 @@ function AdminView({
                   />
                 </div>
 
+                <button
+                  type="button"
+                  className={`admin-quick-filter-btn ${filters.status === "pending" ? "admin-quick-filter-btn-active" : ""}`}
+                  onClick={onPendingQuickFilter}
+                >
+                  ⏳ Pending Only
+                </button>
+
                 <div className="admin-filter-group">
                   <span className="admin-filter-label">Value:</span>
                   <select
@@ -200,9 +232,11 @@ function AdminView({
                     }}
                   >
                     <option value="all">All</option>
+                    <option value="pending">Pending (Submitted + Under Review)</option>
                     <option value="submitted">Submitted</option>
                     <option value="underReviewed">Under Review</option>
                     <option value="approved">Approved</option>
+                    <option value="auctioning">In Auction</option>
                     <option value="rejected">Rejected</option>
                     <option value="terminated">Terminated</option>
                   </select>
@@ -238,6 +272,7 @@ function AdminView({
                 <div className="admin-table-col">Applicant</div>
                 <div className="admin-table-col">Property</div>
                 <div className="admin-table-col">Submitted</div>
+                <div className="admin-table-col">Days Waiting</div>
                 <div className="admin-table-col">Status</div>
                 <div className="admin-table-col">Actions</div>
               </div>
@@ -273,6 +308,20 @@ function AdminView({
                       </div>
                       <div className="admin-table-col">
                         {formatDate(app.submitted_at)}
+                      </div>
+                      <div className="admin-table-col">
+                        {(() => {
+                          const daysWaiting = getDaysWaiting(app);
+                          if (daysWaiting === null) return "—";
+                          const isOverdue = daysWaiting > 7;
+                          return (
+                            <span
+                              className={`admin-days-badge ${isOverdue ? "admin-days-badge-overdue" : ""}`}
+                            >
+                              {daysWaiting} {daysWaiting === 1 ? "day" : "days"}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <div className="admin-table-col">
                         {app.status === "terminated" ? (
@@ -373,19 +422,19 @@ function AdminView({
                             })()}
                           </div>
                           <div className="admin-info-subtitle">
-                            Estimated value: RM{" "}
-                            {selectedApplication.property?.expected_market_value?.toLocaleString() ||
-                              selectedApplication.property?.indicative_market_value?.toLocaleString()}
+                            Purchase price: RM{" "}
+                            {selectedApplication.property?.purchase_price?.toLocaleString()}
                           </div>
                         </div>
                       </div>
 
                       {/* Requested Amount */}
                       <div className="admin-requested-amount">
-                        <div className="admin-info-label">Purchase Price</div>
+                        <div className="admin-info-label">Expected Market Value</div>
                         <div className="admin-amount-value">
                           RM{" "}
-                          {selectedApplication.property?.purchase_price?.toLocaleString()}
+                          {selectedApplication.property?.expected_market_value?.toLocaleString() ||
+                            selectedApplication.property?.indicative_market_value?.toLocaleString()}
                         </div>
                         <div className="admin-info-subtitle">
                           Purchased:{" "}
@@ -595,6 +644,75 @@ function AdminView({
                         </div>
                       )}
 
+                      {/* Provider Auction Section - visible once opened for bidding or an offer has been accepted */}
+                      {(selectedApplication?.status === "auctioning" ||
+                        selectedApplication?.accepted_offer_id) && (
+                        <div className="admin-auction-section">
+                          <h3>Submitted Provider Offers</h3>
+                          {loadingOffers ? (
+                            <p>Loading offers...</p>
+                          ) : applicationOffers.length === 0 ? (
+                            <p>No providers have submitted an offer yet.</p>
+                          ) : (
+                            <table className="admin-offers-table">
+                              <thead>
+                                <tr>
+                                  <th>Provider</th>
+                                  <th>Amount</th>
+                                  <th>Rate</th>
+                                  <th>Term</th>
+                                  <th>Status</th>
+                                  <th>Contact</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {applicationOffers.map((offer) => (
+                                  <tr key={offer.id}>
+                                    <td>{offer.providerCompanyName}</td>
+                                    <td>
+                                      RM{" "}
+                                      {offer.offerAmount.toLocaleString(
+                                        undefined,
+                                        { minimumFractionDigits: 2 },
+                                      )}
+                                    </td>
+                                    <td>
+                                      {offer.interestRate !== null
+                                        ? `${offer.interestRate}%`
+                                        : "N/A"}
+                                    </td>
+                                    <td>{offer.loanTermMonths} mo</td>
+                                    <td>{offer.status}</td>
+                                    <td>
+                                      {offer.providerContactPerson}
+                                      {offer.providerEmail
+                                        ? ` (${offer.providerEmail})`
+                                        : ""}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Open for Auction Button - only for approved applications not yet opened, and not while a termination request is under review */}
+                      {selectedApplication?.status === "approved" &&
+                        !selectedApplication?.termination_submitted_at && (
+                        <button
+                          className="admin-open-auction-btn"
+                          onClick={() =>
+                            onOpenForAuction(selectedApplication.id)
+                          }
+                          disabled={openingAuction}
+                        >
+                          {openingAuction
+                            ? "Opening..."
+                            : "Open for Provider Auction"}
+                        </button>
+                      )}
+
                       {/* Approve Button - Hide when termination is pending or terminated */}
                       {!selectedApplication?.termination_submitted_at &&
                         selectedApplication?.status !== "terminated" && (
@@ -602,12 +720,15 @@ function AdminView({
                             className="admin-approve-btn"
                             onClick={onApproveApplication}
                             disabled={
-                              selectedApplication?.status === "approved"
+                              selectedApplication?.status === "approved" ||
+                              selectedApplication?.status === "auctioning"
                             }
                           >
                             {selectedApplication?.status === "approved"
                               ? "Already Approved"
-                              : "Approve Application"}
+                              : selectedApplication?.status === "auctioning"
+                                ? "Auction In Progress"
+                                : "Approve Application"}
                           </button>
                         )}
                     </>

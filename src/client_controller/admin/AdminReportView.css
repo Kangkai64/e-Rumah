@@ -165,6 +165,8 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
+  display: block;
+  overflow-x: auto;
 }
 
 .report-table thead th {
@@ -211,6 +213,42 @@
   padding: 4rem 2rem;
   color: #6c757d;
   font-size: 1.125rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-report-view {
+    padding: 1rem;
+  }
+
+  .report-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .action-buttons {
+    justify-content: stretch;
+  }
+
+  .btn-print,
+  .btn-download {
+    flex: 1;
+  }
+
+  .report-container {
+    padding: 1.5rem;
+  }
+
+  .report-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .report-meta {
+    text-align: left;
+  }
 }
 
 /* Print styles */

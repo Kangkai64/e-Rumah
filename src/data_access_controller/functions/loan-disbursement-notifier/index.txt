@@ -1,0 +1,110 @@
+import { createClient } from "npm:@supabase/supabase-js@2.28.0";
+import process from "node:process";
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
+async function sendEmail(to: string, name: string, subject: string, html: string) {
+  // Reuse 'enquiry-form-confirmation-email'; it requires {to, name, subject, message}
+  // and 'emailType' picks the raw-HTML template (message is embedded as-is).
+  const res = await supabase.functions.invoke('enquiry-form-confirmation-email', {
+    body: { to, name, subject, message: html, emailType: 'health_report_share' },
+  }).catch((e: any) => ({ error: e }));
+  return res;
+}
+
+function formatCurrency(amount: number) {
+  return `RM ${Number(amount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+async function notifyPendingDisbursements() {
+  const { data: pending, error } = await supabase
+    .from('loan_disbursement_schedules')
+    .select('id, amount, scheduled_date, application:applications(users!applications_user_id_fkey(full_name))')
+    .eq('status', 'pending')
+    .is('notified_at', null)
+    .order('scheduled_date', { ascending: true })
+    .limit(200);
+
+  if (error) {
+    console.error('Query error', error);
+    return;
+  }
+  if (!pending || pending.length === 0) return;
+
+  const { data: admins, error: adminsError } = await supabase
+    .from('admins')
+    .select('email, full_name')
+    .not('email', 'is', null);
+
+  if (adminsError) {
+    console.error('Failed to load admins', adminsError);
+    return;
+  }
+  if (!admins || admins.length === 0) return;
+
+  const rowsHtml = pending
+    .map((row: any) => {
+      const applicantName = row.application?.users?.full_name || 'N/A';
+      return `<tr>
+        <td style="padding:6px 12px;border-bottom:1px solid #eee;">${applicantName}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #eee;">${formatCurrency(row.amount)}</td>
+        <td style="padding:6px 12px;border-bottom:1px solid #eee;">${row.scheduled_date}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const subject = `${pending.length} loan disbursement${pending.length > 1 ? 's' : ''} pending confirmation`;
+  const html = `
+    <p>The following auto-scheduled loan disbursements are due and waiting for admin confirmation:</p>
+    <table style="border-collapse:collapse;width:100%;max-width:520px;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:6px 12px;border-bottom:2px solid #ddd;">Applicant</th>
+          <th style="text-align:left;padding:6px 12px;border-bottom:2px solid #ddd;">Amount</th>
+          <th style="text-align:left;padding:6px 12px;border-bottom:2px solid #ddd;">Due date</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <p>Review and confirm them from the Loan Disbursement Management page.</p>
+  `;
+
+  for (const admin of admins as any[]) {
+    try {
+      const sendRes = await sendEmail(admin.email, admin.full_name || 'Admin', subject, html);
+      if (sendRes?.error) throw sendRes.error;
+    } catch (e) {
+      console.error('Failed to notify admin', admin.email, e);
+    }
+  }
+
+  const ids = pending.map((row: any) => row.id);
+  const upd = await supabase
+    .from('loan_disbursement_schedules')
+    .update({ notified_at: new Date().toISOString() })
+    .in('id', ids);
+  if (upd.error) console.error('Failed to mark notified_at', upd.error);
+}
+
+console.info('loan-disbursement-notifier starting');
+Deno.serve(async (req: Request) => {
+  try {
+    const url = new URL(req.url);
+    if (url.pathname === '/run') {
+      await notifyPendingDisbursements();
+      return new Response(JSON.stringify({ status: 'ok' }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response('loan-disbursement-notifier: alive');
+  } catch (err) {
+    console.error('Handler error', err);
+    return new Response('error', { status: 500 });
+  }
+});

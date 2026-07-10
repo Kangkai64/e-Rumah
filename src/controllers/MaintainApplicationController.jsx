@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Application from '../models/Application'
+import PropertyValuation from '../models/PropertyValuation'
 import { getCurrentUser } from '../services/authService'
 import MaintainApplicationView from '../views/MaintainApplicationView'
 import { useToast } from '../client_controller/common/ToastContext'
@@ -28,6 +29,7 @@ function MaintainApplicationController() {
   const [documents, setDocuments] = useState([])
   const [documentsLoading, setDocumentsLoading] = useState(false)
   const [documentsError, setDocumentsError] = useState(null)
+  const [valuationSchedule, setValuationSchedule] = useState(null)
   const [downloadingPDF, setDownloadingPDF] = useState(false)
   const [pdfError, setPdfError] = useState(null)
   const [showRejectTerminationReason, setShowRejectTerminationReason] = useState(true)
@@ -171,7 +173,54 @@ function MaintainApplicationController() {
 
     fetchDocuments()
   }, [currentUser, application])
-  
+
+  // Fetch the property valuation schedule for this application, if any
+  useEffect(() => {
+    if (!application?.id) return
+
+    const fetchValuationSchedule = async () => {
+      try {
+        const result = await PropertyValuation.getByApplicationId(application.id)
+        if (result.success) {
+          setValuationSchedule(result.data)
+        }
+      } catch (err) {
+        console.error('Error fetching valuation schedule:', err)
+      }
+    }
+
+    fetchValuationSchedule()
+  }, [application?.id])
+
+  // Reflect the valuation schedule status in the timeline once it's loaded
+  useEffect(() => {
+    if (!valuationSchedule) return
+
+    setTimeline((prev) => {
+      const withoutValuationEvents = prev.filter(
+        (event) => event.title !== 'Valuation Scheduled' && event.title !== 'Valuation Completed'
+      )
+
+      if (valuationSchedule.status === 'completed') {
+        return [...withoutValuationEvents, {
+          date: valuationSchedule.completedAt,
+          title: 'Valuation Completed',
+          status: 'completed'
+        }]
+      }
+
+      if (valuationSchedule.status === 'scheduled') {
+        return [...withoutValuationEvents, {
+          date: valuationSchedule.scheduledDate,
+          title: 'Valuation Scheduled',
+          status: 'completed'
+        }]
+      }
+
+      return withoutValuationEvents
+    })
+  }, [valuationSchedule])
+
   // Build timeline from application data
   const buildTimeline = (appData) => {
     const events = []
@@ -347,6 +396,7 @@ function MaintainApplicationController() {
       documents={documents}
       documentsLoading={documentsLoading}
       documentsError={documentsError}
+      valuationSchedule={valuationSchedule}
       userId={currentUser?.id}
       onDocumentUploaded={handleDocumentUploaded}
       downloadingPDF={downloadingPDF}

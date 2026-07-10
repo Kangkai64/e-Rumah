@@ -37,6 +37,11 @@
   color: #065f46;
 }
 
+.status-badge.status-auctioning {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+
 .status-badge.status-pending {
   background-color: #fef3c7;
   color: #92400e;
@@ -55,6 +60,40 @@
 .status-badge.status-default {
   background-color: #f3f4f6;
   color: #6b7280;
+}
+
+/* Auctioning Status Banner */
+.auction-status-banner {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  background-color: #ede9fe;
+  border: 1px solid #ddd6fe;
+  border-radius: 8px;
+  border-left: 4px solid #7c3aed;
+}
+
+.auction-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.auction-message {
+  flex: 1;
+}
+
+.auction-message h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #5b21b6;
+}
+
+.auction-message p {
+  margin: 0.5rem 0;
+  color: #5b21b6;
+  font-size: 0.95rem;
 }
 
 /* Termination Status Banner */

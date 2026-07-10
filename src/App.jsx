@@ -19,8 +19,10 @@ import LoanDisbursementController from "./controllers/LoanDisbursementController
 import UserDashboardController from "./controllers/UserDashboardController.jsx";
 import CustomerSupportController from "./controllers/CustomerSupportController.jsx";
 import UserSupportController from "./controllers/UserSupportController.jsx";
+import ProviderController from "./controllers/ProviderController.jsx";
 import UserLoginPage from "./client_controller/auth/UserLoginPage";
 import StaffLoginPage from "./client_controller/auth/StaffLoginPage";
+import ProviderLoginPage from "./client_controller/auth/ProviderLoginPage";
 import RegistrationPage from "./client_controller/auth/RegistrationPage";
 import EligibilityCheck from "./client_controller/eligibility/EligibilityCheck";
 import HealthReportController from "./controllers/HealthReportController.jsx";
@@ -522,6 +524,7 @@ function App() {
             <Route path="/eligibility-check" element={<EligibilityCheck />} />
             <Route path="/login" element={<UserLoginPage />} />
             <Route path="/staff-login" element={<StaffLoginPage />} />
+            <Route path="/provider-login" element={<ProviderLoginPage />} />
             <Route path="/register" element={<RegistrationPage />} />
 
             <Route
@@ -727,6 +730,19 @@ function App() {
                   <>
                     <Header />
                     <CustomerSupportController />
+                  </>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Provider Routes */}
+            <Route
+              path="/provider/dashboard"
+              element={
+                <ProtectedRoute requireRole="provider">
+                  <>
+                    <Header />
+                    <ProviderController />
                   </>
                 </ProtectedRoute>
               }

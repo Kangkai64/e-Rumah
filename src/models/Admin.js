@@ -79,13 +79,19 @@ const Admin = {
       endOfMonth.setMonth(endOfMonth.getMonth() + 1);
       endOfMonth.setMilliseconds(-1);
 
+      const last30Days = new Date();
+      last30Days.setDate(last30Days.getDate() - 30);
+
       const [applicationsResult, reportsResult] = await Promise.all([
-        supabase.from("applications").select("status"),
+        supabase.from("applications").select("status, rejected_at"),
         supabase
           .from("reports")
           .select("*", { count: "exact", head: true })
-          .gte("generated_at", startOfMonth.toISOString())
-          .lte("generated_at", endOfMonth.toISOString()),
+          // created_at is set once on insert and never touched again, unlike
+          // generated_at (which viewMonthlyReport() also bumps on every view
+          // of an existing report) - see migration 020.
+          .gte("created_at", startOfMonth.toISOString())
+          .lte("created_at", endOfMonth.toISOString()),
       ]);
 
       if (applicationsResult.error) throw applicationsResult.error;
@@ -100,8 +106,14 @@ const Admin = {
         ).length,
         approved: applications.filter((app) => app.status === "approved")
           .length,
-        rejected: applications.filter((app) => app.status === "rejected")
+        auctioning: applications.filter((app) => app.status === "auctioning")
           .length,
+        rejected: applications.filter(
+          (app) =>
+            app.status === "rejected" &&
+            app.rejected_at &&
+            new Date(app.rejected_at) >= last30Days,
+        ).length,
         total: applications.filter((app) => app.status !== "draft").length,
         reportsGenerated,
       };
@@ -272,6 +284,7 @@ const Admin = {
       const result = await corsProxyUpdate("applications", applicationId, {
         status: "rejected",
         remarks: remarks,
+        rejected_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
 
@@ -306,6 +319,11 @@ const Admin = {
       // Add reviewed_at timestamp when moving to underReviewed status
       if (status === "underReviewed") {
         updates.reviewed_at = new Date().toISOString();
+      }
+
+      // Add rejected_at timestamp when moving to rejected status
+      if (status === "rejected") {
+        updates.rejected_at = new Date().toISOString();
       }
 
       // Clear termination fields when terminating application
@@ -358,6 +376,40 @@ const Admin = {
   },
 
   /**
+   * Open an approved application for provider bidding
+   * @param {string} applicationId - Application ID
+   * @param {string} adminId - Admin who opened the auction
+   * @returns {Promise<Object>} Updated application
+   */
+  async openApplicationForAuction(applicationId, adminId) {
+    try {
+      const result = await corsProxyUpdate("applications", applicationId, {
+        status: "auctioning",
+        auction_opened_at: new Date().toISOString(),
+        auction_opened_by: adminId,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (!result.success) throw new Error(result.error);
+      return { success: true, data: result.data };
+    } catch (error) {
+      console.error("Error opening application for auction:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get submitted provider offers for an application (full visibility,
+   * including provider contact info, for admin oversight)
+   * @param {string} applicationId - Application ID
+   * @returns {Promise<Object>} Offers with provider details
+   */
+  async getApplicationOffers(applicationId) {
+    const LoanOffer = (await import("./LoanOffer")).default;
+    return LoanOffer.getOffersForAdmin(applicationId);
+  },
+
+  /**
    * Get application documents from form data
    * @param {string} applicationId - Application ID
    * @returns {Promise<Object>} Application documents
@@ -378,7 +430,6 @@ const Admin = {
         applicantNRIC: formData.documents?.applicantNRIC || null,
         jointApplicantNRIC: formData.documents?.jointApplicantNRIC || null,
         birthCertificate: formData.documents?.birthCertificate || null,
-        marriageCertificate: formData.documents?.marriageCertificate || null,
         payslips: formData.documents?.payslips || [],
         bankStatements: formData.documents?.bankStatements || [],
         epfStatement: formData.documents?.epfStatement || null,

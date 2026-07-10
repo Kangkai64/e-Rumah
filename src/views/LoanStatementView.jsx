@@ -307,6 +307,10 @@ function UserProfileView({
   onDismissBankDetailsModal,
   bankDetailsSubmitting,
   bankDetailsError,
+  auctionOffers = [],
+  onAcceptOffer,
+  acceptingOfferId,
+  auctionError,
 }) {
   const scheduleByYear = disbursementSchedule.reduce((accumulator, entry) => {
     if (!accumulator[entry.year]) {
@@ -346,6 +350,45 @@ function UserProfileView({
         </div>
 
         <div className="dashboard-content">
+          {/* Provider Auction Offers - shown only while the application is open for bidding */}
+          {auctionOffers.length > 0 && (
+            <div className="auction-offers-section">
+              <h2 className="card-title">Offers Awaiting Your Decision</h2>
+              <p className="auction-offers-intro">
+                {auctionOffers.length} reverse mortgage provider(s) have
+                submitted a competing offer. Accepting an offer is final and
+                declines every other offer.
+              </p>
+              {auctionError && (
+                <p className="error-message">{auctionError}</p>
+              )}
+              <div className="auction-offers-list">
+                {auctionOffers.map((offer) => (
+                  <div key={offer.id} className="auction-offer-card">
+                    <div className="auction-offer-details">
+                      <strong>{offer.providerName || "Provider"}</strong>
+                      <span>Amount: {formatCurrency(offer.offerAmount)}</span>
+                      {offer.interestRate !== null && (
+                        <span>Rate: {offer.interestRate}% p.a.</span>
+                      )}
+                      <span>Term: {offer.loanTermMonths} months</span>
+                      {offer.notes && <span>Notes: {offer.notes}</span>}
+                    </div>
+                    <button
+                      className="auction-accept-btn"
+                      onClick={() => onAcceptOffer(offer.id)}
+                      disabled={acceptingOfferId === offer.id}
+                    >
+                      {acceptingOfferId === offer.id
+                        ? "Accepting..."
+                        : "Accept this offer"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Loan Overview Section */}
           <div className="loan-overview-section">
             <div className="loan-overview-card">
@@ -642,6 +685,14 @@ function UserProfileView({
                           ? `From ${formatDate(payoutDetails.startDate)} to ${formatDate(payoutDetails.endDate)} (${payoutDetails?.totalMonths || 0} months)`
                           : "Payout period not yet available."}
                       </p>
+                      {payoutDetails?.providerName && (
+                        <p className="info-period">
+                          via {payoutDetails.providerName}
+                          {payoutDetails?.interestRate
+                            ? ` · ${payoutDetails.interestRate}% p.a.`
+                            : ""}
+                        </p>
+                      )}
                     </div>
 
                     <div className="payout-info-right">

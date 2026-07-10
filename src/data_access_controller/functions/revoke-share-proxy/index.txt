@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     const ALLOWLIST: Record<string, string[]> = {
     // table_name: [allowed_field_names_in_patch]
     users: ['email','full_name','phone', 'ic_number','updated_at','role'],
-    applications: ['status','remarks', 'main_applicant_deceased', 'submitted_at', 'reviewed_at', 'approved_at','is_flagged','flagged_reason','flagged_at', 'flagged_by', 'flagged_code','termination_reason','termination_submitted_at','termination_update_at','updated_at'],
+    applications: ['status','remarks', 'main_applicant_deceased', 'submitted_at', 'reviewed_at', 'approved_at', 'rejected_at','is_flagged','flagged_reason','flagged_at', 'flagged_by', 'flagged_code','termination_reason','termination_submitted_at','termination_update_at','updated_at','auction_opened_at','auction_opened_by','loan_term_months','interest_rate','accepted_offer_id','approved_amount'],
     application_data: ['current_step','form_data','updated_at'],
     nominees: ['type', 'name','ic_number','address','postcode','email','residence_phone','telephone','sex','race','is_malaysian','marital_status','relationship','dob','updated_at'],
     properties: ['property_type','address','postcode','indicative_market_value','valuation_date','expected_market_value','purchase_price','purchase_date','tenure_title','expiry_date','build_up_area','land_area','is_encumbered','bank_name','est_outstanding_balance','has_fire_insurance','insurance_company','insurance_period_validity','updated_at'],
@@ -57,7 +57,8 @@ Deno.serve(async (req: Request) => {
     caregivers: ['license_number','specialization','years_of_experience','bio','is_verified','updated_at'],
     healthcare_providers: ['provider_type','license_number','specialty','organization_name','address','is_verified','updated_at'],
     health_report_shares: ['is_revoked','expires_at','access_count','last_accessed_at','updated_at'],
-    family_members: ['relationship_type','is_emergency_contact','is_verified','permissions_level','notes','updated_at']
+    family_members: ['relationship_type','is_emergency_contact','is_verified','permissions_level','notes','updated_at'],
+    reports: ['name','report_type','year','month','generated_at','total','approved','rejected','pending']
   };
 
 

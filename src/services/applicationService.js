@@ -30,7 +30,7 @@ export const getOrCreateApplication = async (userId) => {
       .from("applications")
       .select("*")
       .eq("user_id", userId)
-      .in("status", ["draft", "submitted", "underReviewed", "approved"])
+      .in("status", ["draft", "submitted", "underReviewed", "approved", "auctioning"])
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -153,12 +153,12 @@ export const saveApplicationData = async (
  */
 export const loadApplicationData = async (userId) => {
   try {
-    // Fetch the last submitted/underReviewed/approved/terminated application for this user
+    // Fetch the last submitted/underReviewed/approved/auctioning/terminated application for this user
     const { data: application, error: fetchError } = await supabase
       .from("applications")
       .select("*")
       .eq("user_id", userId)
-      .in("status", ["submitted", "underReviewed", "approved", "terminated"])
+      .in("status", ["submitted", "underReviewed", "approved", "auctioning", "terminated"])
       .order("created_at", { ascending: false })
       .limit(1)
       .single();

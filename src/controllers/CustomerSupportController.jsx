@@ -8,6 +8,7 @@ import SupportConversation from '../models/SupportConversation'
 import HealthReport from '../models/HealthReport'
 import CustomerSupportView from '../views/CustomerSupportView'
 import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
+import { isTempEmail } from '../utils/emailBlacklist'
 
 export default function CustomerSupportController() {
   const { user } = useAuth()
@@ -58,6 +59,10 @@ export default function CustomerSupportController() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(contactEmail)) {
       setContactError('Please enter a valid email address')
+      return
+    }
+    if (isTempEmail(contactEmail)) {
+      setContactError('Temporary email addresses are not allowed')
       return
     }
 

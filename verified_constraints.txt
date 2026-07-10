@@ -121,9 +121,8 @@ C7. DOCUMENT CHECKLIST (Step 5)
 
 [Conditional Documents]
 9. Joint Applicant NRIC (Required if Joint Applicant exists)
-10. Marriage Certificate (Required if Married + Joint Applicant)
-11. Fire Insurance Policy (Required if Insurance is "In Force")
-12. Property Loan Statement (Required if Encumbered - though encumbrance blocks submission)
+10. Fire Insurance Policy (Required if Insurance is "In Force")
+11. Property Loan Statement (Required if Encumbered - though encumbrance blocks submission)
 
 C8. SIGNATURES & DECLARATION (Step 5 & 6)
 -----------------------------------------

@@ -34,6 +34,23 @@ function AdminApplicationReviewView({
   onConfirmFlagDocument,
   onCancelFlagDocument,
   onFlagDocumentReasonChange,
+  valuationSchedule,
+  showScheduleValuationModal,
+  scheduleValuationForm,
+  schedulingValuation,
+  onOpenScheduleValuation,
+  onCloseScheduleValuation,
+  onScheduleValuationFormChange,
+  onConfirmScheduleValuation,
+  showCompleteValuationModal,
+  completeValuationForm,
+  completingValuation,
+  onOpenCompleteValuation,
+  onCloseCompleteValuation,
+  onCompleteValuationFormChange,
+  onConfirmCompleteValuation,
+  cancellingValuation,
+  onCancelValuationSchedule,
   onBackToDashboard,
   onViewDocument,
   onClosePDFViewer,
@@ -555,25 +572,31 @@ function AdminApplicationReviewView({
                 {documents && documents.length > 0 ? (
                   <div className="documents-grid">
                     {documents.map((doc, index) => {
-                      // Filter out Marriage Certificate if user is single
-                      const maritalStatus = application?.submitted_form_data?.maritalStatus || application?.application_data?.form_data?.maritalStatus
-                      if (doc.displayName === 'Marriage Certificate' && maritalStatus === 'Single') {
-                        return null
-                      }
+                      const isValuationReport = doc.displayName === 'Valuation Report'
+                      const showValuationScheduling = isValuationReport && doc.status === 'MISSING'
 
                       return (
                         <div key={index} className="document-item">
                           <div className="document-icon">
-                            {doc.status === 'FOUND' ? '📄' : '❌'}
+                            {doc.status === 'FOUND' ? '📄' : showValuationScheduling && valuationSchedule?.status === 'scheduled' ? '📅' : '❌'}
                           </div>
                           <div className="document-info">
                             <span className="document-name">{doc.displayName}</span>
                             <span className="document-status">
-                              {doc.status === 'FOUND' ? `${(doc.size / 1024).toFixed(2)} KB` : 'Not uploaded'}
+                              {doc.status === 'FOUND'
+                                ? `${(doc.size / 1024).toFixed(2)} KB`
+                                : showValuationScheduling && valuationSchedule?.status === 'scheduled'
+                                  ? `Scheduled: ${formatDate(valuationSchedule.scheduledDate)}`
+                                  : 'Not uploaded'}
                             </span>
                             {doc.status === 'FOUND' && doc.createdAt && (
                               <span className="document-date">
                                 Uploaded: {formatDate(doc.createdAt)}
+                              </span>
+                            )}
+                            {showValuationScheduling && valuationSchedule?.status === 'scheduled' && valuationSchedule?.valuerName && (
+                              <span className="document-date">
+                                Valuer: {valuationSchedule.valuerName}
                               </span>
                             )}
                           </div>
@@ -591,6 +614,33 @@ function AdminApplicationReviewView({
                                 disabled={flaggingDocument}
                               >
                                 Flag
+                              </button>
+                            </div>
+                          )}
+                          {showValuationScheduling && (!valuationSchedule || valuationSchedule.status === 'cancelled') && (
+                            <div className="document-actions">
+                              <button
+                                className="view-document-btn"
+                                onClick={onOpenScheduleValuation}
+                              >
+                                Schedule Valuation
+                              </button>
+                            </div>
+                          )}
+                          {showValuationScheduling && valuationSchedule?.status === 'scheduled' && (
+                            <div className="document-actions">
+                              <button
+                                className="view-document-btn"
+                                onClick={onOpenCompleteValuation}
+                              >
+                                Mark Complete
+                              </button>
+                              <button
+                                className="flag-document-btn"
+                                onClick={onCancelValuationSchedule}
+                                disabled={cancellingValuation}
+                              >
+                                Cancel
                               </button>
                             </div>
                           )}
@@ -700,6 +750,11 @@ function AdminApplicationReviewView({
                 step="0.01"
                 min="0"
               />
+              {(fd.expectedMarketValue || prop.expected_market_value) && (
+                <span className="approved-amount-hint">
+                  Suggested: 70% of applicant expected market value ({formatCurrency((fd.expectedMarketValue || prop.expected_market_value) * 0.7)})
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -778,6 +833,112 @@ function AdminApplicationReviewView({
                 style={{backgroundColor: '#dc2626'}}
               >
                 {flaggingDocument ? 'Flagging...' : 'Flag & Delete Document'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Valuation Modal */}
+      {showScheduleValuationModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Schedule Valuation</h2>
+            <p>Arrange a property valuation appointment with a partner valuer. The applicant will be notified by email.</p>
+            <div className="form-group">
+              <label>Date & Time *</label>
+              <input
+                type="datetime-local"
+                value={scheduleValuationForm.scheduledDate}
+                onChange={(e) => onScheduleValuationFormChange('scheduledDate', e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Valuer Name</label>
+              <input
+                type="text"
+                value={scheduleValuationForm.valuerName}
+                onChange={(e) => onScheduleValuationFormChange('valuerName', e.target.value)}
+                placeholder="e.g. Ahmad Zaki (ABC Valuers)"
+              />
+            </div>
+            <div className="form-group">
+              <label>Valuer Contact</label>
+              <input
+                type="text"
+                value={scheduleValuationForm.valuerContact}
+                onChange={(e) => onScheduleValuationFormChange('valuerContact', e.target.value)}
+                placeholder="Phone number or email"
+              />
+            </div>
+            <div className="form-group">
+              <label>Notes for Applicant</label>
+              <textarea
+                className="rejection-textarea"
+                value={scheduleValuationForm.locationNotes}
+                onChange={(e) => onScheduleValuationFormChange('locationNotes', e.target.value)}
+                placeholder="e.g. Please ensure gate access is available"
+                rows="3"
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-button" onClick={onCloseScheduleValuation}>
+                Cancel
+              </button>
+              <button
+                className="confirm-reject-button"
+                onClick={onConfirmScheduleValuation}
+                disabled={!scheduleValuationForm.scheduledDate || schedulingValuation}
+              >
+                {schedulingValuation ? 'Scheduling...' : 'Schedule Valuation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Valuation Modal */}
+      {showCompleteValuationModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Complete Valuation</h2>
+            <p>Enter the valuer's result and upload the valuation report. This will be attached to the applicant's documents.</p>
+            <div className="form-group">
+              <label>Assessed Value (RM) *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={completeValuationForm.resultValue}
+                onChange={(e) => onCompleteValuationFormChange('resultValue', e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Valuation Date</label>
+              <input
+                type="date"
+                value={completeValuationForm.valuationDate}
+                onChange={(e) => onCompleteValuationFormChange('valuationDate', e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Valuation Report File *</label>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                onChange={(e) => onCompleteValuationFormChange('reportFile', e.target.files[0] || null)}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="cancel-button" onClick={onCloseCompleteValuation}>
+                Cancel
+              </button>
+              <button
+                className="confirm-reject-button"
+                onClick={onConfirmCompleteValuation}
+                disabled={!completeValuationForm.resultValue || !completeValuationForm.reportFile || completingValuation}
+              >
+                {completingValuation ? 'Saving...' : 'Mark Complete'}
               </button>
             </div>
           </div>

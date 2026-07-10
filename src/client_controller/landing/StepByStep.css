@@ -612,9 +612,32 @@
     grid-template-columns: 1fr;
   }
 
+  .sbs-hero-section {
+    height: auto;
+  }
+
+  .sbs-hero-image {
+    height: 300px;
+  }
+
+  .sbs-hero-content {
+    margin: 0;
+    padding-right: 0;
+  }
+
+  .sbs-hero-title {
+    width: auto;
+  }
+
   .sbs-about-grid,
   .sbs-eligibility-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sbs-about-left,
+  .sbs-about-right {
+    width: auto;
+    margin-left: 0;
   }
 
   .sbs-branches-list {
@@ -626,8 +649,17 @@
     text-align: center;
   }
 
+  .sbs-peace-content h2,
+  .sbs-peace-content p {
+    padding-right: 0;
+  }
+
   .sbs-peace-section,
   .sbs-contact-section {
+    padding: 2rem;
+  }
+
+  .sbs-contact-content {
     padding: 2rem;
   }
 }

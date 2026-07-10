@@ -16,6 +16,7 @@ import logo from "../../assets/images/logo.png";
 import bgImage from "../../assets/images/loginPageBg.jpg";
 import leftArrow from "../../assets/icons/icon_arrowLeft.svg";
 import { useToast } from "../common/ToastContext";
+import PasswordInput from "../common/PasswordInput";
 
 const NAME_PATTERN = /^[A-Za-z\s'-]+$/;
 const SPECIAL_CHAR_PATTERN = /[!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~\\]/;
@@ -378,8 +379,7 @@ export default function SignupPage() {
 
               <div className="form-group">
                 <label>Password *</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -416,8 +416,7 @@ export default function SignupPage() {
 
               <div className="form-group">
                 <label>Confirm Password *</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}

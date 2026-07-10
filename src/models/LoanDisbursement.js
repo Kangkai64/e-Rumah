@@ -41,9 +41,33 @@ const resolveApprovedAmount = (application) => {
   return resolvePropertyValue(application) * 0.7;
 };
 
+// Applications that went through the provider auction carry the accepted
+// offer's loan_term_months; legacy/no-auction applications leave this null
+// and fall back to the original 240-month default.
+const resolveLoanTermMonths = (application) => {
+  const termMonths = Number(application?.loan_term_months);
+  return Number.isFinite(termMonths) && termMonths > 0
+    ? termMonths
+    : DEFAULT_LOAN_MONTHS;
+};
+
 const resolveMonthlyAmount = (application) => {
   const approvedAmount = resolveApprovedAmount(application);
-  return approvedAmount > 0 ? approvedAmount / DEFAULT_LOAN_MONTHS : 0;
+  const termMonths = resolveLoanTermMonths(application);
+  return approvedAmount > 0 ? approvedAmount / termMonths : 0;
+};
+
+// Applications approved through the provider auction have interest_rate set
+// directly by accept_loan_offer() and accepted_offer_id pointing at the
+// winning loan_offers row (joined here only to name the provider); legacy/
+// no-auction applications have neither.
+const resolveProviderInfo = (application) => {
+  const interestRate = Number(application?.interest_rate);
+
+  return {
+    providerName: application?.loan_offers?.providers?.company_name || null,
+    interestRate: Number.isFinite(interestRate) && interestRate > 0 ? interestRate : null,
+  };
 };
 
 const mapTransaction = (transaction) => ({
@@ -135,6 +159,7 @@ const calculateApportionedProceeds = (application, totalDisbursed) => {
 const buildSummary = (application, transactions = []) => {
   const totalEligibleAmount = resolveApprovedAmount(application);
   const monthlyAmount = resolveMonthlyAmount(application);
+  const { providerName, interestRate } = resolveProviderInfo(application);
   const totalDisbursed = transactions.reduce(
     (sum, transaction) => sum + toNumber(transaction.amount),
     0,
@@ -164,6 +189,9 @@ const buildSummary = (application, transactions = []) => {
     approvedAt: application.approved_at,
     approvedAmount: resolveApprovedAmount(application),
     monthlyAmount,
+    loanTermMonths: resolveLoanTermMonths(application),
+    interestRate,
+    providerName,
     totalEligibleAmount,
     totalDisbursed,
     remainingBalance,
@@ -190,6 +218,12 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
+          loan_term_months,
+          interest_rate,
+          accepted_offer_id,
+          loan_offers!applications_accepted_offer_id_fkey(
+            providers(company_name)
+          ),
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -245,6 +279,9 @@ const LoanDisbursement = {
           approvedAt: application.approved_at,
           approvedAmount: summary.approvedAmount,
           monthlyAmount: summary.monthlyAmount,
+          loanTermMonths: summary.loanTermMonths,
+          interestRate: summary.interestRate,
+          providerName: summary.providerName,
           totalEligibleAmount: summary.totalEligibleAmount,
           totalDisbursed: totalsByApplication[application.id] || 0,
           remainingBalance: Math.max(
@@ -278,6 +315,12 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
+          loan_term_months,
+          interest_rate,
+          accepted_offer_id,
+          loan_offers!applications_accepted_offer_id_fkey(
+            providers(company_name)
+          ),
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -416,6 +459,158 @@ const LoanDisbursement = {
     }
   },
 
+  async getPendingSchedules() {
+    try {
+      const { data, error } = await supabase
+        .from("loan_disbursement_schedules")
+        .select(
+          `
+          id,
+          application_id,
+          user_id,
+          disbursement_number,
+          scheduled_date,
+          amount,
+          status,
+          applications(
+            users!applications_user_id_fkey(full_name),
+            properties(property_type, address)
+          )
+        `,
+        )
+        .eq("status", "pending")
+        .order("scheduled_date", { ascending: true });
+
+      if (error) throw error;
+
+      const schedules = (data || []).map((row) => ({
+        id: row.id,
+        applicationId: row.application_id,
+        userId: row.user_id,
+        disbursementNumber: row.disbursement_number,
+        scheduledDate: row.scheduled_date,
+        amount: toNumber(row.amount),
+        applicantName: row.applications?.users?.full_name || "N/A",
+        propertyType: row.applications?.properties?.property_type || "Property",
+        propertyAddress: row.applications?.properties?.address || "N/A",
+      }));
+
+      return { success: true, data: schedules };
+    } catch (error) {
+      console.error("Error fetching pending disbursement schedules:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async confirmScheduledDisbursement(scheduleId, adminId, overrides = {}) {
+    try {
+      // Atomically claim the schedule row first (status transition guarded by
+      // .eq("status", "pending")) so two concurrent confirms - double-click,
+      // two admin tabs, or a reload mid-flow - can't both pass the pending
+      // check and both create a real transactions row for the same slot.
+      const { data: claimed, error: claimError } = await supabase
+        .from("loan_disbursement_schedules")
+        .update({
+          status: "confirmed",
+          confirmed_by: adminId,
+          confirmed_at: new Date().toISOString(),
+        })
+        .eq("id", scheduleId)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
+
+      if (claimError) throw claimError;
+      if (!claimed) {
+        return {
+          success: false,
+          error: "This disbursement schedule has already been resolved",
+        };
+      }
+
+      const createResult = await this.createDisbursement(
+        claimed.application_id,
+        {
+          amount: overrides.amount ?? claimed.amount,
+          transactionDate: overrides.transactionDate ?? claimed.scheduled_date,
+          description:
+            overrides.description ||
+            `Auto-scheduled disbursement #${claimed.disbursement_number}`,
+          referenceNumber: overrides.referenceNumber,
+        },
+      );
+
+      if (!createResult.success) {
+        // Release the claim so the schedule can be retried instead of being
+        // stuck "confirmed" with no transaction behind it.
+        await supabase
+          .from("loan_disbursement_schedules")
+          .update({ status: "pending", confirmed_by: null, confirmed_at: null })
+          .eq("id", scheduleId);
+        return createResult;
+      }
+
+      const { error: updateError } = await supabase
+        .from("loan_disbursement_schedules")
+        .update({ transaction_id: createResult.data.record.id })
+        .eq("id", scheduleId);
+
+      if (updateError) throw updateError;
+
+      return createResult;
+    } catch (error) {
+      console.error("Error confirming scheduled disbursement:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async skipScheduledDisbursement(scheduleId, reason = "") {
+    try {
+      const { error } = await supabase
+        .from("loan_disbursement_schedules")
+        .update({
+          status: "skipped",
+          notes: reason || null,
+        })
+        .eq("id", scheduleId)
+        .eq("status", "pending");
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error skipping scheduled disbursement:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // No approved application found - check whether one is currently open for
+  // auction instead, so the dashboard can show "offers awaiting your
+  // decision" rather than a bare "No Active Loan".
+  async _buildNoLoanOverview(userId) {
+    const { data: auctioningApplication, error } = await supabase
+      .from("applications")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "auctioning")
+      .maybeSingle();
+
+    if (error && error.code !== "PGRST116") throw error;
+
+    return {
+      hasLoan: false,
+      isAuctioning: Boolean(auctioningApplication),
+      applicationId: auctioningApplication?.id || null,
+      totalEligibleAmount: 0,
+      disbursedToDate: 0,
+      remainingBalance: 0,
+      status: auctioningApplication
+        ? "Offers Awaiting Your Decision"
+        : "No Active Loan",
+      propertyDetails: null,
+    };
+  },
+
   async getUserLoanOverview(userId) {
     try {
       const { data: application, error } = await supabase
@@ -427,6 +622,7 @@ const LoanDisbursement = {
           status,
           approved_at,
           approved_amount,
+          loan_term_months,
           users!applications_user_id_fkey(
             full_name,
             ic_number,
@@ -447,34 +643,14 @@ const LoanDisbursement = {
 
       if (error) {
         if (error.code === "PGRST116") {
-          return {
-            success: true,
-            data: {
-              hasLoan: false,
-              totalEligibleAmount: 0,
-              disbursedToDate: 0,
-              remainingBalance: 0,
-              status: "No Active Loan",
-              propertyDetails: null,
-            },
-          };
+          return { success: true, data: await this._buildNoLoanOverview(userId) };
         }
 
         throw error;
       }
 
       if (!application) {
-        return {
-          success: true,
-          data: {
-            hasLoan: false,
-            totalEligibleAmount: 0,
-            disbursedToDate: 0,
-            remainingBalance: 0,
-            status: "No Active Loan",
-            propertyDetails: null,
-          },
-        };
+        return { success: true, data: await this._buildNoLoanOverview(userId) };
       }
 
       const { data: transactions, error: transactionError } = await supabase
@@ -673,6 +849,12 @@ const LoanDisbursement = {
           id,
           approved_at,
           approved_amount,
+          loan_term_months,
+          interest_rate,
+          accepted_offer_id,
+          loan_offers!applications_accepted_offer_id_fkey(
+            providers(company_name)
+          ),
           properties(
             expected_market_value,
             indicative_market_value
@@ -694,6 +876,8 @@ const LoanDisbursement = {
               endDate: null,
               totalMonths: 0,
               nextPayoutDate: null,
+              interestRate: null,
+              providerName: null,
               bankAccount: null,
             },
           };
@@ -712,6 +896,8 @@ const LoanDisbursement = {
             endDate: null,
             totalMonths: 0,
             nextPayoutDate: null,
+            interestRate: null,
+            providerName: null,
             bankDetails: null,
             bankAccount: null,
           },
@@ -719,7 +905,8 @@ const LoanDisbursement = {
       }
 
       const monthlyAmount = resolveMonthlyAmount(application);
-      const totalMonths = DEFAULT_LOAN_MONTHS;
+      const totalMonths = resolveLoanTermMonths(application);
+      const { providerName, interestRate } = resolveProviderInfo(application);
       const startDate = formatIsoDate(application.approved_at);
       const endDate = addMonths(startDate, totalMonths - 1);
 
@@ -767,6 +954,8 @@ const LoanDisbursement = {
           endDate,
           totalMonths,
           nextPayoutDate,
+          interestRate,
+          providerName,
           bankDetails,
           bankAccount: formatBankAccountLabel(bankDetails),
         },

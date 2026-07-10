@@ -619,4 +619,8 @@
     width: 95%;
     padding: 1.5rem;
   }
+
+  .modal-header h2 {
+    width: auto;
+  }
 }

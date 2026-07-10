@@ -147,6 +147,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     jSalutation: "",
     jName: "",
     jIc: "",
+    jSameAddress: true,
     jAddress: "",
     jPostcode: "",
     jEmail: "",
@@ -155,6 +156,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     jDobDay: "",
     jDobMonth: "",
     jDobYear: "",
+    jSameMaritalStatus: true,
     jMarital: "",
     jRace: "",
     jMalaysian: false,
@@ -183,6 +185,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     valuationDay: "",
     valuationMonth: "",
     valuationYear: "",
+    valuationReportPending: false,
     expectedMarketValue: "",
     purchasePrice: "",
     purchaseDay: "",
@@ -279,7 +282,6 @@ function ApplicationController({ editNomineeOnly = false }) {
       applicantNRIC: { url: "", fileName: "", uploadedAt: "" },
       jointApplicantNRIC: { url: "", fileName: "", uploadedAt: "" },
       birthCertificate: { url: "", fileName: "", uploadedAt: "" },
-      marriageCertificate: { url: "", fileName: "", uploadedAt: "" },
       payslips: [
         { url: "", fileName: "", uploadedAt: "" },
         { url: "", fileName: "", uploadedAt: "" },
@@ -937,6 +939,40 @@ function ApplicationController({ editNomineeOnly = false }) {
         });
       }
 
+      // Auto-fill: Sync joint applicant's address/postcode/residence phone with
+      // the applicant's when they're marked as living together (default),
+      // including the moment joint application is first enabled.
+      if (
+        (name === "address" || name === "postcode" || name === "residencePhone") &&
+        prev.jSameAddress
+      ) {
+        if (name === "address") updates.jAddress = value;
+        if (name === "postcode") updates.jPostcode = value;
+        if (name === "residencePhone") updates.jResidencePhone = value;
+      }
+      if (name === "jSameAddress" && checked) {
+        updates.jAddress = prev.address;
+        updates.jPostcode = prev.postcode;
+        updates.jResidencePhone = prev.residencePhone;
+      }
+      if (name === "isJointApplicant" && checked && prev.jSameAddress) {
+        updates.jAddress = prev.address;
+        updates.jPostcode = prev.postcode;
+        updates.jResidencePhone = prev.residencePhone;
+      }
+
+      // Auto-fill: Sync joint applicant's marital status with the applicant's
+      // when they're marked as having the same marital status (default).
+      if (name === "maritalStatus" && prev.jSameMaritalStatus) {
+        updates.jMarital = value;
+      }
+      if (name === "jSameMaritalStatus" && checked) {
+        updates.jMarital = prev.maritalStatus;
+      }
+      if (name === "isJointApplicant" && checked && prev.jSameMaritalStatus) {
+        updates.jMarital = prev.maritalStatus;
+      }
+
       // Auto-fill: Parse IC number and fill birthdate + sex + citizenship for nominee 1
       if (name === "nominee1Ic") {
         updates.nominee1DobDay = "";
@@ -1121,7 +1157,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       // Show uploading indicator
       setUploadProgress((prev) => ({
         ...prev,
-        [uploadKey]: { uploading: true },
+        [uploadKey]: true,
       }));
 
       // Upload file with numbered suffix for array items
@@ -1140,7 +1176,7 @@ function ApplicationController({ editNomineeOnly = false }) {
         showToast("Upload failed: " + error.message, "error");
         setUploadProgress((prev) => ({
           ...prev,
-          [uploadKey]: { uploading: false },
+          [uploadKey]: false,
         }));
         return;
       }
@@ -1168,7 +1204,7 @@ function ApplicationController({ editNomineeOnly = false }) {
       // Clear upload progress
       setUploadProgress((prev) => ({
         ...prev,
-        [uploadKey]: { uploading: false },
+        [uploadKey]: false,
       }));
 
       // Clear error for this field if it exists
@@ -1199,7 +1235,7 @@ function ApplicationController({ editNomineeOnly = false }) {
         arrayIndex !== null ? `${documentType}_${arrayIndex}` : documentType;
       setUploadProgress((prev) => ({
         ...prev,
-        [uploadKey]: { uploading: false },
+        [uploadKey]: false,
       }));
     }
   };
@@ -1719,6 +1755,9 @@ function ApplicationController({ editNomineeOnly = false }) {
       const field = form.getCheckBox(fieldName);
       if (checked) field.check();
       else field.uncheck();
+      // Force pdf-lib to redraw a tick mark instead of reusing the
+      // template's existing "Yes" appearance stream (which renders as a dot)
+      field.defaultUpdateAppearances();
     } catch (e) {
       // Field doesn't exist, skip
     }

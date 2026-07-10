@@ -9,9 +9,13 @@ function LoanDisbursementView({
   disbursementRecords,
   formState,
   submitting,
+  pendingSchedules,
+  activeScheduleId,
   onSelectApplication,
   onFormChange,
   onCreateDisbursement,
+  onReviewSchedule,
+  onSkipSchedule,
   onBackToDashboard,
   formatCurrency,
   formatDate,
@@ -43,6 +47,57 @@ function LoanDisbursementView({
         </div>
 
         {error && <div className="loan-disbursement-error">{error}</div>}
+
+        <section className="pending-schedules-card">
+          <div className="card-heading">
+            <h2>Pending Automatic Disbursements</h2>
+            <p>
+              Auto-scheduled monthly payouts awaiting admin confirmation.
+              Confirm once the bank transfer has actually been made.
+            </p>
+          </div>
+
+          {pendingSchedules.length === 0 ? (
+            <div className="empty-state inline">
+              No automatic disbursements are pending confirmation.
+            </div>
+          ) : (
+            <div className="pending-schedule-list">
+              {pendingSchedules.map((schedule) => (
+                <div key={schedule.id} className="pending-schedule-row">
+                  <div>
+                    <strong>{schedule.applicantName}</strong>
+                    <span>{schedule.propertyAddress}</span>
+                  </div>
+                  <div>
+                    <span className="summary-label">Amount</span>
+                    <strong>{formatCurrency(schedule.amount)}</strong>
+                  </div>
+                  <div>
+                    <span className="summary-label">Due date</span>
+                    <strong>{formatDate(schedule.scheduledDate)}</strong>
+                  </div>
+                  <div className="pending-schedule-actions">
+                    <button
+                      className="schedule-review-btn"
+                      onClick={() => onReviewSchedule(schedule)}
+                      disabled={submitting}
+                    >
+                      Review
+                    </button>
+                    <button
+                      className="schedule-skip-btn"
+                      onClick={() => onSkipSchedule(schedule.id)}
+                      disabled={submitting}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <div className="loan-disbursement-summary-grid">
           <div className="summary-card">
@@ -101,6 +156,17 @@ function LoanDisbursementView({
                       </span>
                       <br></br>
                       <small>{application.propertyAddress}</small>
+                      {application.providerName && (
+                        <>
+                          <br></br>
+                          <small>
+                            via {application.providerName}
+                            {application.interestRate
+                              ? ` · ${application.interestRate}% p.a.`
+                              : ""}
+                          </small>
+                        </>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -138,6 +204,26 @@ function LoanDisbursementView({
                     </strong>
                   </div>
                   <div>
+                    <span className="summary-label">Loan term</span>
+                    <strong>
+                      {selectedSummary.loanTermMonths
+                        ? `${selectedSummary.loanTermMonths} months`
+                        : "N/A"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="summary-label">Interest rate</span>
+                    <strong>
+                      {selectedSummary.interestRate
+                        ? `${selectedSummary.interestRate}% p.a.`
+                        : "N/A"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="summary-label">Provider</span>
+                    <strong>{selectedSummary.providerName || "N/A"}</strong>
+                  </div>
+                  <div>
                     <span className="summary-label">Total disbursed</span>
                     <strong>
                       {formatCurrency(selectedSummary.totalDisbursed || 0)}
@@ -151,14 +237,29 @@ function LoanDisbursementView({
                   </div>
                 </div>
 
-                <div className="disbursement-form-card">
+                <div
+                  className="disbursement-form-card"
+                  id="disbursement-form-section"
+                >
                   <div className="card-heading compact">
-                    <h3>Record Disbursement</h3>
+                    <h3>
+                      {activeScheduleId
+                        ? "Confirm Auto-Scheduled Disbursement"
+                        : "Record Disbursement"}
+                    </h3>
                     <p>
-                      Create a payout transaction for the selected approved
-                      application.
+                      {activeScheduleId
+                        ? "Confirming this will mark the auto-scheduled payout as paid and record the transaction."
+                        : "Create a payout transaction for the selected approved application."}
                     </p>
                   </div>
+                  {activeScheduleId && (
+                    <div className="active-schedule-banner">
+                      Reviewing an auto-scheduled payout. Adjust the details
+                      below if needed, then confirm once the transfer has
+                      been made.
+                    </div>
+                  )}
                   {selectedSummary.missedMonths > 0 && (
                     <div className="missed-months-warning">
                       {selectedSummary.missedMonths} missed payout
@@ -220,9 +321,11 @@ function LoanDisbursementView({
                   >
                     {submitting
                       ? "Recording..."
-                      : selectedSummary.canDisburse
-                        ? "Record Disbursement"
-                        : "Fully Disbursed"}
+                      : !selectedSummary.canDisburse
+                        ? "Fully Disbursed"
+                        : activeScheduleId
+                          ? "Confirm & Record"
+                          : "Record Disbursement"}
                   </button>
                 </div>
               </>

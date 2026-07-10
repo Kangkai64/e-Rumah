@@ -529,9 +529,18 @@
   }
 }
 
+@media (max-width: 1024px) {
+  .contact-us-left::after {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .about-hero-overlay h1 {
     font-size: 42px;
+    margin: 0;
+    text-align: center;
+    padding: 0 1.5rem;
   }
 
   .our-purpose-container,

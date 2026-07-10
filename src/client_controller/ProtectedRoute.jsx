@@ -78,6 +78,7 @@ export default function ProtectedRoute({ children, requireRole = null }) {
     // Redirect to appropriate dashboard based on role
     if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
     if (role === "support") return <Navigate to="/support/dashboard" replace />;
+    if (role === "provider") return <Navigate to="/provider/dashboard" replace />;
     if (role === "user") {
       // Terminated or complete users go to dashboard, incomplete go to application
       return applicationStatus === "incomplete" ? (

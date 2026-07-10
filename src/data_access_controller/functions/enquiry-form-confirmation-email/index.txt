@@ -8,8 +8,13 @@ interface EmailData {
   subject: string
   message: string
   contactNumber?: string
-  emailType?: 'enquiry' | 'health_report_share'
+  emailType?: 'enquiry' | 'health_report_share' | 'valuation_scheduled' | 'valuation_completed' | 'auction_open' | 'offer_accepted'
 }
+
+// Email types whose HTML is already fully built client-side (message is
+// used as-is, just wrapped with the shared header/footer) rather than
+// assembled from structured fields like the 'enquiry' type is.
+const PREBUILT_HTML_EMAIL_TYPES = ['health_report_share', 'valuation_scheduled', 'valuation_completed', 'auction_open', 'offer_accepted']
 
 const buildEnquiryEmail = (data: EmailData): string => {
   return `
@@ -40,7 +45,9 @@ const buildEnquiryEmail = (data: EmailData): string => {
   `
 }
 
-const buildHealthReportShareEmail = (data: EmailData): string => {
+// Wraps an already-built HTML message with the shared header/footer.
+// Used for health_report_share, valuation_scheduled, and valuation_completed.
+const buildPrebuiltHtmlEmail = (data: EmailData): string => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px;">
@@ -92,8 +99,8 @@ serve(async (req) => {
     let htmlContent: string
     let subject: string
 
-    if (emailType === 'health_report_share') {
-      htmlContent = buildHealthReportShareEmail(body)
+    if (PREBUILT_HTML_EMAIL_TYPES.includes(emailType)) {
+      htmlContent = buildPrebuiltHtmlEmail(body)
       subject = body.subject
     } else {
       htmlContent = buildEnquiryEmail(body)

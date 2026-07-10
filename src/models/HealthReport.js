@@ -4,7 +4,7 @@
 
 import { supabase } from '../config/supabase'
 import { corsProxyUpdate } from '../services/corsProxyService'
-import { uploadDocument, deleteDocument } from '../services/fileUploadService'
+import { uploadHealthReport as uploadHealthReportFile, deleteDocument } from '../services/fileUploadService'
 import { sendHealthReportShareEmail } from '../services/emailService'
 
 const HealthReport = {
@@ -170,15 +170,20 @@ const HealthReport = {
    * Upload health report file to storage
    * @param {string} userId - User ID
    * @param {File} file - File to upload
+   * @param {Object} metadata - Report metadata used to derive a meaningful file name (reportType, reportDate)
    * @returns {Promise<Object>} Upload result with file URL
    */
-  async uploadFile(userId, file) {
+  async uploadFile(userId, file, metadata = {}) {
     try {
-      const uploadResult = await uploadDocument(
+      const uploadResult = await uploadHealthReportFile(
         file,
         userId,
         'health-report',
-        { bucket: 'health-reports' }
+        {
+          bucket: 'health-reports',
+          reportType: metadata.reportType,
+          reportDate: metadata.reportDate
+        }
       )
 
       if (uploadResult.error) {
@@ -307,7 +312,10 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
       return { success: false, error: validationResult.error }
     }
 
-    const uploadResult = await HealthReport.uploadFile(userId, file)
+    const uploadResult = await HealthReport.uploadFile(userId, file, {
+      reportType: metadata.reportType,
+      reportDate: metadata.reportDate
+    })
     if (!uploadResult.success) {
       return { success: false, error: uploadResult.error || 'Failed to upload file' }
     }

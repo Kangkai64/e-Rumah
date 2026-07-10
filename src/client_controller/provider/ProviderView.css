@@ -1,0 +1,220 @@
+.provider-page {
+  min-height: 100vh;
+  color: #1f2937;
+}
+
+.provider-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+}
+
+.provider-loading {
+  padding: 48px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.provider-hero {
+  margin-bottom: 24px;
+}
+
+.provider-kicker {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b91c1c;
+}
+
+.provider-hero h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  color: #111827;
+}
+
+.provider-intro {
+  max-width: 720px;
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #4b5563;
+}
+
+.provider-error {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.provider-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 22px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.06);
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.card-heading h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #111827;
+}
+
+.card-heading p {
+  margin: 0 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.empty-state.inline {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  text-align: center;
+}
+
+.provider-application-list,
+.provider-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.provider-application-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.application-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.application-summary strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.summary-label {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.offer-status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  justify-content: center;
+}
+
+.offer-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.offer-status-badge.status-submitted {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.offer-status-badge.status-accepted {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.offer-status-badge.status-rejected {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.offer-status-badge.status-withdrawn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.provider-withdraw-btn,
+.provider-submit-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.provider-withdraw-btn {
+  background: #fff;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.provider-submit-btn {
+  background: #b91c1c;
+  color: #fff;
+  margin-top: 8px;
+}
+
+.provider-submit-btn:disabled,
+.provider-withdraw-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.offer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.offer-form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.offer-form-row label,
+.offer-notes-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.offer-form-row input,
+.offer-notes-label textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.provider-history-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 14px;
+}

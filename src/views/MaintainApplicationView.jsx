@@ -22,6 +22,7 @@ function MaintainApplicationView({
   documents = [],
   documentsLoading = false,
   documentsError = null,
+  valuationSchedule = null,
   userId = null,
   onDocumentUploaded = null,
   downloadingPDF = false,
@@ -232,6 +233,17 @@ function MaintainApplicationView({
             {applicationStatus?.toUpperCase()}
           </div>
         </div>
+
+        {/* Auctioning Status Banner */}
+        {applicationStatus === 'auctioning' && (
+          <div className="auction-status-banner">
+            <div className="auction-icon">🏛️</div>
+            <div className="auction-message">
+              <h3>Application Open for Provider Bidding</h3>
+              <p>Your approved application has been opened to reverse mortgage providers. Any offers submitted will appear on your dashboard for you to review and accept.</p>
+            </div>
+          </div>
+        )}
 
         {/* Termination Status Message */}
         {applicationStatus === 'underReviewed' && application?.termination_submitted_at && (
@@ -508,17 +520,27 @@ function MaintainApplicationView({
               ) : documents.length > 0 ? (
                 <div className="documents-gallery">
                   {documents.map((doc, index) => {
-                    // Filter out Marriage Certificate if user is single
-                    const maritalStatus = application?.submitted_form_data?.maritalStatus
-                    if (doc.displayName === 'Marriage Certificate' && maritalStatus === 'Single') {
-                      return null
-                    }
-                    
+                    const isPendingValuation = doc.displayName === 'Valuation Report' &&
+                      doc.status === 'MISSING' &&
+                      valuationSchedule?.status === 'scheduled'
+
                     return (
                     <div key={index} className={`document-item ${doc.status === 'MISSING' ? 'document-missing' : ''}`}>
-                      {doc.status === 'MISSING' ? (
+                      {isPendingValuation ? (
+                        // Admin-scheduled valuation - read only, no self-upload
+                        <div className="document-missing-content">
+                          <div className="missing-icon">📅</div>
+                          <div className="missing-text">Valuation Scheduled</div>
+                          <p style={{fontSize: '0.85rem', margin: '0.25rem 0 0'}}>
+                            {formatDate(valuationSchedule.scheduledDate)}
+                          </p>
+                          {valuationSchedule.valuerName && (
+                            <p style={{fontSize: '0.85rem', margin: 0}}>Valuer: {valuationSchedule.valuerName}</p>
+                          )}
+                        </div>
+                      ) : doc.status === 'MISSING' ? (
                         // Missing Document Display with Upload Button
-                        <div 
+                        <div
                           className="document-missing-content"
                           onClick={() => handleMissingDocClick(doc)}
                         >
@@ -589,7 +611,7 @@ function MaintainApplicationView({
           {/* Right Column - Approved Amount & Actions */}
           <div className="maintain-application-right">
             {/* Approved Amount Section */}
-            {(applicationStatus === 'approved' || applicationStatus === 'terminated' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
+            {(applicationStatus === 'approved' || applicationStatus === 'auctioning' || applicationStatus === 'terminated' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
               <>
                 <section className={`maintain-application-section ${applicationStatus === 'terminated' ? 'payback-section' : 'approved-section'}`}>
                   <h2>{applicationStatus === 'terminated' ? 'PAYBACK AMOUNT' : 'APPROVED AMOUNT'}</h2>
@@ -781,6 +803,8 @@ function getStatusColor(status) {
   switch (status?.toLowerCase()) {
     case 'approved':
       return 'status-approved'
+    case 'auctioning':
+      return 'status-auctioning'
     case 'pending':
       return 'status-pending'
     case 'rejected':

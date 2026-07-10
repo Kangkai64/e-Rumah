@@ -458,8 +458,6 @@ export const validateStep1 = (formData) => {
   if (!formData.documents?.birthCertificate?.url) {
     errors.birthCertificate = "Birth Certificate is required";
   }
-  // Marriage certificate is optional (only shown when married AND joint applicant)
-
   // Payslips (3 required)
   for (let i = 0; i < 3; i++) {
     if (!formData.documents?.payslips?.[i]?.url) {
@@ -745,9 +743,14 @@ export const validateStep3 = (formData) => {
   if (!formData.documents?.saleAgreement?.url) {
     errors.saleAgreement = "Sale & Purchase Agreement is required";
   }
-  if (!formData.documents?.valuationReport?.url) {
+  if (
+    !formData.valuationReportPending &&
+    !formData.documents?.valuationReport?.url
+  ) {
     errors.valuationReport = "Valuation Report is required";
   }
+  // If no valuation report yet, admin will schedule an official valuation
+  // and fill in the result after submission (no validation needed here)
   // Fire Insurance document only required if insurance is "In force"
   if (
     formData.fireInsurance === "inForce" &&

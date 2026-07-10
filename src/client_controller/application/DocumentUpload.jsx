@@ -16,17 +16,6 @@ const DocumentUpload = ({
   const dragCounter = useRef(0)
   const fileInputRef = useRef(null)
 
-  const acceptedExtensions = accept
-    .split(',')
-    .map((ext) => ext.trim().toLowerCase())
-    .filter(Boolean)
-
-  const isFileAccepted = (file) => {
-    if (acceptedExtensions.length === 0) return true
-    const fileName = file.name?.toLowerCase() || ''
-    return acceptedExtensions.some((ext) => fileName.endsWith(ext))
-  }
-
   const isDisabled = () => uploading || !!fileInputRef.current?.matches(':disabled')
 
   const handleDragEnter = (e) => {
@@ -64,10 +53,10 @@ const DocumentUpload = ({
     const file = e.dataTransfer.files?.[0]
     if (!file) return
 
-    if (!isFileAccepted(file)) {
-      return
-    }
-
+    // Forward every dropped file to the same validated upload path used by
+    // the file picker (fileUploadService checks the real MIME type, not just
+    // the extension) so unsupported formats get a proper error instead of
+    // being silently dropped here.
     onUpload({ target: { files: [file] } })
   }
 

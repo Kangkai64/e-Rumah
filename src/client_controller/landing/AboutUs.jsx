@@ -132,7 +132,7 @@ const EnquiryForm = ({ onSubmit }) => {
           name="email"
           value={formData.email}
           onChange={handleChange}
-          placeholder="example@email.com"
+          placeholder="yourname@gmail.com"
           className={errors.email ? 'input-error' : ''}
         />
         {errors.email && <span className="error-message">{errors.email}</span>}

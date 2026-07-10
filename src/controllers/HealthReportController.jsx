@@ -30,6 +30,9 @@ import { processPDF } from '../utils/pdfCompression'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
 import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
 import { corsProxyFunctionInvoke } from '../services/corsProxyService'
+import { isTempEmail } from '../utils/emailBlacklist'
+
+const EMAIL_FORMAT_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function HealthReportController() {
   const navigate = useNavigate()
@@ -58,7 +61,6 @@ function HealthReportController() {
   const [showSort, setShowSort] = useState(false)
   const [errors, setErrors] = useState({})
   const [statistics, setStatistics] = useState({
-    reminderThisWeek: 0,
     overdueHealthReport: 0,
     healthReportDueSoon: 0,
     pending: 0,
@@ -232,7 +234,7 @@ function HealthReportController() {
         providerName: filters.providerName || undefined,
         sortBy,
         sortOrder,
-        showArchived: activeTab === 'archived' && userRole !== 'admin'
+        showArchived: activeTab === 'archived'
       }
 
       // Use different function based on user role
@@ -467,6 +469,17 @@ function HealthReportController() {
     setMultiUploadForm(prev => ({ ...prev, [field]: value }))
   }, [])
 
+  // Reset multi-upload form fields back to defaults (e.g. after a successful upload)
+  const handleClearMultiUploadForm = useCallback(() => {
+    setMultiUploadForm({
+      reportType: 'Medical Report',
+      reportDate: new Date().toISOString().split('T')[0],
+      reportTitle: '',
+      providerName: '',
+      customReportType: ''
+    })
+  }, [])
+
   // Handle upload submit
   const handleUploadSubmit = async () => {
     try {
@@ -650,7 +663,9 @@ function HealthReportController() {
           currentUser.id,
           'health_report',
           {
-            signedUrlDuration: 31536000 // 1 year
+            signedUrlDuration: 31536000, // 1 year
+            reportType,
+            reportDate: multiUploadForm.reportDate
           }
         );
 
@@ -833,6 +848,23 @@ function HealthReportController() {
         return
       }
 
+      if (['caregiver', 'family', 'healthcare', 'email'].includes(shareForm.shareOption)) {
+        const email = (shareForm.email || '').trim()
+        if (!email) {
+          setErrors((prev) => ({ ...prev, shareEmail: 'Email address is required' }))
+          return
+        }
+        if (!EMAIL_FORMAT_PATTERN.test(email)) {
+          setErrors((prev) => ({ ...prev, shareEmail: 'Invalid email format' }))
+          return
+        }
+        if (isTempEmail(email)) {
+          setErrors((prev) => ({ ...prev, shareEmail: 'Temporary email addresses are not allowed' }))
+          return
+        }
+        setErrors((prev) => ({ ...prev, shareEmail: undefined }))
+      }
+
       // Use the shareHealthReport function for all sharing options
       const result = await shareHealthReport(
         selectedReport.id,
@@ -957,14 +989,7 @@ function HealthReportController() {
   // Calculate statistics based on actual health report data
   useEffect(() => {
     if (reports && reports.length > 0) {
-      const now = new Date()
-      const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      
       const stats = {
-        reminderThisWeek: reports.filter(r => {
-          const reportDate = new Date(r.report_date)
-          return reportDate >= now && reportDate <= oneWeekFromNow
-        }).length,
         overdueHealthReport: reports.filter(r => r.due_status === 'Overdue').length,
         healthReportDueSoon: reports.filter(r => r.due_status === 'Due Soon').length,
         pending: reports.filter(r => !r.health_report_status || r.health_report_status?.toLowerCase() === 'pending').length,
@@ -974,7 +999,6 @@ function HealthReportController() {
       setStatistics(stats)
     } else {
       setStatistics({
-        reminderThisWeek: 0,
         overdueHealthReport: 0,
         healthReportDueSoon: 0,
         pending: 0,
@@ -1611,13 +1635,16 @@ function HealthReportController() {
       setError(null)
       setShowReuploadConfirm(false)
 
-      // Upload the new file
+      // Upload the new file, keeping the original report's type/date in the derived code
+      const existingReport = reports.find(r => r.id === reuploadReportId)
       const uploadResult = await uploadHealthReportFile(
         reuploadFileData.file,
         currentUser.id,
         'health_report',
         {
-          signedUrlDuration: 31536000 // 1 year
+          signedUrlDuration: 31536000, // 1 year
+          reportType: existingReport?.report_type,
+          reportDate: existingReport?.report_date
         }
       )
 
@@ -1658,7 +1685,7 @@ function HealthReportController() {
       setIsUploading(false)
       setUploadProgress(0)
     }
-  }, [reuploadFileData, reuploadReportId, currentUser, handleClosePDFViewer, fetchReports, checkAlerts])
+  }, [reuploadFileData, reuploadReportId, currentUser, reports, handleClosePDFViewer, fetchReports, checkAlerts])
 
   // Handle reupload cancel
   const handleReuploadCancel = useCallback(() => {
@@ -1782,6 +1809,7 @@ function HealthReportController() {
       onDrop={handleDrop}
       onUploadFormChange={handleUploadFormChange}
       onMultiUploadFormChange={handleMultiUploadFormChange}
+      onClearMultiUploadForm={handleClearMultiUploadForm}
       onUploadSubmit={handleUploadSubmit}
       onMultipleFileUpload={handleMultipleFileUpload}
       onShareClick={handleShareClick}

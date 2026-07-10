@@ -7,6 +7,7 @@ import "./authLayout.css";
 import logo from "../../assets/images/logo.png";
 import bgImage from "../../assets/images/loginPageBg.jpg";
 import leftArrow from "../../assets/icons/icon_arrowLeft.svg";
+import PasswordInput from "../common/PasswordInput";
 
 export default function StaffLoginPage() {
   const navigate = useNavigate();
@@ -135,8 +136,7 @@ export default function StaffLoginPage() {
 
               <div className="form-group">
                 <label>Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="password"
                   value={formData.password}
                   onChange={handleChange}

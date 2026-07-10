@@ -428,7 +428,7 @@ const PropertyCalculatorView = ({
                     <dl className="property-calculator-summary-list">
                       <div>
                         <dt>Model used</dt>
-                        <dd>{calculationResults.model_used}</dd>
+                        <dd>{calculationResults.model_version}</dd>
                       </div>
                       <div>
                         <dt>Currency</dt>

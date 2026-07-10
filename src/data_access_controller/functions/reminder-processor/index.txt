@@ -1,8 +1,8 @@
 ========================================================================================================
 
-MODIFIED 2026-07-08: sendEmail payload fixed to match enquiry-form-confirmation-email's
-required fields (name/message/emailType). This version has NOT been redeployed yet -
-you must redeploy this function to Supabase for the fix to take effect.
+MODIFIED 2026-07-09: added CORS headers + OPTIONS preflight handling (was missing,
+causing the browser to block calls to /run with a CORS error). This version has NOT
+been redeployed yet - you must redeploy this function to Supabase for the fix to take effect.
 
 ========================================================================================================
 
@@ -66,17 +66,25 @@ async function processNotifications() {
 
 console.info('reminder-processor starting');
 Deno.serve(async (req: Request) => {
+  const corsHeaders = () => ({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey',
+  });
+
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders() });
+
   try {
     const url = new URL(req.url);
     if (url.pathname === '/run') {
       await processNotifications();
       return new Response(JSON.stringify({ status: 'ok' }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(), 'Content-Type': 'application/json' },
       });
     }
-    return new Response('reminder-processor: alive');
+    return new Response('reminder-processor: alive', { headers: corsHeaders() });
   } catch (err) {
     console.error('Handler error', err);
-    return new Response('error', { status: 500 });
+    return new Response('error', { status: 500, headers: corsHeaders() });
   }
 });

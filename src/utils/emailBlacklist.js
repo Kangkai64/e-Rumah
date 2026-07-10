@@ -30,6 +30,10 @@ export const TEMP_EMAIL_DOMAINS = [
   'mailay.com',
   'mailbox.click',
   'maildme.com',
+  // Reserved/example domains (RFC 2606) - not real inboxes, commonly typed as placeholders
+  'example.com',
+  'example.org',
+  'example.net',
 ]
 
 export const isTempEmail = (email) => {

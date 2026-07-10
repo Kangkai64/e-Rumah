@@ -7,8 +7,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../client_controller/sessionController/AuthContext";
 import Admin from "../models/Admin";
 import LoanDisbursement from "../models/LoanDisbursement";
+import Provider from "../models/Provider";
 import AdminView from "../views/AdminView";
 import { useToast } from "../client_controller/common/ToastContext";
+import { sendAuctionOpenEmail } from "../services/emailService";
 
 function AdminController() {
   const { user, userRole, loading: authLoading } = useAuth();
@@ -17,6 +19,7 @@ function AdminController() {
   const [statistics, setStatistics] = useState({
     pending: 0,
     approved: 0,
+    auctioning: 0,
     rejected: 0,
     reportsGenerated: 0,
   });
@@ -55,6 +58,11 @@ function AdminController() {
   // Apportioned proceeds (deceased-applicant termination) state
   const [terminationProceeds, setTerminationProceeds] = useState(null);
   const [loadingProceeds, setLoadingProceeds] = useState(false);
+
+  // Provider auction state
+  const [applicationOffers, setApplicationOffers] = useState([]);
+  const [loadingOffers, setLoadingOffers] = useState(false);
+  const [openingAuction, setOpeningAuction] = useState(false);
 
   // Approved amount state
   const [approvedAmount, setApprovedAmount] = useState("");
@@ -170,6 +178,19 @@ function AdminController() {
   };
 
   /**
+   * Quick filter: show only pending applications (submitted + underReviewed),
+   * sorted oldest-first so the longest-waiting applications surface first
+   */
+  const handlePendingQuickFilter = () => {
+    setFilters({
+      ...filters,
+      status: "pending",
+      sortBy: "submitted_at",
+      sortOrder: "asc",
+    });
+  };
+
+  /**
    * Handle sort change - toggles between newest and oldest
    */
   const handleSortChange = (sortBy, sortOrder) => {
@@ -200,6 +221,83 @@ function AdminController() {
       } else {
         setTerminationProceeds(null);
       }
+
+      if (
+        result.data.status === "auctioning" ||
+        result.data.accepted_offer_id
+      ) {
+        setLoadingOffers(true);
+        const offersResult = await Admin.getApplicationOffers(application.id);
+        setApplicationOffers(offersResult.success ? offersResult.data : []);
+        setLoadingOffers(false);
+      } else {
+        setApplicationOffers([]);
+      }
+    }
+  };
+
+  /**
+   * Handle opening an approved application for provider auction
+   */
+  const handleOpenForAuction = async (applicationId) => {
+    if (!applicationId) return;
+
+    if (
+      !window.confirm(
+        "Open this application to reverse mortgage providers for bidding?",
+      )
+    ) {
+      return;
+    }
+
+    setOpeningAuction(true);
+    try {
+      const result = await Admin.openApplicationForAuction(
+        applicationId,
+        user.id,
+      );
+      if (result.success) {
+        showToast("Application opened for provider bidding!", "success");
+        notifyActiveProviders(selectedApplication);
+        await loadDashboardData();
+        await handleApplicationClick({ id: applicationId });
+      } else {
+        showToast("Error opening application for auction: " + result.error, "error");
+      }
+    } catch (err) {
+      console.error("Error opening application for auction:", err);
+      showToast("Error opening application for auction: " + err.message, "error");
+    } finally {
+      setOpeningAuction(false);
+    }
+  };
+
+  /**
+   * Fire-and-forget: email every active provider that a new application is
+   * open for bidding. Never blocks or fails the auction-opening action.
+   */
+  const notifyActiveProviders = async (application) => {
+    try {
+      const providersResult = await Provider.getAllProviders();
+      if (!providersResult.success) return;
+
+      const activeProviders = (providersResult.data || []).filter(
+        (provider) => provider.is_active,
+      );
+
+      await Promise.all(
+        activeProviders.map((provider) =>
+          sendAuctionOpenEmail({
+            recipientEmail: provider.email,
+            recipientName: provider.company_name,
+            propertyType: application?.property?.property_type,
+            district: application?.property?.district,
+            approvedAmount: application?.approved_amount,
+          }),
+        ),
+      );
+    } catch (err) {
+      console.warn("Failed to notify providers of new auction:", err);
     }
   };
 
@@ -552,11 +650,28 @@ const handleCloseReportGenerator = () => {
         return "pending";
       case "approved":
         return "approved";
+      case "auctioning":
+        return "auctioning";
       case "rejected":
         return "rejected";
       default:
         return "";
     }
+  };
+
+  /**
+   * Get number of days an application has been waiting for review.
+   * Returns null for applications that aren't pending review.
+   */
+  const getDaysWaiting = (application) => {
+    if (application.status !== "submitted" && application.status !== "underReviewed") {
+      return null;
+    }
+    if (!application.submitted_at) return null;
+
+    const submittedAt = new Date(application.submitted_at);
+    const diffMs = Date.now() - submittedAt.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
   };
 
   /**
@@ -570,6 +685,8 @@ const handleCloseReportGenerator = () => {
         return "Under Review";
       case "approved":
         return "Approved";
+      case "auctioning":
+        return "In Auction";
       case "rejected":
         return "Rejected";
       case "terminated":
@@ -601,6 +718,10 @@ const handleCloseReportGenerator = () => {
       onMainApplicantDeceasedChange={setMainApplicantDeceased}
       terminationProceeds={terminationProceeds}
       loadingProceeds={loadingProceeds}
+      applicationOffers={applicationOffers}
+      loadingOffers={loadingOffers}
+      openingAuction={openingAuction}
+      onOpenForAuction={handleOpenForAuction}
       approvedAmount={approvedAmount}
       onApprovedAmountChange={handleApprovedAmountChange}
       showTerminationModal={showTerminationModal}
@@ -612,6 +733,7 @@ const handleCloseReportGenerator = () => {
       onSearch={handleSearch}
       onFilterFieldChange={handleFilterFieldChange}
       onFilterValueChange={handleFilterValueChange}
+      onPendingQuickFilter={handlePendingQuickFilter}
       onSortChange={handleSortChange}
       onApplicationClick={handleApplicationClick}
       onApproveApplication={handleApproveApplication}
@@ -636,6 +758,7 @@ const handleCloseReportGenerator = () => {
       formatDate={formatDate}
       getStatusBadgeClass={getStatusBadgeClass}
       getStatusDisplayText={getStatusDisplayText}
+      getDaysWaiting={getDaysWaiting}
     />
   );
 }

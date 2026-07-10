@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../client_controller/sessionController/AuthContext";
 import User from "../models/User";
 import LoanDisbursement from "../models/LoanDisbursement";
+import LoanOffer from "../models/LoanOffer";
+import Provider from "../models/Provider";
 import LoanStatementView from "../views/LoanStatementView";
+import { sendOfferAcceptedEmail } from "../services/emailService";
 
 const buildDisbursementSchedule = (payoutDetails, disbursements) => {
   const totalMonths = Number(payoutDetails?.totalMonths || 0);
@@ -90,6 +93,11 @@ function UserDashboardController() {
   const [bankDetailsSubmitting, setBankDetailsSubmitting] = useState(false);
   const [bankDetailsError, setBankDetailsError] = useState(null);
 
+  // Provider auction states - offers awaiting the applicant's decision
+  const [auctionOffers, setAuctionOffers] = useState([]);
+  const [acceptingOfferId, setAcceptingOfferId] = useState(null);
+  const [auctionError, setAuctionError] = useState(null);
+
   // Load dashboard data on mount
   useEffect(() => {
     if (user?.id) {
@@ -103,6 +111,29 @@ function UserDashboardController() {
       loadDisbursements();
     }
   }, [disbursementFilter]);
+
+  // Subscribe to real-time offer changes while the application is auctioning,
+  // so competing provider offers appear without a page reload
+  useEffect(() => {
+    const applicationId = dashboardData.loanOverview?.applicationId;
+    if (!dashboardData.loanOverview?.isAuctioning || !applicationId) return;
+
+    const subscription = LoanOffer.subscribeToApplicationOffers(
+      applicationId,
+      async () => {
+        const offersResult =
+          await LoanOffer.getOffersForApplication(applicationId);
+        setAuctionOffers(offersResult.success ? offersResult.data : []);
+      },
+    );
+
+    return () => {
+      LoanOffer.unsubscribeFromApplicationOffers(subscription);
+    };
+  }, [
+    dashboardData.loanOverview?.isAuctioning,
+    dashboardData.loanOverview?.applicationId,
+  ]);
 
   /**
    * Load all dashboard data
@@ -123,6 +154,16 @@ function UserDashboardController() {
       // Prompt for bank details when approved but none on file
       if (data.loanOverview?.hasLoan && !data.payoutDetails?.bankDetails) {
         setShowBankDetailsModal(true);
+      }
+
+      // Load competing provider offers when the application is open for auction
+      if (data.loanOverview?.isAuctioning && data.loanOverview?.applicationId) {
+        const offersResult = await LoanOffer.getOffersForApplication(
+          data.loanOverview.applicationId,
+        );
+        setAuctionOffers(offersResult.success ? offersResult.data : []);
+      } else {
+        setAuctionOffers([]);
       }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
@@ -228,6 +269,62 @@ function UserDashboardController() {
   };
 
   /**
+   * Accept a competing provider offer - irreversible, rejects every other
+   * submitted offer and returns the application to 'approved' with the
+   * accepted offer's terms.
+   */
+  const handleAcceptOffer = async (offerId) => {
+    if (!user?.id) return;
+
+    if (
+      !window.confirm(
+        "Accept this offer? This cannot be undone and every other offer will be declined.",
+      )
+    ) {
+      return;
+    }
+
+    const acceptedOffer = auctionOffers.find((offer) => offer.id === offerId);
+
+    setAcceptingOfferId(offerId);
+    setAuctionError(null);
+
+    try {
+      const result = await LoanOffer.acceptOffer(offerId);
+      if (!result.success) throw new Error(result.error);
+
+      notifyWinningProvider(acceptedOffer);
+      await loadDashboardData();
+    } catch (err) {
+      console.error("Failed to accept offer:", err);
+      setAuctionError(err.message || "Failed to accept offer. Please try again.");
+    } finally {
+      setAcceptingOfferId(null);
+    }
+  };
+
+  /**
+   * Fire-and-forget: email the winning provider once their offer is
+   * accepted. Never blocks or fails the acceptance action.
+   */
+  const notifyWinningProvider = async (offer) => {
+    if (!offer?.providerId) return;
+
+    try {
+      const providerResult = await Provider.getProfile(offer.providerId);
+      if (!providerResult.success || !providerResult.data) return;
+
+      await sendOfferAcceptedEmail({
+        recipientEmail: providerResult.data.email,
+        recipientName: providerResult.data.company_name,
+        offerAmount: offer.offerAmount,
+      });
+    } catch (err) {
+      console.warn("Failed to notify winning provider:", err);
+    }
+  };
+
+  /**
    * Handle view full schedule
    */
   const handleViewFullSchedule = () => {
@@ -291,6 +388,8 @@ function UserDashboardController() {
         return "status-scheduled";
       case "active & on track":
         return "status-active";
+      case "offers awaiting your decision":
+        return "status-auctioning";
       default:
         return "status-default";
     }
@@ -327,6 +426,12 @@ function UserDashboardController() {
     payoutDetails: dashboardData.payoutDetails,
     payoutType,
     onPayoutTypeToggle: handlePayoutTypeToggle,
+
+    // Provider auction - offers awaiting the applicant's decision
+    auctionOffers,
+    onAcceptOffer: handleAcceptOffer,
+    acceptingOfferId,
+    auctionError,
 
     // Utility functions
     formatCurrency,

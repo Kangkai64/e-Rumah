@@ -18,7 +18,6 @@ const REQUIRED_DOCUMENTS = [
   { displayName: 'EPF Statement', prefix: 'epfStatement_' },
   { displayName: 'Fire Insurance', prefix: 'fireInsurance_' },
   { displayName: 'Grant Title', prefix: 'grantTitle_' },
-  { displayName: 'Marriage Certificate', prefix: 'marriageCertificate_' },
   { displayName: 'Pay Slip 1', prefix: 'payslips_1_' },
   { displayName: 'Pay Slip 2', prefix: 'payslips_2_' },
   { displayName: 'Pay Slip 3', prefix: 'payslips_3_' },

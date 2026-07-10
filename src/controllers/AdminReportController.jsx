@@ -14,6 +14,7 @@ import {
 } from '../models/HealthReport'
 import Admin from '../models/Admin'
 import Application from '../models/Application'
+import PropertyValuation from '../models/PropertyValuation'
 import { supabase } from '../config/supabase'
 import AdminApplicationReviewView from '../views/AdminApplicationReviewView'
 import AdminReportView from '../views/AdminReportView'
@@ -56,6 +57,16 @@ function AdminReportController({ mode = 'reports' }) {
   const [flaggedDocument, setFlaggedDocument] = useState(null)
   const [flagDocumentReason, setFlagDocumentReason] = useState('')
   const [flaggingDocument, setFlaggingDocument] = useState(false)
+
+  // Property valuation scheduling state
+  const [valuationSchedule, setValuationSchedule] = useState(null)
+  const [showScheduleValuationModal, setShowScheduleValuationModal] = useState(false)
+  const [scheduleValuationForm, setScheduleValuationForm] = useState({ scheduledDate: '', valuerName: '', valuerContact: '', locationNotes: '' })
+  const [schedulingValuation, setSchedulingValuation] = useState(false)
+  const [showCompleteValuationModal, setShowCompleteValuationModal] = useState(false)
+  const [completeValuationForm, setCompleteValuationForm] = useState({ resultValue: '', valuationDate: '', reportFile: null })
+  const [completingValuation, setCompletingValuation] = useState(false)
+  const [cancellingValuation, setCancellingValuation] = useState(false)
 
   // PDF Viewer state
   const [showPDFViewer, setShowPDFViewer] = useState(false)
@@ -198,6 +209,19 @@ function AdminReportController({ mode = 'reports' }) {
 
       setApplication(appData)
 
+      // Suggest an approved amount (70% of the applicant's expected market value)
+      // when the application is awaiting review and no amount has been set yet.
+      if (appData.approved_amount) {
+        setApprovedAmount(String(appData.approved_amount))
+      } else if (appData.status === 'underReviewed') {
+        const expectedMarketValue = parseFloat(
+          appData.application_data?.form_data?.expectedMarketValue ?? appData.properties?.expected_market_value
+        )
+        if (!isNaN(expectedMarketValue) && expectedMarketValue > 0) {
+          setApprovedAmount((expectedMarketValue * 0.7).toFixed(2))
+        }
+      }
+
       // Fetch documents
       if (appData.user_id) {
         const documentsResult = await Application.getRequiredDocuments(
@@ -207,6 +231,12 @@ function AdminReportController({ mode = 'reports' }) {
         if (documentsResult.success) {
           setDocuments(documentsResult.data)
         }
+      }
+
+      // Fetch property valuation schedule, if any
+      const valuationResult = await PropertyValuation.getByApplicationId(applicationId)
+      if (valuationResult.success) {
+        setValuationSchedule(valuationResult.data)
       }
 
       setError(null)
@@ -356,6 +386,136 @@ function AdminReportController({ mode = 'reports' }) {
 
   const handleFlagDocumentReasonChange = (value) => {
     setFlagDocumentReason(value)
+  }
+
+  // ============================================================================
+  // PROPERTY VALUATION SCHEDULING FUNCTIONS
+  // ============================================================================
+
+  const handleOpenScheduleValuation = () => {
+    setScheduleValuationForm({ scheduledDate: '', valuerName: '', valuerContact: '', locationNotes: '' })
+    setShowScheduleValuationModal(true)
+  }
+
+  const handleCloseScheduleValuation = () => {
+    setShowScheduleValuationModal(false)
+  }
+
+  const handleScheduleValuationFormChange = (field, value) => {
+    setScheduleValuationForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleConfirmScheduleValuation = async () => {
+    if (!scheduleValuationForm.scheduledDate) {
+      showToast('Please select a date and time for the valuation', 'warning')
+      return
+    }
+
+    setSchedulingValuation(true)
+    try {
+      const result = await PropertyValuation.scheduleValuation(applicationId, application.user_id, {
+        scheduledDate: scheduleValuationForm.scheduledDate,
+        valuerName: scheduleValuationForm.valuerName,
+        valuerContact: scheduleValuationForm.valuerContact,
+        locationNotes: scheduleValuationForm.locationNotes,
+        adminId: user?.id,
+        recipientEmail: application.users?.email,
+        recipientName: application.users?.full_name,
+      })
+
+      if (result.success) {
+        setValuationSchedule(result.data)
+        setShowScheduleValuationModal(false)
+        showToast('Valuation scheduled successfully! The applicant has been notified.', 'success')
+      } else {
+        showToast('Error scheduling valuation: ' + result.error, 'error')
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error')
+    } finally {
+      setSchedulingValuation(false)
+    }
+  }
+
+  const handleOpenCompleteValuation = () => {
+    setCompleteValuationForm({ resultValue: '', valuationDate: '', reportFile: null })
+    setShowCompleteValuationModal(true)
+  }
+
+  const handleCloseCompleteValuation = () => {
+    setShowCompleteValuationModal(false)
+  }
+
+  const handleCompleteValuationFormChange = (field, value) => {
+    setCompleteValuationForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleConfirmCompleteValuation = async () => {
+    if (!completeValuationForm.resultValue || parseFloat(completeValuationForm.resultValue) <= 0) {
+      showToast('Please enter a valid valuation result', 'warning')
+      return
+    }
+    if (!completeValuationForm.reportFile) {
+      showToast('Please upload the valuation report file', 'warning')
+      return
+    }
+
+    setCompletingValuation(true)
+    try {
+      const result = await PropertyValuation.completeValuation(
+        valuationSchedule.id,
+        applicationId,
+        application.user_id,
+        {
+          resultValue: parseFloat(completeValuationForm.resultValue),
+          valuationDate: completeValuationForm.valuationDate || undefined,
+          reportFile: completeValuationForm.reportFile,
+          adminId: user?.id,
+          recipientEmail: application.users?.email,
+          recipientName: application.users?.full_name,
+        }
+      )
+
+      if (result.success) {
+        setValuationSchedule(result.data)
+        setShowCompleteValuationModal(false)
+        showToast('Valuation marked as complete! The applicant has been notified.', 'success')
+
+        // Refresh documents so the report now shows as FOUND
+        const documentsResult = await Application.getRequiredDocuments(
+          application.user_id,
+          application.submitted_form_data
+        )
+        if (documentsResult.success) {
+          setDocuments(documentsResult.data)
+        }
+      } else {
+        showToast('Error completing valuation: ' + result.error, 'error')
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error')
+    } finally {
+      setCompletingValuation(false)
+    }
+  }
+
+  const handleCancelValuationSchedule = async () => {
+    if (!window.confirm('Cancel this scheduled valuation?')) return
+
+    setCancellingValuation(true)
+    try {
+      const result = await PropertyValuation.cancelValuation(valuationSchedule.id, '')
+      if (result.success) {
+        setValuationSchedule(result.data)
+        showToast('Valuation schedule cancelled', 'success')
+      } else {
+        showToast('Error cancelling valuation: ' + result.error, 'error')
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error')
+    } finally {
+      setCancellingValuation(false)
+    }
   }
 
   // Add handlers for application PDF
@@ -591,11 +751,15 @@ function AdminReportController({ mode = 'reports' }) {
     switch (status) {
       case 'submitted':
       case 'underReviewed':
-        return 'pending'
+        return 'status-pending'
       case 'approved':
-        return 'approved'
+        return 'status-approved'
+      case 'auctioning':
+        return 'status-auctioning'
       case 'rejected':
-        return 'rejected'
+        return 'status-rejected'
+      case 'terminated':
+        return 'status-terminated'
       default:
         return ''
     }
@@ -609,8 +773,12 @@ function AdminReportController({ mode = 'reports' }) {
         return 'Under Review'
       case 'approved':
         return 'Approved'
+      case 'auctioning':
+        return 'In Auction'
       case 'rejected':
         return 'Rejected'
+      case 'terminated':
+        return 'Terminated'
       default:
         return status
     }
@@ -768,6 +936,23 @@ function AdminReportController({ mode = 'reports' }) {
         onConfirmFlagDocument={handleConfirmFlagDocument}
         onCancelFlagDocument={handleCancelFlagDocument}
         onFlagDocumentReasonChange={handleFlagDocumentReasonChange}
+        valuationSchedule={valuationSchedule}
+        showScheduleValuationModal={showScheduleValuationModal}
+        scheduleValuationForm={scheduleValuationForm}
+        schedulingValuation={schedulingValuation}
+        onOpenScheduleValuation={handleOpenScheduleValuation}
+        onCloseScheduleValuation={handleCloseScheduleValuation}
+        onScheduleValuationFormChange={handleScheduleValuationFormChange}
+        onConfirmScheduleValuation={handleConfirmScheduleValuation}
+        showCompleteValuationModal={showCompleteValuationModal}
+        completeValuationForm={completeValuationForm}
+        completingValuation={completingValuation}
+        onOpenCompleteValuation={handleOpenCompleteValuation}
+        onCloseCompleteValuation={handleCloseCompleteValuation}
+        onCompleteValuationFormChange={handleCompleteValuationFormChange}
+        onConfirmCompleteValuation={handleConfirmCompleteValuation}
+        cancellingValuation={cancellingValuation}
+        onCancelValuationSchedule={handleCancelValuationSchedule}
         onViewApplicationPDF={handleViewApplicationPDF}
         onDownloadApplicationPDF={handleDownloadApplicationPDF}
         formatCurrency={formatCurrency}

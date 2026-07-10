@@ -165,3 +165,321 @@ export const sendHealthReportShareEmail = async (shareData) => {
     return { success: false, error: error.message }
   }
 }
+
+/**
+ * Build HTML email template for a newly scheduled property valuation
+ * @param {Object} data
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @param {string} data.scheduledDate - ISO date/time of the appointment
+ * @param {string} data.valuerName - Name of the assigned valuer (optional)
+ * @param {string} data.locationNotes - Notes for the applicant (optional)
+ * @returns {string} Formatted HTML email message
+ */
+export const buildValuationScheduledTemplate = (data) => {
+  const { recipientName, scheduledDate, valuerName, locationNotes } = data
+
+  const formattedDate = scheduledDate
+    ? new Date(scheduledDate).toLocaleString('en-MY', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : 'To be confirmed'
+
+  return `
+    <h2 style="color: #A8202D;">Your property valuation has been scheduled</h2>
+    <p>Hi ${recipientName || 'Applicant'},</p>
+    <p>We've arranged an official property valuation as part of your e-Rumah application.</p>
+
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #161519;">Appointment Details:</h3>
+      <p><strong>Date & Time:</strong> ${formattedDate}</p>
+      ${valuerName ? `<p><strong>Valuer:</strong> ${valuerName}</p>` : ''}
+      ${locationNotes ? `<p><strong>Notes:</strong> ${locationNotes}</p>` : ''}
+    </div>
+
+    <p>Please ensure someone is available at the property to grant access on the scheduled date.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send property valuation scheduled notification email
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Recipient's email address
+ * @param {string} data.recipientName - Recipient's name (optional)
+ * @param {string} data.scheduledDate - ISO date/time of the appointment
+ * @param {string} data.valuerName - Name of the assigned valuer (optional)
+ * @param {string} data.locationNotes - Notes for the applicant (optional)
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendValuationScheduledEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your property valuation has been scheduled'
+    const message = buildValuationScheduledTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Applicant',
+        subject: subject,
+        message: message,
+        emailType: 'valuation_scheduled'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending valuation scheduled email:', error)
+    // Don't throw - allow scheduling to succeed even if email fails
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Build HTML email template for a completed property valuation
+ * @param {Object} data
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @param {number} data.resultValue - The valuer's assessed property value
+ * @returns {string} Formatted HTML email message
+ */
+export const buildValuationCompletedTemplate = (data) => {
+  const { recipientName, resultValue } = data
+
+  const formattedValue = typeof resultValue === 'number'
+    ? `RM ${resultValue.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'N/A'
+
+  return `
+    <h2 style="color: #A8202D;">Your property valuation is complete</h2>
+    <p>Hi ${recipientName || 'Applicant'},</p>
+    <p>The valuer has completed the property valuation for your e-Rumah application.</p>
+
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #161519;">Valuation Result:</h3>
+      <p><strong>Assessed Value:</strong> ${formattedValue}</p>
+    </div>
+
+    <p>The valuation report has been added to your application. You can review it from your application status page.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send property valuation completed notification email
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Recipient's email address
+ * @param {string} data.recipientName - Recipient's name (optional)
+ * @param {number} data.resultValue - The valuer's assessed property value
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendValuationCompletedEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your property valuation is complete'
+    const message = buildValuationCompletedTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Applicant',
+        subject: subject,
+        message: message,
+        emailType: 'valuation_completed'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending valuation completed email:', error)
+    // Don't throw - allow completion to succeed even if email fails
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Build HTML email template notifying a provider that an application has
+ * opened for bidding
+ * @param {Object} data
+ * @param {string} data.recipientName - Provider's company name (optional)
+ * @param {string} data.propertyType - Type of property (optional)
+ * @param {string} data.district - Property district (optional)
+ * @param {number} data.approvedAmount - The applicant's approved ceiling amount
+ * @returns {string} Formatted HTML email message
+ */
+export const buildAuctionOpenTemplate = (data) => {
+  const { recipientName, propertyType, district, approvedAmount } = data
+
+  const formattedAmount = typeof approvedAmount === 'number'
+    ? `RM ${approvedAmount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'N/A'
+
+  return `
+    <h2 style="color: #A8202D;">A new application is open for bidding</h2>
+    <p>Hi ${recipientName || 'Provider'},</p>
+    <p>An e-Rumah application has been opened for provider bidding.</p>
+
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #161519;">Application Summary:</h3>
+      ${propertyType ? `<p><strong>Property Type:</strong> ${propertyType}</p>` : ''}
+      ${district ? `<p><strong>District:</strong> ${district}</p>` : ''}
+      <p><strong>Indicative Ceiling:</strong> ${formattedAmount}</p>
+    </div>
+
+    <p>Log in to the provider portal to review the application and submit your offer.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send "application open for bidding" notification email to a provider
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Provider's email address
+ * @param {string} data.recipientName - Provider's company name (optional)
+ * @param {string} data.propertyType - Type of property (optional)
+ * @param {string} data.district - Property district (optional)
+ * @param {number} data.approvedAmount - The applicant's approved ceiling amount
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendAuctionOpenEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'A new application is open for bidding on e-Rumah'
+    const message = buildAuctionOpenTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Provider',
+        subject: subject,
+        message: message,
+        emailType: 'auction_open'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending auction open email:', error)
+    // Don't throw - allow the auction to open even if email fails
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Build HTML email template notifying a provider that their offer was accepted
+ * @param {Object} data
+ * @param {string} data.recipientName - Provider's company name (optional)
+ * @param {number} data.offerAmount - The accepted offer amount
+ * @returns {string} Formatted HTML email message
+ */
+export const buildOfferAcceptedTemplate = (data) => {
+  const { recipientName, offerAmount } = data
+
+  const formattedAmount = typeof offerAmount === 'number'
+    ? `RM ${offerAmount.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : 'N/A'
+
+  return `
+    <h2 style="color: #A8202D;">Your offer has been accepted</h2>
+    <p>Hi ${recipientName || 'Provider'},</p>
+    <p>The applicant has accepted your reverse mortgage offer of ${formattedAmount}.</p>
+
+    <p>e-Rumah admin will be in touch to proceed with the next steps.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send "offer accepted" notification email to the winning provider
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Provider's email address
+ * @param {string} data.recipientName - Provider's company name (optional)
+ * @param {number} data.offerAmount - The accepted offer amount
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendOfferAcceptedEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your reverse mortgage offer has been accepted'
+    const message = buildOfferAcceptedTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Provider',
+        subject: subject,
+        message: message,
+        emailType: 'offer_accepted'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending offer accepted email:', error)
+    // Don't throw - allow acceptance to succeed even if email fails
+    return { success: false, error: error.message }
+  }
+}

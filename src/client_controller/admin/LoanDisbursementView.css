@@ -76,6 +76,85 @@
   font-weight: 500;
 }
 
+.pending-schedules-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 22px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.06);
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.pending-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-schedule-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.pending-schedule-row strong {
+  display: block;
+  color: #111827;
+}
+
+.pending-schedule-row span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.pending-schedule-actions {
+  display: flex;
+  gap: 8px;
+  justify-self: end;
+}
+
+.schedule-review-btn,
+.schedule-skip-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.schedule-review-btn {
+  background: #b91c1c;
+  color: #fff;
+}
+
+.schedule-skip-btn {
+  background: #fff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.schedule-review-btn:disabled,
+.schedule-skip-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.active-schedule-banner {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 .loan-disbursement-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -374,5 +453,13 @@
 
   .application-meta {
     text-align: left;
+  }
+
+  .pending-schedule-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pending-schedule-actions {
+    justify-self: start;
   }
 }

@@ -1,6 +1,42 @@
 // File Upload Service - Handles document uploads to Supabase Storage
 
 import { supabase } from '../config/supabase'
+import { validatePDF } from '../utils/pdfCompression'
+
+/**
+ * Verify an image file actually decodes to a real image (catches empty
+ * files and corrupted/truncated image data that still carry a valid
+ * image/* MIME type).
+ * @param {File} file
+ * @returns {Promise<boolean>}
+ */
+const validateImageFile = (file) => {
+  return new Promise((resolve) => {
+    if (typeof createImageBitmap === 'function') {
+      createImageBitmap(file)
+        .then((bitmap) => {
+          const isValid = bitmap.width > 0 && bitmap.height > 0
+          bitmap.close?.()
+          resolve(isValid)
+        })
+        .catch(() => resolve(false))
+      return
+    }
+
+    // Fallback for browsers without createImageBitmap
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(img.naturalWidth > 0 && img.naturalHeight > 0)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(false)
+    }
+    img.src = objectUrl
+  })
+}
 
 /**
  * Upload file to Supabase Storage
@@ -22,6 +58,16 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
       'image/webp'
     ]
 
+    // Reject empty files (e.g. a 0-byte .pdf or .png) up front
+    if (file.size === 0) {
+      return {
+        url: null,
+        fileName: null,
+        uploadedAt: null,
+        error: { message: 'This file is empty. Please upload a valid file.' }
+      }
+    }
+
     // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
@@ -35,7 +81,7 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
 
     // Validate file type
     if (!allowedTypes.includes(file.type)) {
-      const allowedExtensions = allowedTypes.map(type => {
+      const allowedExtensions = [...new Set(allowedTypes.map(type => {
         switch(type) {
           case 'application/pdf': return 'PDF'
           case 'image/jpeg':
@@ -44,7 +90,7 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
           case 'image/webp': return 'WEBP'
           default: return type
         }
-      }).join(', ')
+      }))].join(', ')
       
       return {
         url: null,
@@ -54,11 +100,46 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
       }
     }
 
-    // Generate unique file path
+    // Reject corrupted/fake PDFs: browser-reported MIME type can be spoofed
+    // or wrong (e.g. a renamed .txt), so verify the actual PDF structure.
+    if (file.type === 'application/pdf') {
+      const isPDFValid = await validatePDF(file)
+      if (!isPDFValid) {
+        return {
+          url: null,
+          fileName: null,
+          uploadedAt: null,
+          error: { message: 'This PDF file appears to be corrupted or invalid. Please upload a valid PDF file.' }
+        }
+      }
+    }
+
+    // Reject corrupted/truncated images that still report a valid image/* MIME type
+    if (file.type.startsWith('image/')) {
+      const isImageValid = await validateImageFile(file)
+      if (!isImageValid) {
+        return {
+          url: null,
+          fileName: null,
+          uploadedAt: null,
+          error: { message: 'This image file appears to be corrupted or invalid. Please upload a valid image file.' }
+        }
+      }
+    }
+
+    // Generate unique file path. Callers may supply a meaningful, pre-derived
+    // name (e.g. a health report reference code) via options.customFileName;
+    // otherwise fall back to the generic <docType>_<timestamp> scheme.
     const timestamp = Date.now()
     const fileExt = file.name.split('.').pop()
-    const sanitizedDocType = documentType.replace(/[^a-zA-Z0-9]/g, '_')
-    const fileName = `${sanitizedDocType}_${timestamp}.${fileExt}`
+    let fileName
+    if (options.customFileName) {
+      const sanitizedCustomName = options.customFileName.replace(/[^a-zA-Z0-9-]/g, '_')
+      fileName = `${sanitizedCustomName}.${fileExt}`
+    } else {
+      const sanitizedDocType = documentType.replace(/[^a-zA-Z0-9]/g, '_')
+      fileName = `${sanitizedDocType}_${timestamp}.${fileExt}`
+    }
     const filePath = `${userId}/${fileName}`
 
     console.log('📤 Uploading file:', { fileName, size: file.size, type: file.type })
@@ -92,8 +173,8 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
     // Verify file exists before creating signed URL
     const { data: listData, error: listError } = await supabase.storage
       .from(bucket)
-      .list(userId, { 
-        search: fileName.split('_')[1] // Search by timestamp part
+      .list(userId, {
+        search: fileName.substring(0, fileName.lastIndexOf('.')) // Search by name without extension
       })
     
     if (listError) {
@@ -143,12 +224,49 @@ export const uploadDocument = async (file, userId, documentType, options = {}) =
   }
 }
 
+const HEALTH_REPORT_TYPE_CODES = {
+  'Medical Report': 'MED',
+  'Lab Test': 'LAB',
+  'Prescription': 'RX',
+  'Vaccination Record': 'VAC',
+  "Doctor's Visit Summary": 'VIS',
+  'Others': 'OTH'
+}
+
+/**
+ * Derive a short, human-readable reference code for a health report, e.g.
+ * "HR-LAB-20260710-3F2A", used as the storage file name instead of an
+ * opaque `health-report_<timestamp>` name.
+ * @param {string} reportType - The selected report type (or custom type text)
+ * @param {string|Date} reportDate - The report's date
+ * @returns {string}
+ */
+export const generateHealthReportCode = (reportType, reportDate) => {
+  const typeCode = HEALTH_REPORT_TYPE_CODES[reportType] || 'GEN'
+
+  const date = reportDate ? new Date(reportDate) : new Date()
+  const datePart = Number.isNaN(date.getTime())
+    ? new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    : date.toISOString().slice(0, 10).replace(/-/g, '')
+
+  const randomBytes = new Uint8Array(2)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(randomBytes)
+  } else {
+    randomBytes[0] = Math.floor(Math.random() * 256)
+    randomBytes[1] = Math.floor(Math.random() * 256)
+  }
+  const suffix = Array.from(randomBytes, (b) => b.toString(16).padStart(2, '0')).join('').toUpperCase()
+
+  return `HR-${typeCode}-${datePart}-${suffix}`
+}
+
 /**
  * Upload health report (PDF only) to Supabase Storage
  * @param {File} file - The PDF file to upload
  * @param {string} userId - Current user ID
  * @param {string} documentType - Type of document (e.g., 'health_report')
- * @param {Object} options - Optional settings (bucket, signedUrlDuration)
+ * @param {Object} options - Optional settings (bucket, signedUrlDuration, reportType, reportDate)
  * @returns {Promise<{url, fileName, uploadedAt, error}>}
  */
 export const uploadHealthReport = async (file, userId, documentType, options = {}) => {
@@ -156,9 +274,10 @@ export const uploadHealthReport = async (file, userId, documentType, options = {
   const healthReportOptions = {
     ...options,
     allowedTypes: ['application/pdf'],
-    bucket: options.bucket || 'health-reports'
+    bucket: options.bucket || 'health-reports',
+    customFileName: options.customFileName || generateHealthReportCode(options.reportType, options.reportDate)
   }
-  
+
   return uploadDocument(file, userId, documentType, healthReportOptions)
 }
 

@@ -595,6 +595,7 @@ function UserHealthReportView({
   onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
+  onClearMultiUploadForm,
   onMultipleFileUpload,
   onDragEnter,
   onDragLeave,
@@ -639,7 +640,6 @@ function UserHealthReportView({
   const { showToast } = useToast()
   // Add default values to prevent undefined errors
   const defaultStatistics = {
-    reminderThisWeek: 0,
     overdueHealthReport: 0,
     healthReportDueSoon: 0,
     flaggedHealthReport: 0
@@ -648,6 +648,13 @@ function UserHealthReportView({
   const safeStatistics = {
     ...defaultStatistics,
     ...(statistics && typeof statistics === 'object' ? statistics : defaultStatistics)
+  };
+
+  const safeReminderStats = {
+    total: 0,
+    upcoming: 0,
+    overdue: 0,
+    ...(reminderStats && typeof reminderStats === 'object' ? reminderStats : {})
   };
 
   const disabledReminders = (reminders || []).filter((reminder) => !reminder.is_enabled);
@@ -947,6 +954,12 @@ function UserHealthReportView({
     }
   };
 
+  // Clear selected files and reset the upload form fields (report name, date, etc.)
+  const clearAllFilesAndForm = () => {
+    clearAllFiles();
+    onClearMultiUploadForm?.();
+  };
+
   // Format file size
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -1096,7 +1109,7 @@ function UserHealthReportView({
           <div className="statistics-cards">
             <div className="stat-card">
               <div className="stat-label">Reminder this week</div>
-              <div className="stat-value">{safeStatistics.reminderThisWeek || 0}</div>
+              <div className="stat-value">{safeReminderStats.upcoming || 0}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Overdue Health Report</div>
@@ -1291,32 +1304,33 @@ function UserHealthReportView({
               onChange={onFileInputChange}
             />
 
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0 0.5rem 0' }}>
+              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
+                Selected Files ({selectedFiles.length})
+              </h4>
+              <button
+                type="button"
+                className="btn-clear-all-files"
+                onClick={clearAllFilesAndForm}
+                disabled={isConverting}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#A8202D',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  cursor: isConverting ? 'not-allowed' : 'pointer',
+                  opacity: isConverting ? 0.6 : 1,
+                  padding: '0.25rem 0.5rem'
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+
             {/* File Preview Section */}
             {selectedFiles.length > 0 && (
               <div className="file-preview-section">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0 0.5rem 0' }}>
-                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>
-                    Selected Files ({selectedFiles.length})
-                  </h4>
-                  <button
-                    type="button"
-                    className="btn-clear-all-files"
-                    onClick={clearAllFiles}
-                    disabled={isConverting}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#A8202D',
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      cursor: isConverting ? 'not-allowed' : 'pointer',
-                      opacity: isConverting ? 0.6 : 1,
-                      padding: '0.25rem 0.5rem'
-                    }}
-                  >
-                    Clear All
-                  </button>
-                </div>
                 <div className="file-preview-list">
                   {selectedFiles.map((file, index) => (
                     <div key={`${file.name}-${index}`} className="file-preview-item">
@@ -3078,6 +3092,7 @@ export default function HealthMonitoringView({
   onClosePDFViewer,
   onUploadFormChange,
   onMultiUploadFormChange,
+  onClearMultiUploadForm,
   onMultipleFileUpload,
   onDragEnter,
   onDragLeave,
@@ -3239,6 +3254,7 @@ export default function HealthMonitoringView({
       onClosePDFViewer={onClosePDFViewer}
       onUploadFormChange={onUploadFormChange}
       onMultiUploadFormChange={onMultiUploadFormChange}
+      onClearMultiUploadForm={onClearMultiUploadForm}
       onMultipleFileUpload={onMultipleFileUpload}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}

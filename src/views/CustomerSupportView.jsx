@@ -1351,7 +1351,7 @@ export default function CustomerSupportView({
                 className="form-input"
                 value={contactEmail}
                 onChange={(e) => onContactEmailChange(e.target.value)}
-                placeholder="support@example.com"
+                placeholder="support@erumah.com"
                 required
               />
             </div>

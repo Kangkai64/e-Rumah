@@ -649,24 +649,25 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label>Occupation *</label>
-        <input 
-          type="text" 
-          name="occupation" 
-          value={formData.occupation} 
-          onChange={handleChange} 
+        <input
+          type="text"
+          name="occupation"
+          value={formData.occupation}
+          onChange={handleChange}
           className={errors.occupation ? 'error' : ''}
-          required 
+          required
         />
+        <small className="field-note">If retired, please fill in your previous occupation.</small>
         <ErrorMessage error={errors.occupation} />
       </div>
 
       <div className="form-group">
         <label>Name of Employer *</label>
-        <input 
-          type="text" 
-          name="employerName" 
-          value={formData.employerName} 
-          onChange={handleChange} 
+        <input
+          type="text"
+          name="employerName"
+          value={formData.employerName}
+          onChange={handleChange}
           className={errors.employerName ? 'error' : ''}
           required
         />
@@ -675,11 +676,11 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label>Address of Employer *</label>
-        <textarea 
-          name="employerAddress" 
-          value={formData.employerAddress} 
-          onChange={handleChange} 
-          rows="2" 
+        <textarea
+          name="employerAddress"
+          value={formData.employerAddress}
+          onChange={handleChange}
+          rows="2"
           className={errors.employerAddress ? 'error' : ''}
           required
         />
@@ -688,11 +689,11 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label>Postcode *</label>
-        <input 
-          type="text" 
-          name="employerPostcode" 
-          value={formData.employerPostcode} 
-          onChange={handleChange} 
+        <input
+          type="text"
+          name="employerPostcode"
+          value={formData.employerPostcode}
+          onChange={handleChange}
           className={errors.employerPostcode ? 'error' : ''}
           placeholder="5 digits"
           required
@@ -754,19 +755,6 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           hint="Upload birth certificate (Max 10MB)"
           error={errors.birthCertificate}
         />
-
-        {(formData.maritalStatus === 'Married' && formData.isJointApplicant) && (
-          <DocumentUpload
-            label="Marriage Certificate (Optional)"
-            documentData={formData.documents?.marriageCertificate}
-            onUpload={(e) => handleFileUpload(e, 'marriageCertificate')}
-            onDelete={() => handleFileDelete('marriageCertificate')}
-            uploading={uploadProgress?.marriageCertificate}
-            accept=".pdf,.jpg,.jpeg,.png,.webp"
-            hint="Upload marriage certificate (Max 10MB)"
-            error={errors.marriageCertificate}
-          />
-        )}
       </div>
 
       {/* Financial Documents */}
@@ -985,6 +973,18 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           />
 
           <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="jSameMaritalStatus"
+                checked={formData.jSameMaritalStatus}
+                onChange={handleChange}
+              />
+              Same marital status as applicant
+            </label>
+          </div>
+
+          <div className="form-group">
             <label>Marital Status *</label>
             <select name="jMarital" value={formData.jMarital?.startsWith('Other:') ? 'Other' : formData.jMarital} onChange={(e) => {
               if (e.target.value === 'Other') {
@@ -992,7 +992,7 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
               } else {
                 handleChange(e)
               }
-            }} className={errors.jMarital ? 'error' : ''} required>
+            }} className={errors.jMarital ? 'error' : ''} disabled={formData.jSameMaritalStatus} required>
               <option value="">Select</option>
               <option value="Single">Single</option>
               <option value="Married">Married</option>
@@ -1008,6 +1008,7 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
                 onChange={(e) => handleChange({target: {name: 'jMarital', value: 'Other:' + e.target.value}})}
                 placeholder="Please specify"
                 style={{marginTop: '0.5rem'}}
+                disabled={formData.jSameMaritalStatus}
                 required
               />
             )}
@@ -1015,27 +1016,41 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
           </div>
 
           <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="jSameAddress"
+                checked={formData.jSameAddress}
+                onChange={handleChange}
+              />
+              Lives at the same address as applicant
+            </label>
+          </div>
+
+          <div className="form-group">
             <label>Address *</label>
-            <textarea 
-              name="jAddress" 
-              value={formData.jAddress} 
-              onChange={handleChange} 
+            <textarea
+              name="jAddress"
+              value={formData.jAddress}
+              onChange={handleChange}
               className={errors.jAddress ? 'error' : ''}
-              rows="3" 
-              required 
+              rows="3"
+              disabled={formData.jSameAddress}
+              required
             />
             <ErrorMessage error={errors.jAddress} />
           </div>
 
           <div className="form-group">
             <label>Postcode *</label>
-            <input 
-              type="text" 
-              name="jPostcode" 
-              value={formData.jPostcode} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="jPostcode"
+              value={formData.jPostcode}
+              onChange={handleChange}
               className={errors.jPostcode ? 'error' : ''}
-              required 
+              disabled={formData.jSameAddress}
+              required
             />
             <ErrorMessage error={errors.jPostcode} />
           </div>
@@ -1065,6 +1080,7 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
                 onChange={handleChange}
                 className={errors.jResidencePhone ? 'error' : ''}
                 placeholder="03-xxxxxxx"
+                disabled={formData.jSameAddress}
               />
               <ErrorMessage error={errors.jResidencePhone} />
             </div>
@@ -1095,24 +1111,25 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label>Occupation *</label>
-            <input 
-              type="text" 
-              name="jOccupation" 
-              value={formData.jOccupation} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="jOccupation"
+              value={formData.jOccupation}
+              onChange={handleChange}
               className={errors.jOccupation ? 'error' : ''}
-              required 
+              required
             />
+            <small className="field-note">If retired, please fill in previous occupation.</small>
             <ErrorMessage error={errors.jOccupation} />
           </div>
 
           <div className="form-group">
             <label>Name of Employer *</label>
-            <input 
-              type="text" 
-              name="jEmployerName" 
-              value={formData.jEmployerName} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="jEmployerName"
+              value={formData.jEmployerName}
+              onChange={handleChange}
               className={errors.jEmployerName ? 'error' : ''}
               required
             />
@@ -1121,10 +1138,10 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label>Address of Employer *</label>
-            <textarea 
-              name="jEmployerAddress" 
-              value={formData.jEmployerAddress} 
-              onChange={handleChange} 
+            <textarea
+              name="jEmployerAddress"
+              value={formData.jEmployerAddress}
+              onChange={handleChange}
               rows="2"
               className={errors.jEmployerAddress ? 'error' : ''}
               required
@@ -1134,11 +1151,11 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
 
           <div className="form-group">
             <label>Postcode *</label>
-            <input 
-              type="text" 
-              name="jEmployerPostcode" 
-              value={formData.jEmployerPostcode} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="jEmployerPostcode"
+              value={formData.jEmployerPostcode}
+              onChange={handleChange}
               className={errors.jEmployerPostcode ? 'error' : ''}
               placeholder="5 digits"
               required
@@ -1598,17 +1615,38 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           error={errors.saleAgreement}
         />
 
-        <DocumentUpload
-          label="Valuation Report"
-          required
-          documentData={formData.documents?.valuationReport}
-          onUpload={(e) => handleFileUpload(e, 'valuationReport')}
-          onDelete={() => handleFileDelete('valuationReport')}
-          uploading={uploadProgress?.valuationReport}
-          accept=".pdf,.jpg,.jpeg,.png,.webp"
-          hint="Upload property valuation report (Max 10MB)"
-          error={errors.valuationReport}
-        />
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="valuationReportPending"
+              checked={formData.valuationReportPending}
+              onChange={handleChange}
+            />
+            I don't have a valuation report yet — arrange an official valuation for me
+          </label>
+        </div>
+
+        {formData.valuationReportPending ? (
+          <div className="form-group" style={{backgroundColor: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #ddd'}}>
+            <p style={{margin: 0}}>
+              No problem — our team will contact you to schedule an official property valuation with a partner valuer.
+              You'll be able to check the appointment details from your application status page once it's arranged.
+            </p>
+          </div>
+        ) : (
+          <DocumentUpload
+            label="Valuation Report"
+            required
+            documentData={formData.documents?.valuationReport}
+            onUpload={(e) => handleFileUpload(e, 'valuationReport')}
+            onDelete={() => handleFileDelete('valuationReport')}
+            uploading={uploadProgress?.valuationReport}
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            hint="Upload property valuation report (Max 10MB)"
+            error={errors.valuationReport}
+          />
+        )}
 
 
         {formData.fireInsurance === 'inForce' && (
@@ -2160,7 +2198,7 @@ function Step5InfoDisplay({ formData, handleChange, errors = {} }) {
           <p><strong>I have confirmed the submission of the following documents:</strong></p>
           <ul className="info-list">
             <li>Copy of NRIC (Applicant & Joint Applicant)</li>
-            <li>Copy of Birth Certificate / Marriage Certificate (if applicable)</li>
+            <li>Copy of Birth Certificate</li>
             <li>Latest 3 months payslip</li>
             <li>Latest 6 months bank statement</li>
             <li>Latest EPF statement</li>

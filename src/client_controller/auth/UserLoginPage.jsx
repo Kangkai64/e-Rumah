@@ -7,6 +7,7 @@ import "./authLayout.css";
 import logo from "../../assets/images/logo.png";
 import bgImage from "../../assets/images/loginPageBg.jpg";
 import leftArrow from "../../assets/icons/icon_arrowLeft.svg";
+import PasswordInput from "../common/PasswordInput";
 
 export default function UserLoginPage() {
   const navigate = useNavigate();
@@ -89,9 +90,14 @@ export default function UserLoginPage() {
       <button onClick={() => navigate("/")} className="back-button">
         <img src={leftArrow} alt="Back" />
       </button>
-      <Link to="/staff-login" className="switch-login-btn">
-        Staff Login →
-      </Link>
+      <div className="switch-login-group">
+        <Link to="/staff-login" className="switch-login-btn">
+          Staff Login →
+        </Link>
+        <Link to="/provider-login" className="switch-login-btn">
+          Provider Login →
+        </Link>
+      </div>
 
       <div className="auth-content">
         <div className="auth-form-side">
@@ -122,8 +128,7 @@ export default function UserLoginPage() {
 
               <div className="form-group">
                 <label>Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="password"
                   value={formData.password}
                   onChange={handleChange}

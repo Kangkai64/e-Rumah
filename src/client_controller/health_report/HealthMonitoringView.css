@@ -1375,7 +1375,35 @@ input:checked + .slider:before {
   .health-report-container {
     padding: 1rem;
   }
-  
+
+  /* .statistics-cards/.stat-card and .table-header/.table-row/.table-col are
+     redefined later in this file for the admin dashboard with fixed,
+     non-shrinking widths; since both sections share the same class names,
+     those later rules also apply here and need a mobile override. */
+  .statistics-cards {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat-card {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .reminder-tags {
+    grid-template-columns: 1fr;
+  }
+
+  .table-header,
+  .table-row {
+    flex-wrap: wrap;
+  }
+
+  .table-col {
+    width: auto;
+    flex: 1 1 auto;
+  }
+
   .search-section {
     padding: 1.5rem;
     margin: 1rem 0;
