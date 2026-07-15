@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { signOut } from '../services/authService'
 import { useState, useRef } from 'react'
+import AppearanceSettingsModal from '../client_controller/common/AppearanceSettingsModal'
 import './Header.css'
 import logo from '../assets/images/logo.png'
 import profileIcon from '../assets/icons/icon_profile.svg'
@@ -11,11 +12,17 @@ const Header = () => {
   const { user, userRole, applicationStatus } = useAuth()
   const navigate = useNavigate()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const [showAppearanceSettings, setShowAppearanceSettings] = useState(false)
   const dropdownTimeoutRef = useRef(null)
 
   const handleLogout = async () => {
     await signOut()
     navigate('/')
+  }
+
+  const openAppearanceSettings = () => {
+    setShowProfileDropdown(false)
+    setShowAppearanceSettings(true)
   }
 
   const handleMouseEnter = () => {
@@ -69,12 +76,14 @@ const Header = () => {
               
               {showProfileDropdown && (
                 <div className="profile-dropdown">
+                  <button onClick={openAppearanceSettings} className="dropdown-item">Display Settings</button>
                   <Link to="/login" className="dropdown-item">Login</Link>
                 </div>
               )}
             </div>
           </div>
         </div>
+        <AppearanceSettingsModal isOpen={showAppearanceSettings} onClose={() => setShowAppearanceSettings(false)} />
       </header>
     )
   }
@@ -114,12 +123,14 @@ const Header = () => {
               
               {showProfileDropdown && (
                 <div className="profile-dropdown">
+                  <button onClick={openAppearanceSettings} className="dropdown-item">Display Settings</button>
                   <button onClick={handleLogout} className="dropdown-item">Logout</button>
                 </div>
               )}
             </div>
           </div>
         </div>
+        <AppearanceSettingsModal isOpen={showAppearanceSettings} onClose={() => setShowAppearanceSettings(false)} />
       </header>
     )
   }
@@ -155,12 +166,14 @@ const Header = () => {
               
               {showProfileDropdown && (
                 <div className="profile-dropdown">
+                  <button onClick={openAppearanceSettings} className="dropdown-item">Display Settings</button>
                   <button onClick={handleLogout} className="dropdown-item">Logout</button>
                 </div>
               )}
             </div>
           </div>
         </div>
+        <AppearanceSettingsModal isOpen={showAppearanceSettings} onClose={() => setShowAppearanceSettings(false)} />
       </header>
     )
   }
@@ -191,11 +204,13 @@ const Header = () => {
               
               {showProfileDropdown && (
                 <div className="profile-dropdown">
+                  <button onClick={openAppearanceSettings} className="dropdown-item">Display Settings</button>
                   <button onClick={handleLogout} className="dropdown-item">Logout</button>
                 </div>
               )}
             </div>
         </div>
+        <AppearanceSettingsModal isOpen={showAppearanceSettings} onClose={() => setShowAppearanceSettings(false)} />
       </header>
     )
   }
@@ -223,11 +238,13 @@ const Header = () => {
               
               {showProfileDropdown && (
                 <div className="profile-dropdown">
+                  <button onClick={openAppearanceSettings} className="dropdown-item">Display Settings</button>
                   <button onClick={handleLogout} className="dropdown-item">Logout</button>
                 </div>
               )}
             </div>
         </div>
+        <AppearanceSettingsModal isOpen={showAppearanceSettings} onClose={() => setShowAppearanceSettings(false)} />
       </header>
     )
   }

@@ -1,13 +1,13 @@
 /* AdminApplicationReviewView CSS - Plain CSS (NO Tailwind) */
 
 /* Import Poppins font */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
 
 /* Main Container */
 .admin-review-view {
   min-height: 100vh;
-  background-color: #F5F5F5;
-  font-family: 'Poppins', sans-serif;
+  background-color: #f5f5f5;
+  font-family: "Poppins", sans-serif;
   padding: 40px 20px;
 }
 
@@ -26,12 +26,12 @@
   min-height: 400px;
   text-align: center;
   font-size: 18px;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .review-error button {
   margin-top: 16px;
-  background-color: #A8202D;
+  background-color: #a8202d;
   border: none;
   border-radius: 8px;
   padding: 12px 24px;
@@ -39,7 +39,7 @@
   font-weight: 600;
   color: white;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 /* Header */
@@ -60,12 +60,12 @@
 .back-button {
   background: none;
   border: none;
-  color: #A8202D;
+  color: #a8202d;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   padding: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   text-align: left;
 }
 
@@ -97,30 +97,30 @@
 }
 
 .status-pending {
-  background-color: #FFEDD5;
-  color: #EA580C;
+  background-color: #ffedd5;
+  color: #ea580c;
 }
 
 .status-approved {
-  background-color: #DCFCE7;
-  color: #15803D;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
 .status-auctioning {
-  background-color: #EDE9FE;
-  color: #6D28D9;
+  background-color: #ede9fe;
+  color: #6d28d9;
 }
 
 .status-rejected {
-  background-color: #FEE2E2;
-  color: #B91C1C;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 /* Status Badge - Larger and Color Coded */
 .status-badge-large {
   padding: 10px 20px;
   border-radius: 9999px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   font-weight: 700;
   font-size: 16px;
   line-height: 24px;
@@ -156,7 +156,9 @@
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .summary-row {
@@ -175,17 +177,17 @@
 .summary-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #6b7280;
   line-height: 16px;
 }
 
 .summary-value {
   font-size: 12px;
   font-weight: 500;
-  color: #1F2937;
-  line-height: 20px;
+  color: #1f2937;
+  line-height: 28px;
   overflow-wrap: break-word;
-  word-break: break-word;
+  word-break: normal;
 }
 
 /* Tabs */
@@ -196,7 +198,9 @@
   background: white;
   border-radius: 16px;
   padding: 8px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .tab-button {
@@ -207,19 +211,19 @@
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
-  color: #6B7280;
+  color: #6b7280;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   transition: all 0.2s;
 }
 
 .tab-button.active {
-  background-color: #A8202D;
+  background-color: #a8202d;
   color: white !important;
 }
 
 .tab-button:hover:not(.active) {
-  background-color: #F3F4F6;
+  background-color: #f3f4f6;
 }
 
 /* Content Area */
@@ -228,7 +232,9 @@
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
   min-height: 400px;
 }
 
@@ -244,17 +250,17 @@
 .info-section h2 {
   font-size: 18px;
   font-weight: 600;
-  color: #1F2937;
+  color: #1f2937;
   line-height: 28px;
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #E5E7EB;
+  border-bottom: 2px solid #e5e7eb;
 }
 
 .info-subheading {
   font-size: 13px;
   font-weight: 600;
-  color: #A8202D;
+  color: #a8202d;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin: 20px 0 8px 0;
@@ -290,25 +296,25 @@
 .info-label {
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #6b7280;
   line-height: 16px;
 }
 
 .info-value {
   font-size: 14px;
   font-weight: 500;
-  color: #1F2937;
+  color: #1f2937;
   line-height: 20px;
 }
 
 .remarks-text {
   font-size: 14px;
   font-weight: 400;
-  color: #4B5563;
+  color: #4b5563;
   line-height: 20px;
   margin: 0;
   padding: 16px;
-  background-color: #F9FAFB;
+  background-color: #f9fafb;
   border-radius: 8px;
 }
 
@@ -343,15 +349,15 @@
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  background-color: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
   transition: all 0.2s;
 }
 
 .document-item:hover {
-  border-color: #A8202D;
-  background-color: #FFF;
+  border-color: #a8202d;
+  background-color: #fff;
 }
 
 .document-icon {
@@ -369,20 +375,20 @@
 .document-name {
   font-size: 14px;
   font-weight: 600;
-  color: #1F2937;
+  color: #1f2937;
   line-height: 20px;
 }
 
 .document-status {
   font-size: 12px;
   font-weight: 400;
-  color: #6B7280;
+  color: #6b7280;
   line-height: 16px;
 }
 
 .document-date {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #9ca3af;
   margin-top: 4px;
 }
 
@@ -394,7 +400,7 @@
 
 .view-document-btn {
   flex: 1;
-  background-color: #A8202D;
+  background-color: #a8202d;
   border: none;
   border-radius: 6px;
   padding: 8px 16px;
@@ -402,12 +408,12 @@
   font-weight: 600;
   color: white;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   transition: all 0.2s;
 }
 
 .view-document-btn:hover {
-  background-color: #8B1A24;
+  background-color: #8b1a24;
 }
 
 .flag-document-btn {
@@ -420,7 +426,7 @@
   font-weight: 600;
   color: white;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   transition: all 0.2s;
 }
 
@@ -433,9 +439,32 @@
   cursor: not-allowed;
 }
 
+.notify-document-btn {
+  flex: 1;
+  background-color: #1a73e8;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  transition: all 0.2s;
+}
+
+.notify-document-btn:hover:not(:disabled) {
+  background-color: #1557b0;
+}
+
+.notify-document-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .no-documents {
   text-align: center;
-  color: #9CA3AF;
+  color: #9ca3af;
   font-size: 14px;
   padding: 40px 0;
 }
@@ -449,8 +478,8 @@
 }
 
 .nominee-card {
-  background-color: #F9FAFB;
-  border: 1px solid #E5E7EB;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 14px 16px;
 }
@@ -458,7 +487,7 @@
 .nominee-card h3 {
   font-size: 14px;
   font-weight: 600;
-  color: #A8202D;
+  color: #a8202d;
   line-height: 18px;
   margin: 0 0 8px 0;
 }
@@ -486,9 +515,95 @@
 
 .no-nominees {
   text-align: center;
-  color: #9CA3AF;
+  color: #9ca3af;
   font-size: 14px;
   padding: 40px 0;
+}
+
+/* Audit Trail */
+.audit-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audit-entry {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.audit-entry-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.audit-action-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.audit-action-insert {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.audit-action-update {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.audit-action-delete {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.audit-entry-entity {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.audit-entry-actor {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.audit-entry-date {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-left: auto;
+}
+
+.audit-diff-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.audit-diff-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.audit-diff-label {
+  min-width: 140px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.audit-diff-value {
+  color: #111827;
+  word-break: break-word;
 }
 
 /* Approved Amount Section */
@@ -497,13 +612,15 @@
   border-radius: 16px;
   padding: 24px 32px;
   margin-bottom: 24px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .approved-amount-section h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #1F2937;
+  color: #1f2937;
   margin: 0 0 16px 0;
 }
 
@@ -516,29 +633,29 @@
 
 .approved-amount-hint {
   font-size: 12px;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .approved-amount-input-group label {
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .approved-amount-input-group input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
-  font-family: 'Poppins', sans-serif;
-  color: #1F2937;
+  font-family: "Poppins", sans-serif;
+  color: #1f2937;
   box-sizing: border-box;
 }
 
 .approved-amount-input-group input:focus {
   outline: none;
-  border-color: #A8202D;
+  border-color: #a8202d;
 }
 
 /* Action Buttons */
@@ -549,7 +666,9 @@
   padding: 24px;
   background: white;
   border-radius: 16px;
-  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0px 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0px 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .reject-button,
@@ -560,21 +679,21 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   transition: all 0.2s;
 }
 
 .reject-button {
-  background-color: #F3F4F6;
-  color: #B91C1C;
+  background-color: #f3f4f6;
+  color: #b91c1c;
 }
 
 .reject-button:hover:not(:disabled) {
-  background-color: #E5E7EB;
+  background-color: #e5e7eb;
 }
 
 .approve-button {
-  background-color: #15803D;
+  background-color: #15803d;
   color: white;
 }
 
@@ -614,13 +733,15 @@
   padding: 32px;
   max-width: 500px;
   width: 90%;
-  box-shadow: 0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0px 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0px 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-content h2 {
   font-size: 20px;
   font-weight: 700;
-  color: #1F2937;
+  color: #1f2937;
   line-height: 28px;
   margin: 0 0 8px 0;
 }
@@ -628,7 +749,7 @@
 .modal-content p {
   font-size: 14px;
   font-weight: 400;
-  color: #6B7280;
+  color: #6b7280;
   line-height: 20px;
   margin: 0 0 16px 0;
 }
@@ -636,17 +757,17 @@
 .rejection-textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   resize: vertical;
   margin-bottom: 16px;
 }
 
 .rejection-textarea:focus {
   outline: none;
-  border-color: #A8202D;
+  border-color: #a8202d;
 }
 
 .modal-actions {
@@ -663,31 +784,101 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
   transition: all 0.2s;
 }
 
 .cancel-button {
-  background-color: #F3F4F6;
-  color: #4B5563;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .cancel-button:hover {
-  background-color: #E5E7EB;
+  background-color: #e5e7eb;
 }
 
 .confirm-reject-button {
-  background-color: #B91C1C;
+  background-color: #b91c1c;
   color: white;
 }
 
 .confirm-reject-button:hover:not(:disabled) {
-  background-color: #991B1B;
+  background-color: #991b1b;
 }
 
 .confirm-reject-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Valuation Report Drag & Drop Upload */
+.valuation-upload-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+}
+
+.valuation-upload-area.drag-active {
+  border-color: #a8202d;
+  background: rgba(168, 32, 45, 0.06);
+}
+
+.valuation-upload-input-hidden {
+  display: none;
+}
+
+.valuation-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.valuation-upload-icon {
+  font-size: 1.5rem;
+}
+
+.valuation-upload-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.valuation-upload-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.valuation-upload-file-name {
+  font-size: 14px;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.valuation-upload-remove-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.valuation-upload-remove-btn:hover {
+  background-color: #e5e7eb;
 }
 
 /* PDF Viewer Modal Styles */
@@ -734,7 +925,7 @@
   justify-content: center;
   border-radius: 6px;
   transition: background 0.2s ease;
-  color: #6B7280;
+  color: #6b7280;
 }
 
 .pdf-viewer-modal .close-button:hover {
@@ -828,7 +1019,7 @@
   font-size: 0.875rem;
   color: #666;
   font-style: italic;
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 }
 
 /* Responsive Design */
@@ -838,8 +1029,13 @@
     align-items: flex-start;
   }
 
+  .summary-card {
+    padding: 16px;
+  }
+
   .summary-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .review-tabs {

@@ -1,8 +1,11 @@
 # 🚀 Quick Start Guide
+
 claude --dangerously-skip-permissions
+
 ## ⚡ Setup in 5 Minutes
 
 ### 1. Create Supabase Project
+
 ```
 1. Visit https://supabase.com
 2. Click "New Project"
@@ -10,6 +13,7 @@ claude --dangerously-skip-permissions
 ```
 
 ### 2. Run Database Migration
+
 ```
 1. Supabase Dashboard → SQL Editor
 2. Copy content from: supabase/migrations/001_initial_schema.sql
@@ -17,12 +21,14 @@ claude --dangerously-skip-permissions
 ```
 
 ### 3. Get API Keys
+
 ```
 1. Supabase Dashboard → Settings → API
 2. Copy "Project URL" and "anon public key"
 ```
 
 ### 4. Configure .env.local
+
 ```env
 ✅ Already configured in .env file!
 VITE_SUPABASE_URL=https://ktwarkyeopizmmazizmw.supabase.co
@@ -30,6 +36,7 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
 ### 5. Restart Server
+
 ```powershell
 npm run dev
 ```
@@ -70,16 +77,19 @@ supabase/
 ## 🔑 Key Features
 
 ### Auto-Save
+
 - Saves to Supabase every 1 second (debounced)
 - Falls back to localStorage if offline
 - Shows "💾 Saving..." indicator
 
 ### State Restoration
+
 - Loads form data on mount
 - Restores `currentStep` where user left off
 - Works across devices (when logged in)
 
 ### Authentication
+
 - Signup: `/signup`
 - Login: `/login`
 - Protected: `/application` (currently open for testing)
@@ -89,6 +99,7 @@ supabase/
 ## 🧪 Quick Test
 
 ### Test Auto-Save
+
 ```
 1. Go to http://localhost:5173/application
 2. Fill any field (e.g., name)
@@ -98,6 +109,7 @@ supabase/
 ```
 
 ### Test State Restoration
+
 ```
 1. Fill form to Step 3
 2. Close browser
@@ -109,43 +121,45 @@ supabase/
 
 ## 🐛 Common Issues
 
-| Problem | Solution |
-|---------|----------|
-| "Missing environment variables" | Restart server after editing `.env.local` |
-| "Error loading from Supabase" | Check SQL migration ran successfully |
-| Form not saving | Check browser console for errors |
-| Can't login | Verify email/password in Supabase Dashboard → Auth |
+| Problem                         | Solution                                           |
+| ------------------------------- | -------------------------------------------------- |
+| "Missing environment variables" | Restart server after editing `.env.local`          |
+| "Error loading from Supabase"   | Check SQL migration ran successfully               |
+| Form not saving                 | Check browser console for errors                   |
+| Can't login                     | Verify email/password in Supabase Dashboard → Auth |
 
 ---
 
 ## 🎛️ Toggle Route Protection
 
 ### Currently: OPEN (no login required)
+
 **To enable login requirement:**
 
 Edit `src/components/ProtectedRoute.jsx` line 23:
+
 ```javascript
 // Uncomment this line:
-return <Navigate to="/login" replace />
+return <Navigate to="/login" replace />;
 
 // And remove this line:
-return children
+return children;
 ```
 
 ---
 
 ## 📊 Database Tables
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Main & joint applicants |
-| `applications` | Master record with status |
-| `application_data` | Form data (JSONB) + currentStep |
-| `nominees` | Beneficiaries |
-| `properties` | Property details |
-| `transactions` | Financial records |
-| `health_reports` | Medical docs |
-| `customer_support_inquiries` | Support tickets |
+| Table                        | Purpose                         |
+| ---------------------------- | ------------------------------- |
+| `users`                      | Main & joint applicants         |
+| `applications`               | Master record with status       |
+| `application_data`           | Form data (JSONB) + currentStep |
+| `nominees`                   | Beneficiaries                   |
+| `properties`                 | Property details                |
+| `transactions`               | Financial records               |
+| `health_reports`             | Medical docs                    |
+| `customer_support_inquiries` | Support tickets                 |
 
 ---
 
@@ -154,7 +168,7 @@ return children
 ✅ Row Level Security (RLS) enabled  
 ✅ Users see only their own data  
 ✅ Passwords hashed automatically  
-✅ `.env.local` excluded from Git  
+✅ `.env.local` excluded from Git
 
 ⚠️ **Never commit** `.env.local` to GitHub!
 
@@ -163,6 +177,7 @@ return children
 ## 📚 Full Documentation
 
 See `SUPABASE_SETUP.md` for:
+
 - Detailed setup instructions
 - How it works (data flow)
 - Testing checklist
@@ -172,6 +187,7 @@ See `SUPABASE_SETUP.md` for:
 ---
 
 **Need Help?** Check the Supabase Dashboard for:
+
 - Table data: **Table Editor**
 - SQL queries: **SQL Editor**
 - Users: **Authentication → Users**

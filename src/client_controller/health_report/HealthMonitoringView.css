@@ -1376,32 +1376,127 @@ input:checked + .slider:before {
     padding: 1rem;
   }
 
-  /* .statistics-cards/.stat-card and .table-header/.table-row/.table-col are
-     redefined later in this file for the admin dashboard with fixed,
-     non-shrinking widths; since both sections share the same class names,
-     those later rules also apply here and need a mobile override. */
-  .statistics-cards {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .stat-card {
-    width: 100%;
-    max-width: 320px;
-  }
+  /* The actual mobile sizing for .statistics-cards/.stat-card lives in the
+     final @media (max-width: 768px) block at the end of this file — it has
+     to be last because a later unconditional .stat-card rule (admin
+     dashboard, STATISTICS CARDS section) shares the same class names and
+     otherwise wins the cascade over any override placed here. */
 
   .reminder-tags {
     grid-template-columns: 1fr;
   }
 
-  .table-header,
+  /* Archived reports table -> stacked label/value cards */
+  .table-header {
+    display: none;
+  }
+
   .table-row {
-    flex-wrap: wrap;
+    display: block;
+    grid-template-columns: none;
+    padding: 0.75rem;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+  }
+
+  .table-row:last-child {
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 0;
   }
 
   .table-col {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
     width: auto;
-    flex: 1 1 auto;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f5f5f5;
+    text-align: right;
+  }
+
+  .table-col:last-child {
+    border-bottom: none;
+  }
+
+  .table-col::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #666;
+    text-align: left;
+  }
+
+  .table-col.table-actions {
+    justify-content: flex-end;
+    border-bottom: none;
+  }
+
+  .table-col.table-actions::before {
+    content: none;
+  }
+
+  /* Search results table -> stacked label/value cards */
+  .results-table {
+    border: none;
+    background: transparent;
+  }
+
+  .table-header-row {
+    display: none;
+  }
+
+  .table-body {
+    max-height: none;
+  }
+
+  .table-data-row {
+    display: block;
+    grid-template-columns: none;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .table-data-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .table-data-col {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+
+  .table-data-col:last-child {
+    border-bottom: none;
+  }
+
+  .table-data-col::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #666;
+    flex-shrink: 0;
+  }
+
+  .table-data-col .cell-value {
+    text-align: right;
+  }
+
+  .table-data-col .cell-value .report-title,
+  .table-data-col .cell-value .report-ref,
+  .table-data-col .cell-value .user-name,
+  .table-data-col .cell-value .user-email {
+    text-align: right;
+  }
+
+  .table-data-col .cell-value.table-actions {
+    justify-content: flex-end;
   }
 
   .search-section {
@@ -2855,66 +2950,6 @@ body.modal-open {
   color: #9ca3af;
 }
 
-/* ============================================================================
-   TABLE
-   ============================================================================ */
-
-.table-header {
-  display: flex;
-  gap: 16px;
-  padding: 8px;
-  margin-bottom: 8px;
-}
-
-.table-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 20px;
-  color: #9ca3af;
-  width: 131.73px;
-  flex-shrink: 0;
-}
-
-.table-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.table-row {
-  display: flex;
-  gap: 16px;
-  padding: 7px 8px 8px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.table-row.selected {
-  background: #fef2f2;
-}
-
-.table-row .table-col {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #1f2937;
-  display: flex;
-  align-items: center;
-}
-
-.applicant-name {
-  font-weight: 500;
-}
-
 /* Status Badges */
 .status-badge {
   padding: 4.5px 10px;
@@ -4106,5 +4141,43 @@ body.modal-open {
   .flag-modal-content {
     max-width: 90%;
     padding: 1.5rem;
+  }
+}
+
+/* Final mobile override for statistics cards: the admin-dashboard block
+   above (STATISTICS CARDS section) redefines .statistics-cards/.stat-card
+   with fixed, non-shrinking widths and no wrap, which — being later in the
+   file — wins the cascade over any earlier mobile rule for both the user
+   health report page and the admin dashboard, since they share class names.
+   This block must stay the last .statistics-cards/.stat-card rule in the
+   file so it actually takes effect on small screens. */
+@media (max-width: 768px) {
+  .statistics-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .stat-card,
+  .stat-card-small {
+    width: calc(50% - 5px);
+    min-width: 130px;
+    max-width: none;
+    padding: 14px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+    line-height: 26px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-sublabel {
+    font-size: 10px;
   }
 }

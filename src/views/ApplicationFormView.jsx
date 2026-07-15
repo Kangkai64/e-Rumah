@@ -76,6 +76,18 @@ function ErrorMessage({ error }) {
   return <span className="error-message">{error}</span>
 }
 
+// State Display - auto-filled from the typed postcode (see
+// getStateForPostcode in ApplicationController) rather than picked
+// independently, so it can never disagree with the postcode
+function StateDisplay({ value, label = 'State' }) {
+  return (
+    <div className="form-group">
+      <label>{label}</label>
+      <input type="text" value={value || ''} disabled placeholder="Auto-filled from postcode" />
+    </div>
+  )
+}
+
 // Error Summary Component
 function ErrorSummary({ errors }) {
   if (!errors || Object.keys(errors).length === 0) return null
@@ -580,29 +592,36 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 
       <div className="form-group">
         <label>Postcode *</label>
-        <input 
-          type="text" 
-          name="postcode" 
-          value={formData.postcode} 
-          onChange={handleChange} 
+        <input
+          type="text"
+          name="postcode"
+          value={formData.postcode}
+          onChange={handleChange}
           className={errors.postcode ? 'error' : ''}
           placeholder="5 digits"
-          required 
+          required
         />
         <ErrorMessage error={errors.postcode} />
       </div>
 
+      <StateDisplay value={formData.state} />
+
       <div className="form-row">
         <div className="form-group">
           <label>Email *</label>
-          <input 
-            type="email" 
-            name="email" 
-            value={formData.email} 
-            onChange={handleChange} 
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
             className={errors.email ? 'error' : ''}
-            required 
+            readOnly={!!formData.email}
+            style={formData.email ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+            required
           />
+          {formData.email && (
+            <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Locked - matches your registered account email</small>
+          )}
           <ErrorMessage error={errors.email} />
         </div>
       </div>
@@ -701,6 +720,8 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
         <ErrorMessage error={errors.employerPostcode} />
       </div>
 
+      <StateDisplay value={formData.employerState} label="Employer State" />
+
       <div className="form-group">
         <label>Purpose of Application *</label>
         <input 
@@ -729,20 +750,6 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
           hint="Upload a clear copy of your NRIC (Max 10MB)"
           error={errors.applicantNRIC}
         />
-
-        {formData.isJointApplicant && (
-          <DocumentUpload
-            label="Joint Applicant NRIC"
-            required
-            documentData={formData.documents?.jointApplicantNRIC}
-            onUpload={(e) => handleFileUpload(e, 'jointApplicantNRIC')}
-            onDelete={() => handleFileDelete('jointApplicantNRIC')}
-            uploading={uploadProgress?.jointApplicantNRIC}
-            accept=".pdf,.jpg,.jpeg,.png,.webp"
-            hint="Upload a clear copy of joint applicant's NRIC (Max 10MB)"
-            error={errors.jointApplicantNRIC}
-          />
-        )}
 
         <DocumentUpload
           label="Birth Certificate"
@@ -841,7 +848,7 @@ function Step1PersonalInfo({ formData, handleChange, errors = {}, handleFileUplo
 }
 
 // Step 2: Joint Applicant & Banking Information
-function Step2JointApplicant({ formData, handleChange, errors = {} }) {
+function Step2JointApplicant({ formData, handleChange, errors = {}, handleFileUpload, handleFileDelete, uploadProgress }) {
   const [jIcInputRef, handleJIcChange] = useICChangeHandler('jIc', handleChange)
   const jointEligibilityBlockReason = formData.isJointApplicant
     ? getEligibilityBlockReason(
@@ -1055,6 +1062,8 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             <ErrorMessage error={errors.jPostcode} />
           </div>
 
+          <StateDisplay value={formData.jState} label="Joint Applicant State" />
+
           <div className="form-row">
             <div className="form-group">
               <label>Email *</label>
@@ -1162,6 +1171,23 @@ function Step2JointApplicant({ formData, handleChange, errors = {} }) {
             />
             <ErrorMessage error={errors.jEmployerPostcode} />
           </div>
+
+          <StateDisplay value={formData.jEmployerState} label="Joint Applicant Employer State" />
+
+          <div className="documents-section" style={{marginTop: '1.5rem', padding: '1.5rem', backgroundColor: '#f5f5f5', borderRadius: '8px'}}>
+            <h3 style={{marginTop: 0}}>Joint Applicant Identity Document</h3>
+            <DocumentUpload
+              label="Joint Applicant NRIC"
+              required
+              documentData={formData.documents?.jointApplicantNRIC}
+              onUpload={(e) => handleFileUpload(e, 'jointApplicantNRIC')}
+              onDelete={() => handleFileDelete('jointApplicantNRIC')}
+              uploading={uploadProgress?.jointApplicantNRIC}
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              hint="Upload a clear copy of joint applicant's NRIC (Max 10MB)"
+              error={errors.jointApplicantNRIC}
+            />
+          </div>
           </fieldset>
         </section>
       )}
@@ -1264,7 +1290,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         fontSize: '0.95rem'
       }}>
         <strong style={{color: '#0d47a1', display: 'block', marginBottom: '0.5rem'}}>📋 SSB Property Requirements:</strong>
-        <ul style={{margin: '0', paddingLeft: '1.5rem', color: '#1565c0'}}>
+        <ul className="requirement-list" style={{margin: '0', paddingLeft: '1.5rem', color: '#1565c0'}}>
           <li>Property must be a residential property located in Kuala Lumpur, Malaysia</li>
           <li>Property must be your primary place of residence</li>
           <li>Property must be free from encumbrances (mortgages/financial liabilities) or existing encumbrances must be settled</li>
@@ -1291,18 +1317,19 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
       <section className="form-section">
         <div className="form-group">
-          <label>Property Type</label>
+          <label>Property Type *</label>
           <div className="radio-group">
             {['terrace', 'high-rise', 'semi-detach', 'detach', 'bungalow', 'others'].map(value => (
               <label key={value} className="radio-label">
                 <input type="radio" name="propertyType" value={value} checked={formData.propertyType === value} onChange={handleChange} />
-                {value === 'high-rise' ? 'High-Rise' : 
+                {value === 'high-rise' ? 'High-Rise' :
                  value === 'semi-detach' ? 'Semi-Detach' :
                  value === 'detach' ? 'Detach (Bungalow)' :
                  value.charAt(0).toUpperCase() + value.slice(1)}
               </label>
             ))}
           </div>
+          <ErrorMessage error={errors.propertyType} />
         </div>
 
         <div className="form-group">
@@ -1372,9 +1399,12 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
           <ErrorMessage error={errors.propertyPostcode} />
         </div>
 
+        <StateDisplay value={formData.propertyState} label="Property State" />
+        <small style={{color: '#666', fontSize: '0.85rem', marginTop: '-0.5rem', display: 'block'}}>SSB properties must be located in Kuala Lumpur</small>
+
         <div className="form-row">
           <div className="form-group">
-            <label>Indicative Market Value (RM) *</label>
+            <label>Indicative Market Value (RM) {!formData.valuationReportPending && '*'}</label>
             <input 
               type="text" 
               name="indicativeMarketValue" 
@@ -1385,7 +1415,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
             <ErrorMessage error={errors.indicativeMarketValue} />
           </div>
           <div className="form-group">
-            <label>Valuation Date</label>
+            <label>Valuation Date {!formData.valuationReportPending && '*'}</label>
             <DateInput
               dayName="valuationDay"
               monthName="valuationMonth"
@@ -1401,14 +1431,28 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Applicant Expected Market Value (RM)</label>
-          <input type="text" name="expectedMarketValue" value={formData.expectedMarketValue} onChange={handleChange} />
+          <label>Applicant Expected Market Value (RM) {!formData.valuationReportPending && '*'}</label>
+          <input
+            type="text"
+            name="expectedMarketValue"
+            value={formData.expectedMarketValue}
+            onChange={handleChange}
+            className={errors.expectedMarketValue ? 'error' : ''}
+          />
+          <ErrorMessage error={errors.expectedMarketValue} />
         </div>
 
         <div className="form-row">
           <div className="form-group">
             <label>Sale & Purchase Price (RM)</label>
-            <input type="text" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} />
+            <input
+              type="text"
+              name="purchasePrice"
+              value={formData.purchasePrice}
+              onChange={handleChange}
+              className={errors.purchasePrice ? 'error' : ''}
+            />
+            <ErrorMessage error={errors.purchasePrice} />
           </div>
           <div className="form-group">
             <label>Sale & Purchase Date</label>
@@ -1427,7 +1471,7 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Tenure of Property Title</label>
+          <label>Tenure of Property Title *</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="tenureTitle" value="freehold" checked={formData.tenureTitle === 'freehold'} onChange={handleChange} /> Freehold</label>
             <label className="radio-label"><input type="radio" name="tenureTitle" value="leasehold" checked={formData.tenureTitle === 'leasehold'} onChange={handleChange} /> Leasehold</label>
@@ -1465,12 +1509,26 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
 
         <div className="form-row">
           <div className="form-group">
-            <label>Build up area (in sqm)</label>
-            <input type="text" name="buildUpArea" value={formData.buildUpArea} onChange={handleChange} />
+            <label>Build up area (in sqm) *</label>
+            <input
+              type="text"
+              name="buildUpArea"
+              value={formData.buildUpArea}
+              onChange={handleChange}
+              className={errors.buildUpArea ? 'error' : ''}
+            />
+            <ErrorMessage error={errors.buildUpArea} />
           </div>
           <div className="form-group">
-            <label>Land area (in sqm)</label>
-            <input type="text" name="landArea" value={formData.landArea} onChange={handleChange} />
+            <label>Land area (in sqm) *</label>
+            <input
+              type="text"
+              name="landArea"
+              value={formData.landArea}
+              onChange={handleChange}
+              className={errors.landArea ? 'error' : ''}
+            />
+            <ErrorMessage error={errors.landArea} />
           </div>
         </div>
 
@@ -1525,34 +1583,39 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Fire & Home Insurance/Takaful policy</label>
+          <label>Fire & Home Insurance/Takaful policy *</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="fireInsurance" value="inForce" checked={formData.fireInsurance === 'inForce'} onChange={handleChange} /> In force</label>
             <label className="radio-label"><input type="radio" name="fireInsurance" value="notAvailable" checked={formData.fireInsurance === 'notAvailable'} onChange={handleChange} /> Not Available</label>
           </div>
+          <ErrorMessage error={errors.fireInsurance} />
           <div className="form-row" style={{marginTop: '0.5rem', alignItems: 'flex-start'}}>
             <div style={{flex: 1, opacity: formData.fireInsurance === 'inForce' ? 1 : 0.5}}>
               <div className="form-group">
-                <label>Insurance Company/Takaful Operator</label>
-                <input 
-                  type="text" 
-                  name="insuranceCompany" 
-                  value={formData.insuranceCompany} 
-                  onChange={handleChange} 
+                <label>Insurance Company/Takaful Operator {formData.fireInsurance === 'inForce' && '*'}</label>
+                <input
+                  type="text"
+                  name="insuranceCompany"
+                  value={formData.insuranceCompany}
+                  onChange={handleChange}
                   disabled={formData.fireInsurance !== 'inForce'}
+                  className={errors.insuranceCompany ? 'error' : ''}
                   style={{cursor: formData.fireInsurance === 'inForce' ? 'text' : 'not-allowed'}}
                 />
+                <ErrorMessage error={errors.insuranceCompany} />
               </div>
               <div className="form-group">
-                <label>Period Validity</label>
-                <input 
-                  type="text" 
-                  name="periodValidity" 
-                  value={formData.periodValidity} 
-                  onChange={handleChange} 
+                <label>Period Validity {formData.fireInsurance === 'inForce' && '*'}</label>
+                <input
+                  type="text"
+                  name="periodValidity"
+                  value={formData.periodValidity}
+                  onChange={handleChange}
                   disabled={formData.fireInsurance !== 'inForce'}
+                  className={errors.periodValidity ? 'error' : ''}
                   style={{cursor: formData.fireInsurance === 'inForce' ? 'text' : 'not-allowed'}}
                 />
+                <ErrorMessage error={errors.periodValidity} />
               </div>
             </div>
             {formData.fireInsurance === 'notAvailable' && (
@@ -1579,11 +1642,12 @@ function Step3PropertyDetails({ formData, handleChange, errors = {}, handleFileU
         </div>
 
         <div className="form-group">
-          <label>Renewal of Fire & Home Insurance/Takaful policy (In Future)</label>
+          <label>Renewal of Fire & Home Insurance/Takaful policy (In Future) *</label>
           <div className="radio-group">
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="selfRenewal" checked={formData.renewalFireInsurance === 'selfRenewal'} onChange={handleChange} /> Self-renewal</label>
             <label className="radio-label"><input type="radio" name="renewalFireInsurance" value="cagamasRenew" checked={formData.renewalFireInsurance === 'cagamasRenew'} onChange={handleChange} /> To be renewed by Organization</label>
           </div>
+          <ErrorMessage error={errors.renewalFireInsurance} />
         </div>
       </section>
 
@@ -1843,31 +1907,52 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
         </div>
 
         <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="nominee1SameAsApplicant"
+              checked={formData.nominee1SameAsApplicant}
+              onChange={handleChange}
+            />
+            <span>Same as Applicant's Address</span>
+          </label>
+        </div>
+
+        <div className="form-group">
           <label>Address *</label>
-          <textarea 
-            name="nominee1Address" 
-            value={formData.nominee1Address} 
-            onChange={handleChange} 
+          <textarea
+            name="nominee1Address"
+            value={formData.nominee1Address}
+            onChange={handleChange}
             className={errors.nominee1Address ? 'error' : ''}
             rows="3"
-            required 
+            readOnly={formData.nominee1SameAsApplicant}
+            style={formData.nominee1SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+            required
           />
+          {formData.nominee1SameAsApplicant && (
+            <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Same as applicant's address</small>
+          )}
           <ErrorMessage error={errors.nominee1Address} />
         </div>
 
         <div className="form-group">
           <label>Postcode *</label>
-          <input 
-            type="text" 
-            name="nominee1Postcode" 
-            value={formData.nominee1Postcode} 
-            onChange={handleChange} 
+          <input
+            type="text"
+            name="nominee1Postcode"
+            value={formData.nominee1Postcode}
+            onChange={handleChange}
             className={errors.nominee1Postcode ? 'error' : ''}
             maxLength="5"
-            required 
+            readOnly={formData.nominee1SameAsApplicant}
+            style={formData.nominee1SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+            required
           />
           <ErrorMessage error={errors.nominee1Postcode} />
         </div>
+
+        <StateDisplay value={formData.nominee1State} label="Nominee 1 State" />
 
         <div className="form-group">
           <label>Email *</label>
@@ -1892,7 +1977,12 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
               onChange={handleChange}
               className={errors.nominee1ResidencePhone ? 'error' : ''}
               placeholder="03-xxxxxxx"
+              readOnly={formData.nominee1SameAsApplicant}
+              style={formData.nominee1SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
             />
+            {formData.nominee1SameAsApplicant && (
+              <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Same as applicant's residence phone</small>
+            )}
             <ErrorMessage error={errors.nominee1ResidencePhone} />
           </div>
           <div className="form-group">
@@ -2074,31 +2164,52 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
           </div>
 
           <div className="form-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                name="nominee2SameAsApplicant"
+                checked={formData.nominee2SameAsApplicant}
+                onChange={handleChange}
+              />
+              <span>Same as Applicant's Address</span>
+            </label>
+          </div>
+
+          <div className="form-group">
             <label>Address *</label>
-            <textarea 
-              name="nominee2Address" 
-              value={formData.nominee2Address} 
-              onChange={handleChange} 
+            <textarea
+              name="nominee2Address"
+              value={formData.nominee2Address}
+              onChange={handleChange}
               className={errors.nominee2Address ? 'error' : ''}
               rows="3"
-              required 
+              readOnly={formData.nominee2SameAsApplicant}
+              style={formData.nominee2SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+              required
             />
+            {formData.nominee2SameAsApplicant && (
+              <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Same as applicant's address</small>
+            )}
             <ErrorMessage error={errors.nominee2Address} />
           </div>
 
           <div className="form-group">
             <label>Postcode *</label>
-            <input 
-              type="text" 
-              name="nominee2Postcode" 
-              value={formData.nominee2Postcode} 
-              onChange={handleChange} 
+            <input
+              type="text"
+              name="nominee2Postcode"
+              value={formData.nominee2Postcode}
+              onChange={handleChange}
               className={errors.nominee2Postcode ? 'error' : ''}
               maxLength="5"
-              required 
+              readOnly={formData.nominee2SameAsApplicant}
+              style={formData.nominee2SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
+              required
             />
             <ErrorMessage error={errors.nominee2Postcode} />
           </div>
+
+          <StateDisplay value={formData.nominee2State} label="Nominee 2 State" />
 
           <div className="form-group">
             <label>Email *</label>
@@ -2123,7 +2234,12 @@ function Step4Nominees({ formData, handleChange, errors = {}, editNomineeOnly = 
                 onChange={handleChange}
                 className={errors.nominee2ResidencePhone ? 'error' : ''}
                 placeholder="03-xxxxxxx"
+                readOnly={formData.nominee2SameAsApplicant}
+                style={formData.nominee2SameAsApplicant ? {backgroundColor: '#f8f9fa', color: '#495057', cursor: 'not-allowed'} : undefined}
               />
+              {formData.nominee2SameAsApplicant && (
+                <small style={{color: '#666', fontSize: '0.85rem'}}>🔒 Same as applicant's residence phone</small>
+              )}
               <ErrorMessage error={errors.nominee2ResidencePhone} />
             </div>
             <div className="form-group">
@@ -2334,6 +2450,8 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
     handleChange({ target: { name: field, value } })
   }
 
+  const signingNomineeLabel = formData.ack_nomineeSource === 'nominee2' ? 'Nominee 2' : 'Nominee 1'
+
   return (
     <div className="step-container">
       <h2>Acknowledgement Form</h2>
@@ -2344,7 +2462,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
         <div className="info-box" style={{padding: '1.5rem', backgroundColor: '#f9f9f9', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '1.5rem'}}>
           <p><strong>ACKNOWLEDGEMENT BY NOMINEE</strong></p>
           <p style={{marginTop: '0.5rem'}}>I hereby acknowledge that:</p>
-          <ol style={{marginLeft: '1.5rem', marginTop: '0.5rem'}}>
+          <ol className="info-list" style={{marginLeft: '1.5rem', marginTop: '0.5rem'}}>
             <li>I have been nominated by the applicant(s) as a beneficiary under the Skim Saraan Bercagar (SSB)</li>
             <li>I understand my rights and obligations as a nominee</li>
             <li>I agree to accept the nomination</li>
@@ -2354,7 +2472,36 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
         </div>
 
         <h3>Nominee Information (Auto-filled)</h3>
-        
+
+        {formData.nominee2Name && (
+          <div className="form-group">
+            <label>Which nominee is signing this acknowledgement? *</label>
+            <div style={{display: 'flex', gap: '1.5rem', marginTop: '0.25rem'}}>
+              <label className="checkbox-label" style={{fontWeight: 'normal'}}>
+                <input
+                  type="radio"
+                  name="ack_nomineeSource"
+                  value="nominee1"
+                  checked={(formData.ack_nomineeSource || 'nominee1') === 'nominee1'}
+                  onChange={handleChange}
+                />
+                {' '}Nominee 1 ({formData.nominee1Name})
+              </label>
+              <label className="checkbox-label" style={{fontWeight: 'normal'}}>
+                <input
+                  type="radio"
+                  name="ack_nomineeSource"
+                  value="nominee2"
+                  checked={formData.ack_nomineeSource === 'nominee2'}
+                  onChange={handleChange}
+                />
+                {' '}Nominee 2 ({formData.nominee2Name})
+              </label>
+            </div>
+            <small style={{color: '#666', fontSize: '0.85rem'}}>Only one nominee needs to sign this acknowledgement form.</small>
+          </div>
+        )}
+
         <div className="form-group">
           <label>Nominee Name (as per NRIC) *</label>
           <input 
@@ -2366,7 +2513,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             className={errors.ack_nomineeName ? 'error' : ''}
             required 
           />
-          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from {signingNomineeLabel} information</small>
           <ErrorMessage error={errors.ack_nomineeName} />
         </div>
 
@@ -2382,7 +2529,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             placeholder="Format: xxxxxx-xx-xxxx"
             required 
           />
-          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from {signingNomineeLabel} information</small>
           <ErrorMessage error={errors.ack_nomineeNRIC} />
         </div>
 
@@ -2397,7 +2544,7 @@ function Step6Acknowledgement({ formData, handleChange, errors = {} }) {
             rows="3"
             required 
           />
-          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from Nominee 1 information</small>
+          <small style={{color: '#666', fontSize: '0.85rem'}}>Auto-filled from {signingNomineeLabel} information</small>
           <ErrorMessage error={errors.ack_nomineeAddress} />
         </div>
 
@@ -2628,6 +2775,7 @@ function Step7Review({ formData }) {
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Contact Information</h4>
         <div className="review-field"><strong>Address:</strong> {getValue(formData.address)}</div>  
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.postcode)}</div>
+        <div className="review-field"><strong>State:</strong> {getValue(formData.state)}</div>
         <div className="review-field"><strong>Email:</strong> {getValue(formData.email)}</div>
         <div className="review-grid">
           <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.residencePhone)}</div>
@@ -2650,6 +2798,7 @@ function Step7Review({ formData }) {
         </div>
         <div className="review-field"><strong>Employer Address:</strong> {getValue(formData.employerAddress)}</div>
         <div className="review-field"><strong>Employer Postcode:</strong> {getValue(formData.employerPostcode)}</div>
+        <div className="review-field"><strong>Employer State:</strong> {getValue(formData.employerState)}</div>
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Application Preferences</h4>
         <div className="review-field"><strong>Purpose of Application:</strong> {getValue(formData.purposeOfApplication)}</div>
@@ -2685,6 +2834,7 @@ function Step7Review({ formData }) {
           <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Contact Information</h4>
           <div className="review-field"><strong>Address:</strong> {getValue(formData.jAddress)}</div>
           <div className="review-field"><strong>Postcode:</strong> {getValue(formData.jPostcode)}</div>
+          <div className="review-field"><strong>State:</strong> {getValue(formData.jState)}</div>
           <div className="review-grid">
             <div className="review-field"><strong>Email:</strong> {getValue(formData.jEmail)}</div>
             <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.jResidencePhone)}</div>
@@ -2698,6 +2848,7 @@ function Step7Review({ formData }) {
           </div>
           <div className="review-field"><strong>Employer Address:</strong> {getValue(formData.jEmployerAddress)}</div>
           <div className="review-field"><strong>Employer Postcode:</strong> {getValue(formData.jEmployerPostcode)}</div>
+          <div className="review-field"><strong>Employer State:</strong> {getValue(formData.jEmployerState)}</div>
 
           <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Banking Information</h4>
           <div className="review-grid">
@@ -2739,6 +2890,7 @@ function Step7Review({ formData }) {
         <div className="review-field"><strong>District:</strong> {getValue(formData.propertyDistrict)}</div>
         <div className="review-field"><strong>Mukim:</strong> {getValue(formData.propertyMukim)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.propertyPostcode)}</div>
+        <div className="review-field"><strong>State:</strong> {getValue(formData.propertyState)}</div>
 
         <h4 style={{color: '#2196f3', marginTop: '1rem', marginBottom: '0.5rem'}}>Property Measurements</h4>
         <div className="review-grid">
@@ -2798,6 +2950,7 @@ function Step7Review({ formData }) {
         </div>
         <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee1Address)}</div>
         <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee1Postcode)}</div>
+        <div className="review-field"><strong>State:</strong> {getValue(formData.nominee1State)}</div>
         <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee1Email)}</div>
 
         <div className="review-grid">
@@ -2821,6 +2974,7 @@ function Step7Review({ formData }) {
             </div>
             <div className="review-field"><strong>Address:</strong> {getValue(formData.nominee2Address)}</div>
             <div className="review-field"><strong>Postcode:</strong> {getValue(formData.nominee2Postcode)}</div>
+            <div className="review-field"><strong>State:</strong> {getValue(formData.nominee2State)}</div>
             <div className="review-grid">
               <div className="review-field"><strong>Email:</strong> {getValue(formData.nominee2Email)}</div>
               <div className="review-field"><strong>Residence Phone:</strong> {getValue(formData.nominee2ResidencePhone)}</div>
@@ -2880,7 +3034,7 @@ export default function ApplicationFormView({
       case 1:
         return <Step1PersonalInfo formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 2:
-        return <Step2JointApplicant formData={formData} handleChange={handleChange} errors={errors} disabled={readOnlyMode || editNomineeOnly} />
+        return <Step2JointApplicant formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 3:
         return <Step3PropertyDetails formData={formData} handleChange={handleChange} errors={errors} handleFileUpload={handleFileUpload} handleFileDelete={handleFileDelete} uploadProgress={uploadProgress} disabled={readOnlyMode || editNomineeOnly} />
       case 4:

@@ -5,12 +5,17 @@ Health Reports → Support → Admin actions**. Sections are ordered so you can 
 demo/presentation without jumping between files. Replaces the former `WIZARD_TEST_DATA.md` and
 `HEALTH_SUPPORT_TEST_DATA.md`.
 
-Two personas carry through the **entire** flow (registration → wizard → health reports → support):
+Three personas carry through the **entire** flow (registration → wizard → health reports → support):
 
 - **Persona A — Single applicant, single nominee.** Simplest path. Use this first to validate the happy
   path (AM-06/AM-16 in the testing checklist).
 - **Persona B — Joint applicant + two nominees.** Exercises every conditional block (Step 2 joint-applicant
   fields, Step 4 second nominee, lump-sum usage, leasehold expiry, fire insurance).
+- **Persona C — Widowed applicant, adult-child joint applicant.** Purpose-built to cover what A and B
+  don't: `jRelationship = children` (the one joint-applicant relationship value neither Persona B nor
+  Profiles 3–12 ever exercise), plus Chinese race, Widowed marital status, `presentHouse = family`,
+  `propertyType = bungalow`, `accountType = jointAccountCurrent`, and `lumpSumUsage = maintenance` — none
+  of which A or B touch. See Part 4A.
 
 **Profiles 3–12** are ten additional wizard-only applicants (register the same way, then go straight to
 the wizard) covering every race/marital-status/present-house/property-type/payout/lump-sum-usage/
@@ -300,10 +305,140 @@ Submit.
 
 ---
 
+## Part 4A — Application Wizard: Persona C (widowed applicant, adult-child joint applicant)
+
+Register/log in the same way as Parts 1–2, with:
+
+| Field        | Value                   |
+| ------------ | ----------------------- |
+| Full Name    | `Chong Ah Eng`          |
+| IC Number    | `380312-14-5468`        |
+| Phone Number | `016-2345678`           |
+| Email        | `chong.aheng@gmail.com` |
+| Password     | `eRumah2026!`           |
+
+### Step 1 — Personal Information
+
+| Field                      | Value                                                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| How did you know about SSB | `social_media`                                                                                                 |
+| NRIC No.                   | `380312-14-5468` (auto-filled; auto-fills DOB 12/03/1938, Sex: Female, Age 88, Citizenship: Malaysian Citizen) |
+| Name as per NRIC           | `Chong Ah Eng` (auto-filled)                                                                                   |
+| Race                       | `Chinese`                                                                                                      |
+| Marital Status             | `Widowed`                                                                                                      |
+| Address                    | `25 Jalan Bukit Beruntung, Taman Beruntung`                                                                    |
+| Postcode                   | `75450`                                                                                                        |
+| Email                      | `chong.aheng@gmail.com` (auto-filled)                                                                          |
+| Residence Phone (optional) | `03-6021234`                                                                                                   |
+| Telephone (mobile)         | `016-2345678` (auto-filled)                                                                                    |
+| Number of Dependents       | `0`                                                                                                            |
+| Present House Ownership    | `family` _(she lives with her son; the bungalow below is a separate, now-vacant property)_                     |
+| Occupation                 | `Retired Seamstress`                                                                                           |
+| Employer Name              | `Self-employed (Tailoring)` (former, pre-retirement)                                                           |
+| Employer Address           | `Jalan Pasar, Melaka`                                                                                          |
+| Employer Postcode          | `75000`                                                                                                        |
+| Purpose of Application     | `Supplement retirement income and home maintenance`                                                            |
+| Payout Option              | `Monthly Payout and Lump Sum`                                                                                  |
+| Lump Sum Usage             | `Refurbishment and maintenance`                                                                                |
+| Payment Option             | `To be paid by borrower/customer`                                                                              |
+| Documents                  | Applicant NRIC, Birth Certificate, 3× Payslips, 6× Bank Statements, EPF Statement                              |
+
+Joint applicant: check **"Do you have a joint applicant?"**.
+
+### Step 2 — Joint Applicant & Banking
+
+| Field                       | Value                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Salutation                  | `Mr`                                                                                                             |
+| Name                        | `Wong Kok Seng`                                                                                                  |
+| IC                          | `680925-16-5437` (age 57, valid)                                                                                 |
+| Address                     | `25 Jalan Bukit Beruntung, Taman Beruntung`                                                                      |
+| Postcode                    | `75450`                                                                                                          |
+| Email                       | `wong.kokseng@gmail.com`                                                                                         |
+| Residence Phone             | `03-6021234`                                                                                                     |
+| Telephone                   | `019-8765430`                                                                                                    |
+| Race                        | `Chinese`                                                                                                        |
+| Marital Status              | `Married`                                                                                                        |
+| Relationship with Applicant | `children` _(the only one of the four `jRelationship` values not otherwise used anywhere else in this document)_ |
+| Occupation                  | `Retired Civil Engineer`                                                                                         |
+| Employer Name               | `Jabatan Kerja Raya Melaka` (former employer, pre-retirement)                                                    |
+| Employer Address            | `Jalan Kota, Melaka`                                                                                             |
+| Employer Postcode           | `75000`                                                                                                          |
+| Documents                   | Joint Applicant NRIC                                                                                             |
+| Bank Name                   | `Public Bank`                                                                                                    |
+| Account Type                | `jointAccountCurrent` _(the other required joint account type — B already covers `joinAccountSaving`)_           |
+| Account Number              | `5566778899`                                                                                                     |
+| Account Preference          | `conventional`                                                                                                   |
+
+### Step 3 — Property Details
+
+| Field                   | Value                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Property Type           | `bungalow` _(neither A's `high-rise` nor B's `terrace`)_                                                                 |
+| Property Address        | `No. 3, Jalan Bukit Beruntung Utama, Taman Beruntung`                                                                    |
+| Scheme Name             | `Taman Beruntung Bungalow`                                                                                               |
+| District                | `Melaka Tengah`                                                                                                          |
+| Mukim                   | `Bandar Melaka`                                                                                                          |
+| Postcode                | `75450` _(not one of the excluded `KL_POSTCODES` values)_                                                                |
+| Indicative Market Value | `720000`                                                                                                                 |
+| Valuation Date          | `01/06/2026`                                                                                                             |
+| Expected Market Value   | `740000`                                                                                                                 |
+| Purchase Price          | `300000`                                                                                                                 |
+| Purchase Date           | `15/08/1985`                                                                                                             |
+| Tenure/Title            | `freehold`                                                                                                               |
+| Build-up Area (sqm)     | `2200`                                                                                                                   |
+| Land Area (sqm)         | `2800`                                                                                                                   |
+| Property Encumbered     | `no`                                                                                                                     |
+| Fire Insurance          | `inForce` → Insurance Company: `MSIG Malaysia`, Period of Validity: `01/01/2026 - 31/12/2026`, upload Fire Insurance doc |
+| Fire Insurance Renewal  | `selfRenewal`                                                                                                            |
+| Documents               | Grant/Title, Sale Agreement, Valuation Report, Fire Insurance                                                            |
+
+### Step 4 — Nominee
+
+| Field                               | Value                                       |
+| ----------------------------------- | ------------------------------------------- |
+| Add second nominee?                 | leave unchecked                             |
+| Nominee 1 Salutation                | `Ms`                                        |
+| Nominee 1 Name                      | `Wong Mei Ling`                             |
+| Nominee 1 IC                        | `920415-14-5322`                            |
+| Nominee 1 Address                   | `25 Jalan Bukit Beruntung, Taman Beruntung` |
+| Nominee 1 Postcode                  | `75450`                                     |
+| Nominee 1 Email                     | `wong.meiling@gmail.com`                    |
+| Nominee 1 Residence Phone           | `03-6021234`                                |
+| Nominee 1 Telephone                 | `013-6677889`                               |
+| Nominee 1 Race                      | `Chinese`                                   |
+| Nominee 1 Marital Status            | `Single`                                    |
+| Nominee 1 Malaysian (checkbox)      | checked                                     |
+| Nominee 1 Relationship to Applicant | `Daughter` (sibling of the joint applicant) |
+| Nominee 1 Occupation                | `Pharmacist`                                |
+| Nominee 1 Employer Name             | `Guardian Health`                           |
+
+### Step 5 — Declaration / Signatures
+
+Applicant signature (name = `Chong Ah Eng`) **and** joint applicant signature (name = `Wong Kok Seng`,
+since `isJointApplicant` is true). Check Privacy Consent + Acknowledge Declaration.
+
+### Step 6 — Acknowledgement Form
+
+- Nominee Name: `Wong Mei Ling`, Nominee NRIC: `920415-14-5322`, Nominee Address: `25 Jalan Bukit Beruntung, Taman Beruntung`
+- Applicant Name: `Chong Ah Eng`, Applicant NRIC: `380312-14-5468`, Applicant Address: `25 Jalan Bukit Beruntung, Taman Beruntung`
+- Joint Applicant Name: `Wong Kok Seng`, Joint Applicant NRIC: `680925-16-5437`
+- Application Date / Ack Date: today's date
+- Signatory Name: `Chong Ah Eng`, Signatory IC: `380312-14-5468`
+- Check "Nominee Consent"; draw the acknowledgement signature.
+
+### Step 7 — Review & Submit
+
+Verify the joint applicant (`children` relationship), `jointAccountCurrent`, and bungalow property type all
+render correctly, then Submit. She can be carried through Parts 5–6 (Health Reports/Support) exactly like
+Persona A/B once `submitted`.
+
+---
+
 ## Part 5 — Health Reports & Reminders (`/user/health-reports`)
 
-Log in as Persona A or B (Part 2) after submitting their wizard application (Part 3/4) — `submitted`
-status is enough to unlock this route.
+Log in as Persona A, B, or C (Part 2) after submitting their wizard application (Part 3/4/4A) —
+`submitted` status is enough to unlock this route.
 
 ### 1. Upload Health Reports (multi-file upload modal)
 

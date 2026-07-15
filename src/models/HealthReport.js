@@ -26,7 +26,7 @@ const HealthReport = {
           report_file_url: reportData.reportFileUrl,
           notes: reportData.notes,
           health_report_status: reportData.healthReportStatus || 'Pending',
-          due_status: reportData.dueStatus || 'Up to Date'
+          due_status: reportData.dueStatus || computeDueStatus(reportData.reportDate, reportData.reportType)
         }])
         .select()
         .single()
@@ -338,6 +338,59 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
 }
 
 /**
+ * Archive a user's previous overdue reports of the same type once a fresh one has
+ * been uploaded, so the resolved report stops counting toward active overdue stats/lists.
+ * due_status itself is left alone (it's recomputed from report_date by a scheduled job) -
+ * this only moves the stale row out of the active view via health_report_status.
+ * @param {string} userId - User ID
+ * @param {string} reportType - Report type to match
+ * @param {string[]} excludeReportIds - Newly created report IDs to leave untouched
+ * @returns {Promise<Object>} IDs of reports archived
+ */
+export const archiveSupersededOverdueReports = async (userId, reportType, excludeReportIds = []) => {
+  try {
+    let query = supabase
+      .from('health_reports')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('report_type', reportType)
+      .eq('due_status', 'Overdue')
+      .neq('health_report_status', 'Archived')
+
+    if (excludeReportIds.length > 0) {
+      query = query.not('id', 'in', `(${excludeReportIds.join(',')})`)
+    }
+
+    const { data: staleReports, error } = await query
+    if (error) throw error
+    console.log(`[archiveSupersededOverdueReports] user=${userId} type=${reportType} exclude=${excludeReportIds.join(',')} -> found ${staleReports?.length || 0} stale overdue report(s)`, staleReports)
+    if (!staleReports || staleReports.length === 0) {
+      return { success: true, data: [] }
+    }
+
+    const timestamp = new Date().toISOString()
+    const archivedIds = []
+    for (const report of staleReports) {
+      const result = await corsProxyUpdate('health_reports', report.id, {
+        health_report_status: 'Archived',
+        updated_at: timestamp,
+        notes: `Automatically archived - superseded by a newer ${reportType} report`
+      })
+      if (result.success) {
+        archivedIds.push(report.id)
+      } else {
+        console.error(`[archiveSupersededOverdueReports] failed to archive report ${report.id}:`, result.error)
+      }
+    }
+
+    return { success: true, data: archivedIds }
+  } catch (error) {
+    console.error('Error archiving superseded overdue reports:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Get all health reports for a user
  * @param {string} userId - User ID
  * @param {Object} options - Filter, sort, and search options
@@ -551,7 +604,10 @@ function calculateDueDate(reportDate, reportType) {
       monthsToAdd = 12
       break
     case "Doctor's Visit Summary":
-      monthsToAdd = 3
+      monthsToAdd = 6
+      break
+    case 'Medical Image':
+      monthsToAdd = 12
       break
     default:
       monthsToAdd = 3
@@ -559,6 +615,30 @@ function calculateDueDate(reportDate, reportType) {
 
   date.setMonth(date.getMonth() + monthsToAdd)
   return date.toISOString()
+}
+
+/**
+ * Compute the due_status a health report should have right now, based on its
+ * report date and type. Mirrors the thresholds used by the scheduled
+ * update_health_reports_due_status() DB job (expiry = report_date + validity
+ * months; overdue once expiry has passed, due soon within 1 month of expiry),
+ * so newly-created reports reflect the correct status immediately instead of
+ * waiting for the next cron run.
+ * @param {string} reportDate - Report date (ISO date string)
+ * @param {string} reportType - Report type
+ * @returns {'Overdue'|'Due Soon'|'Up to Date'}
+ */
+export function computeDueStatus(reportDate, reportType) {
+  if (!reportDate) return 'Up to Date'
+
+  const now = new Date()
+  const dueDate = new Date(calculateDueDate(reportDate, reportType))
+  const oneMonthFromNow = new Date(now)
+  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1)
+
+  if (dueDate <= now) return 'Overdue'
+  if (dueDate <= oneMonthFromNow) return 'Due Soon'
+  return 'Up to Date'
 }
 
 function formatDate(date) {
@@ -657,31 +737,32 @@ async function sendShareNotificationEmail(report, recipientEmail, shareToken, ex
 
 async function shareWithCaregiver(report, shareData) {
   try {
-    // Validate required fields
-    if (!shareData || !shareData.email || shareData.email.trim() === '') {
-      return { success: false, error: 'Email address is required for sharing with caregiver' }
+    if (!shareData || !shareData.caregiverId) {
+      return { success: false, error: 'Please select a caregiver' }
     }
 
-    // First, find the user by email
-    const { data: userData, error: userError } = await supabase
+    // Re-validate the contract server-side rather than trusting the dropdown selection
+    const today = new Date().toISOString().split('T')[0]
+    const { data: contract, error: contractError } = await supabase
+      .from('care_services')
+      .select('service_id')
+      .eq('elder_id', report.user_id)
+      .eq('caregiver_id', shareData.caregiverId)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+      .maybeSingle()
+
+    if (contractError || !contract) {
+      return { success: false, error: 'No active care contract found with this caregiver' }
+    }
+
+    const { data: caregiverUser, error: caregiverUserError } = await supabase
       .from('users')
-      .select('id')
-      .eq('email', shareData.email.trim())
+      .select('id, email, full_name')
+      .eq('id', shareData.caregiverId)
       .maybeSingle()
 
-    if (userError || !userData) {
-      return { success: false, error: 'No user found with the provided email address' }
-    }
-
-    // Then, check if this user is a caregiver
-    const { data: caregiverData, error: caregiverError } = await supabase
-      .from('caregivers')
-      .select('id, user_id')
-      .eq('user_id', userData.id)
-      .maybeSingle()
-
-    if (caregiverError || !caregiverData) {
-      return { success: false, error: 'User found but they are not registered as a caregiver' }
+    if (caregiverUserError || !caregiverUser) {
+      return { success: false, error: 'Caregiver account not found' }
     }
 
     const expiryDate = new Date()
@@ -696,8 +777,8 @@ async function shareWithCaregiver(report, shareData) {
         report_id: report.id,
         shared_by_user_id: report.user_id,
         shared_with_type: 'caregiver',
-        shared_with_id: caregiverData.user_id,
-        shared_with_email: shareData.email.trim(),
+        shared_with_id: caregiverUser.id,
+        shared_with_email: caregiverUser.email,
         share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
@@ -708,11 +789,11 @@ async function shareWithCaregiver(report, shareData) {
     // Send email notification
     await sendShareNotificationEmail(
       report,
-      shareData.email.trim(),
+      caregiverUser.email,
       shareToken,
       expiryDate,
       'caregiver',
-      caregiverData.user_id
+      caregiverUser.id
     )
 
     return { success: true, data, message: 'Report shared with caregiver successfully' }
@@ -724,38 +805,35 @@ async function shareWithCaregiver(report, shareData) {
 
 async function shareWithFamily(report, shareData) {
   try {
-    // Validate required fields
-    if (!shareData || !shareData.email || shareData.email.trim() === '') {
-      return { success: false, error: 'Email address is required for sharing with family member' }
+    if (!shareData || !shareData.familyMemberId) {
+      return { success: false, error: 'Please select a family member' }
     }
 
-    // First, find the user by email
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', shareData.email.trim())
-      .maybeSingle()
-
-    if (userError || !userData) {
-      return { success: false, error: 'No user found with the provided email address' }
-    }
-
-    // Then, check if there's a verified family relationship
+    // Re-validate the relationship server-side rather than trusting the dropdown selection
     const { data: familyData, error: familyError } = await supabase
       .from('family_members')
       .select('id, family_member_user_id, permissions_level, is_verified')
-      .eq('user_id', report.user_id)
-      .eq('family_member_user_id', userData.id)
+      .eq('id', report.user_id)
+      .eq('family_member_user_id', shareData.familyMemberId)
       .eq('is_verified', true)
       .maybeSingle()
 
     if (familyError || !familyData) {
-      return { success: false, error: 'No verified family member relationship found with this user' }
+      return { success: false, error: 'No verified family member relationship found' }
     }
 
-    // Check permissions
     if (!['view_and_share', 'full'].includes(familyData.permissions_level)) {
       return { success: false, error: 'Family member does not have permission to view reports' }
+    }
+
+    const { data: familyUser, error: familyUserError } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .eq('id', shareData.familyMemberId)
+      .maybeSingle()
+
+    if (familyUserError || !familyUser) {
+      return { success: false, error: 'Family member account not found' }
     }
 
     const expiryDate = new Date()
@@ -770,8 +848,8 @@ async function shareWithFamily(report, shareData) {
         report_id: report.id,
         shared_by_user_id: report.user_id,
         shared_with_type: 'family',
-        shared_with_id: familyData.family_member_user_id,
-        shared_with_email: shareData.email.trim(),
+        shared_with_id: familyUser.id,
+        shared_with_email: familyUser.email,
         share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
@@ -782,11 +860,11 @@ async function shareWithFamily(report, shareData) {
     // Send email notification
     await sendShareNotificationEmail(
       report,
-      shareData.email.trim(),
+      familyUser.email,
       shareToken,
       expiryDate,
       'family member',
-      familyData.family_member_user_id
+      familyUser.id
     )
 
     return { success: true, data, message: 'Report shared with family member successfully' }
@@ -798,32 +876,32 @@ async function shareWithFamily(report, shareData) {
 
 async function shareWithHealthcare(report, shareData) {
   try {
-    // Validate required fields
-    if (!shareData || !shareData.email || shareData.email.trim() === '') {
-      return { success: false, error: 'Email address is required for sharing with healthcare provider' }
+    if (!shareData || !shareData.healthcareProviderId) {
+      return { success: false, error: 'Please select a healthcare provider' }
     }
 
-    // First, find the user by email
-    const { data: userData, error: userError } = await supabase
+    // Re-validate the contract server-side rather than trusting the dropdown selection
+    const today = new Date().toISOString().split('T')[0]
+    const { data: contract, error: contractError } = await supabase
+      .from('care_services')
+      .select('service_id')
+      .eq('elder_id', report.user_id)
+      .eq('healthcare_provider_id', shareData.healthcareProviderId)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+      .maybeSingle()
+
+    if (contractError || !contract) {
+      return { success: false, error: 'No active care contract found with this healthcare provider' }
+    }
+
+    const { data: providerUser, error: providerUserError } = await supabase
       .from('users')
-      .select('id')
-      .eq('email', shareData.email.trim())
+      .select('id, email, full_name')
+      .eq('id', shareData.healthcareProviderId)
       .maybeSingle()
 
-    if (userError || !userData) {
-      return { success: false, error: 'No user found with the provided email address' }
-    }
-
-    // Then, check if this user is a verified healthcare provider
-    const { data: providerData, error: providerError } = await supabase
-      .from('healthcare_providers')
-      .select('id, user_id, is_verified')
-      .eq('user_id', userData.id)
-      .eq('is_verified', true)
-      .maybeSingle()
-
-    if (providerError || !providerData) {
-      return { success: false, error: 'User found but they are not a verified healthcare provider' }
+    if (providerUserError || !providerUser) {
+      return { success: false, error: 'Healthcare provider account not found' }
     }
 
     const expiryDate = new Date()
@@ -838,8 +916,8 @@ async function shareWithHealthcare(report, shareData) {
         report_id: report.id,
         shared_by_user_id: report.user_id,
         shared_with_type: 'healthcare_provider',
-        shared_with_id: providerData.user_id,
-        shared_with_email: shareData.email.trim(),
+        shared_with_id: providerUser.id,
+        shared_with_email: providerUser.email,
         share_token: shareToken,
         expires_at: expiryDate.toISOString()
       }])
@@ -850,11 +928,11 @@ async function shareWithHealthcare(report, shareData) {
     // Send email notification
     await sendShareNotificationEmail(
       report,
-      shareData.email.trim(),
+      providerUser.email,
       shareToken,
       expiryDate,
       'healthcare provider',
-      providerData.user_id
+      providerUser.id
     )
 
     return { success: true, data, message: 'Report shared with healthcare provider successfully' }
@@ -935,6 +1013,109 @@ async function shareViaEmail(report, shareData) {
     }
   } catch (error) {
     console.error('Error sharing via email:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get the caregivers an elder has an active care_services contract with,
+ * for populating the "Share with Caregiver" dropdown.
+ * @param {string} elderId - The elder's user ID
+ * @returns {Promise<Object>} List of { id, full_name, email }
+ */
+export const getCaregiverOptions = async (elderId) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: services, error: servicesError } = await supabase
+      .from('care_services')
+      .select('caregiver_id')
+      .eq('elder_id', elderId)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+
+    if (servicesError) throw servicesError
+
+    const caregiverIds = [...new Set((services || []).map((s) => s.caregiver_id))]
+    if (caregiverIds.length === 0) return { success: true, data: [] }
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name, email')
+      .in('id', caregiverIds)
+
+    if (usersError) throw usersError
+    return { success: true, data: users || [] }
+  } catch (error) {
+    console.error('Error in getCaregiverOptions:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get the healthcare providers an elder has an active care_services contract
+ * with, for populating the "Share with Healthcare Provider" dropdown.
+ * @param {string} elderId - The elder's user ID
+ * @returns {Promise<Object>} List of { id, full_name, email }
+ */
+export const getHealthcareProviderOptions = async (elderId) => {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: services, error: servicesError } = await supabase
+      .from('care_services')
+      .select('healthcare_provider_id')
+      .eq('elder_id', elderId)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+
+    if (servicesError) throw servicesError
+
+    const providerIds = [...new Set((services || []).map((s) => s.healthcare_provider_id))]
+    if (providerIds.length === 0) return { success: true, data: [] }
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name, email')
+      .in('id', providerIds)
+
+    if (usersError) throw usersError
+    return { success: true, data: users || [] }
+  } catch (error) {
+    console.error('Error in getHealthcareProviderOptions:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Get the verified family members allowed to view an elder's reports, for
+ * populating the "Share with Family Member" dropdown.
+ * @param {string} elderId - The elder's user ID
+ * @returns {Promise<Object>} List of { id, full_name, email, relationshipType }
+ */
+export const getFamilyMemberOptions = async (elderId) => {
+  try {
+    const { data: relations, error: relationsError } = await supabase
+      .from('family_members')
+      .select('family_member_user_id, relationship_type')
+      .eq('id', elderId)
+      .eq('is_verified', true)
+      .in('permissions_level', ['view_and_share', 'full'])
+
+    if (relationsError) throw relationsError
+
+    const memberIds = [...new Set((relations || []).map((r) => r.family_member_user_id))]
+    if (memberIds.length === 0) return { success: true, data: [] }
+
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name, email')
+      .in('id', memberIds)
+
+    if (usersError) throw usersError
+
+    const relationById = new Map(relations.map((r) => [r.family_member_user_id, r.relationship_type]))
+    const data = (users || []).map((u) => ({ ...u, relationshipType: relationById.get(u.id) }))
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error in getFamilyMemberOptions:', error)
     return { success: false, error: error.message }
   }
 }

@@ -12,11 +12,29 @@
 --      the dashboard. You must create that trigger manually:
 --        CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
 --          FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
---   3. Several tables added later (admins, customer_supports, caregivers,
---      healthcare_providers, family_members, care_services, user_bank_details,
+--   1b. care_services.caregiver_id/healthcare_provider_id had no FK
+--       constraints on an already-live database until
+--       migrations/032_care_services_add_foreign_keys.sql. Run that
+--       migration against any existing database - this file's CREATE TABLE
+--       is only accurate for a fresh database.
+--   3. Several tables added later (admins, customer_supports, user_bank_details,
 --      reminders, reminder_notifications, reports) have no RLS policies
 --      defined anywhere in this repo's history. Only the tables covered
---      below have RLS enabled with policies.
+--      below have RLS enabled with policies. caregivers, healthcare_providers,
+--      family_members, and care_services used to be in this list too, but
+--      got RLS policies via migrations/030_care_and_family_share_rls.sql -
+--      see the "Care coordination" RLS block below.
+--   4. applications.nominee_change_pending/nominee_change_submitted_at/
+--      nominee_change_reviewed_at/nominee_change_reviewed_by/
+--      nominee_change_rejected_reason were added to an already-live database
+--      via a manual ALTER TABLE (this file's CREATE TABLE is only accurate
+--      for a fresh database). Run this against any existing database:
+--        ALTER TABLE public.applications
+--          ADD COLUMN nominee_change_pending boolean NULL DEFAULT false,
+--          ADD COLUMN nominee_change_submitted_at timestamp with time zone NULL,
+--          ADD COLUMN nominee_change_reviewed_at timestamp with time zone NULL,
+--          ADD COLUMN nominee_change_reviewed_by uuid NULL,
+--          ADD COLUMN nominee_change_rejected_reason text NULL;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -215,6 +233,13 @@ CREATE TABLE public.applications (
   accepted_offer_id uuid NULL,
   auction_opened_at timestamp with time zone NULL,
   auction_opened_by uuid NULL,
+  cancellation_reason text NULL,
+  cancelled_at timestamp with time zone NULL,
+  nominee_change_pending boolean NULL DEFAULT false,
+  nominee_change_submitted_at timestamp with time zone NULL,
+  nominee_change_reviewed_at timestamp with time zone NULL,
+  nominee_change_reviewed_by uuid NULL, -- no FK: customer_supports staff aren't guaranteed rows in admins
+  nominee_change_rejected_reason text NULL,
   CONSTRAINT applications_pkey PRIMARY KEY (id),
   CONSTRAINT applications_flagged_by_fkey FOREIGN KEY (flagged_by) REFERENCES public.admins (id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT applications_joint_user_id_fkey FOREIGN KEY (joint_user_id) REFERENCES public.users (id) ON DELETE SET NULL,
@@ -222,7 +247,7 @@ CREATE TABLE public.applications (
   CONSTRAINT applications_auction_opened_by_fkey FOREIGN KEY (auction_opened_by) REFERENCES public.admins (id) ON DELETE SET NULL,
   CONSTRAINT applications_approved_amount_check CHECK ((approved_amount > (0)::numeric)),
   CONSTRAINT applications_status_check CHECK (
-    status = ANY (ARRAY['draft'::text, 'submitted'::text, 'underReviewed'::text, 'approved'::text, 'auctioning'::text, 'rejected'::text, 'terminated'::text])
+    status = ANY (ARRAY['draft'::text, 'submitted'::text, 'underReviewed'::text, 'approved'::text, 'auctioning'::text, 'rejected'::text, 'terminated'::text, 'cancelled'::text])
   )
   -- accepted_offer_id -> public.loan_offers (id) ON DELETE SET NULL is added
   -- as a separate ALTER TABLE after loan_offers is created below, since
@@ -320,6 +345,7 @@ CREATE TABLE public.property_valuation_schedules (
   completed_at timestamp with time zone NULL,
   completed_by uuid NULL REFERENCES public.admins (id) ON DELETE SET NULL,
   result_value numeric(15, 2) NULL,
+  result_property_age integer NULL,
   cancelled_reason text NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -540,7 +566,9 @@ CREATE TABLE public.care_services (
   cost numeric NULL,
   attachment_link text NULL,
   CONSTRAINT care_service_pkey PRIMARY KEY (service_id),
-  CONSTRAINT care_service_elder_id_fkey FOREIGN KEY (elder_id) REFERENCES public.users (id)
+  CONSTRAINT care_service_elder_id_fkey FOREIGN KEY (elder_id) REFERENCES public.users (id),
+  CONSTRAINT care_service_caregiver_id_fkey FOREIGN KEY (caregiver_id) REFERENCES public.caregivers (id) ON DELETE CASCADE,
+  CONSTRAINT care_service_healthcare_provider_id_fkey FOREIGN KEY (healthcare_provider_id) REFERENCES public.healthcare_providers (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS public.reports (
@@ -579,12 +607,18 @@ SELECT
   u.full_name AS user_full_name,
   u.ic_number,
   u.phone,
+  hr.application_id,
   hr.report_date,
   hr.report_type,
   hr.report_title,
+  hr.report_file_url,
+  hr.notes,
   hr.provider_name,
   hr.health_report_status,
-  hr.created_at AS report_created_at
+  hr.due_status,
+  hr.flagged_reason,
+  hr.created_at AS report_created_at,
+  hr.updated_at AS report_updated_at
 FROM
   public.health_reports hr
   LEFT JOIN public.users u ON u.id = hr.user_id;
@@ -645,6 +679,10 @@ ALTER TABLE public.health_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_support_inquiries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.health_report_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.caregivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.healthcare_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.care_services ENABLE ROW LEVEL SECURITY;
 
 -- Users: Can only see/edit their own data
 CREATE POLICY "Users can view own data" ON public.users
@@ -653,6 +691,24 @@ CREATE POLICY "Users can insert own data" ON public.users
   FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update own data" ON public.users
   FOR UPDATE USING (auth.uid() = id);
+-- Lets an elder read the name/email of a caregiver/healthcare provider they
+-- have an active care_services contract with, or a verified family member -
+-- needed for the health report share dropdowns (src/models/HealthReport.js).
+CREATE POLICY "Users can view linked care contacts" ON public.users
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.care_services cs
+      WHERE cs.elder_id = auth.uid()
+        AND (cs.caregiver_id = users.id OR cs.healthcare_provider_id = users.id)
+        AND (cs.end_date IS NULL OR cs.end_date >= CURRENT_DATE)
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.family_members fm
+      WHERE fm.id = auth.uid()
+        AND fm.family_member_user_id = users.id
+        AND fm.is_verified = true
+    )
+  );
 
 -- Applications: Users can see/manage their own applications
 CREATE POLICY "Users can view own applications" ON public.applications
@@ -788,6 +844,61 @@ CREATE POLICY "View active link shares" ON public.health_report_shares
     AND (expires_at IS NULL OR expires_at > now())
   );
 
+-- Care coordination: caregivers/healthcare providers manage their own
+-- profile; an elder can view the professionals they have a care_services
+-- contract with (and manage that contract); admins can manage all of it.
+CREATE POLICY "Caregivers can view own profile" ON public.caregivers
+  FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Caregivers can update own profile" ON public.caregivers
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Elders can view contracted caregivers" ON public.caregivers
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.care_services cs
+      WHERE cs.caregiver_id = caregivers.id AND cs.elder_id = auth.uid()
+    )
+  );
+CREATE POLICY "Admins can manage caregivers" ON public.caregivers
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Healthcare providers can view own profile" ON public.healthcare_providers
+  FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Healthcare providers can update own profile" ON public.healthcare_providers
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Elders can view contracted healthcare providers" ON public.healthcare_providers
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.care_services cs
+      WHERE cs.healthcare_provider_id = healthcare_providers.id AND cs.elder_id = auth.uid()
+    )
+  );
+CREATE POLICY "Admins can manage healthcare providers" ON public.healthcare_providers
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Elders can manage own family members" ON public.family_members
+  FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Family members can view own relationship" ON public.family_members
+  FOR SELECT USING (auth.uid() = family_member_user_id);
+CREATE POLICY "Admins can manage family members" ON public.family_members
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
+CREATE POLICY "Elders can manage own care services" ON public.care_services
+  FOR ALL USING (auth.uid() = elder_id) WITH CHECK (auth.uid() = elder_id);
+CREATE POLICY "Caregivers can view own care services" ON public.care_services
+  FOR SELECT USING (auth.uid() = caregiver_id);
+CREATE POLICY "Healthcare providers can view own care services" ON public.care_services
+  FOR SELECT USING (auth.uid() = healthcare_provider_id);
+CREATE POLICY "Admins can manage care services" ON public.care_services
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+
 -- Customer Support Inquiries: Users manage their own inquiries; any
 -- authenticated user (i.e. staff) can update inquiry status.
 CREATE POLICY "Users can view own inquiries" ON public.customer_support_inquiries
@@ -872,9 +983,18 @@ REVOKE EXECUTE ON FUNCTION check_duplicate_nominee_ic(text, uuid) FROM public;
 GRANT EXECUTE ON FUNCTION check_duplicate_nominee_ic(text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION check_duplicate_nominee_ic(text, uuid) TO service_role;
 
--- Normalizes an email for duplicate-detection purposes, including a Gmail
--- "dot trick" / plus-addressing guard (adam@gmail.com, ad.am@gmail.com and
--- adam+x@gmail.com all deliver to the same inbox, so they should collide).
+-- Normalizes an email for duplicate-detection purposes.
+--
+-- Plus-addressing (adam+x@domain delivers to adam@domain) is a near-universal
+-- mail-server convention -- Gmail, Outlook/Office365, Yahoo, ProtonMail,
+-- FastMail, and most Postfix/Sendmail setups (including Google-Workspace-hosted
+-- custom domains, e.g. a university's student email) all honor it -- so it is
+-- stripped for every domain, not just gmail.com.
+--
+-- Dot-insensitivity (ad.am@gmail.com == adam@gmail.com) is a Gmail/Google
+-- Workspace-specific quirk -- most other providers treat dots in the local
+-- part as significant -- so it is only collapsed for gmail.com/googlemail.com
+-- literally, to avoid false-positive collisions on domains where dots matter.
 CREATE OR REPLACE FUNCTION public.normalize_email(raw_email text)
 RETURNS text
 LANGUAGE plpgsql
@@ -898,8 +1018,9 @@ BEGIN
   local_part := substring(raw_email from 1 for at_pos - 1);
   domain_part := substring(raw_email from at_pos + 1);
 
+  local_part := split_part(local_part, '+', 1);
+
   IF domain_part IN ('gmail.com', 'googlemail.com') THEN
-    local_part := split_part(local_part, '+', 1);
     local_part := replace(local_part, '.', '');
     domain_part := 'gmail.com';
   END IF;
@@ -953,6 +1074,56 @@ GRANT EXECUTE ON FUNCTION check_duplicate_email(text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION check_duplicate_email(text, uuid) TO service_role;
 
 COMMENT ON FUNCTION check_duplicate_email IS 'Checks if an email (normalized for Gmail dot/plus-alias tricks) is already in use across users/admins/customer_supports, bypassing RLS.';
+
+-- BEFORE INSERT/UPDATE trigger (see migrations/028_*.sql) that re-runs
+-- check_duplicate_email() against the incoming row and aborts the write on
+-- a normalized-email collision. check_duplicate_email() itself is only
+-- reachable as a client-invoked RPC, so without this trigger nothing stops
+-- a write that skips that call (a direct auth.signUp() call, a race between
+-- two concurrent signups, or a future admin/provider/customer_support
+-- creation path) from creating a normalized-email duplicate that the raw
+-- UNIQUE(email) constraints don't catch.
+CREATE OR REPLACE FUNCTION public.enforce_unique_normalized_email()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.email IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND NEW.email IS NOT DISTINCT FROM OLD.email THEN
+    RETURN NEW;
+  END IF;
+
+  IF public.check_duplicate_email(NEW.email, NEW.id) THEN
+    RAISE EXCEPTION 'Email % is already registered (possibly under a different alias)', NEW.email
+      USING ERRCODE = 'unique_violation';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.enforce_unique_normalized_email IS 'BEFORE INSERT/UPDATE trigger that rejects writes whose email normalizes (see normalize_email()) to one already in use across users/admins/customer_supports/providers.';
+
+CREATE TRIGGER enforce_unique_email_users
+  BEFORE INSERT OR UPDATE OF email ON public.users
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_unique_normalized_email();
+
+CREATE TRIGGER enforce_unique_email_admins
+  BEFORE INSERT OR UPDATE OF email ON public.admins
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_unique_normalized_email();
+
+CREATE TRIGGER enforce_unique_email_customer_supports
+  BEFORE INSERT OR UPDATE OF email ON public.customer_supports
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_unique_normalized_email();
+
+CREATE TRIGGER enforce_unique_email_providers
+  BEFORE INSERT OR UPDATE OF email ON public.providers
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_unique_normalized_email();
 
 -- Auto-creates the public.users profile row when a new auth.users row is
 -- inserted. Requires an `on_auth_user_created` trigger on auth.users - see
@@ -1201,3 +1372,125 @@ REVOKE EXECUTE ON FUNCTION public.accept_loan_offer(uuid) FROM public;
 GRANT EXECUTE ON FUNCTION public.accept_loan_offer(uuid) TO authenticated;
 
 COMMENT ON FUNCTION public.accept_loan_offer IS 'Applicant accepts one submitted loan_offer: atomically rewrites applications terms, flips the winner to accepted, rejects every other submitted offer for that application, and returns applications.status to approved.';
+
+-- =============================================================
+-- AUDIT LOG (see migrations/025_*.sql, migrations/026_*.sql)
+-- =============================================================
+
+-- Append-only change history. applications/loan_offers otherwise have no way
+-- to answer "what changed, by whom, when" - remarks/status/approved_amount/
+-- etc. are overwritten in place on UPDATE, the *_at columns (submitted_at,
+-- approved_at, rejected_at, ...) only ever hold the latest occurrence (not a
+-- sequence of transitions), and loan_offers is explicitly "no bid-history
+-- ledger, only the current offer per provider matters" (see the comment
+-- above CREATE TABLE public.loan_offers). audit_trigger_fn() below records
+-- just the columns that changed on UPDATE (full row on INSERT/DELETE) and is
+-- generic - attach it to another table with one more CREATE TRIGGER.
+CREATE TABLE public.audit_log (
+  id uuid PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+  entity_type text NOT NULL,
+  entity_id uuid NOT NULL,
+  action text NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE')),
+  actor_id uuid NULL, -- auth.uid() at write time; NULL when written by service role / edge function
+  actor_name text NULL, -- resolved once at write time - see audit_trigger_fn()
+  actor_role text NULL, -- 'user' | 'admin' | 'support' | 'provider'
+  old_values jsonb NULL,
+  new_values jsonb NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_audit_log_entity ON public.audit_log USING btree (entity_type, entity_id, created_at DESC);
+CREATE INDEX idx_audit_log_actor ON public.audit_log USING btree (actor_id);
+
+ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can view audit log" ON public.audit_log
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.admins WHERE admins.id = auth.uid())
+  );
+-- No INSERT/UPDATE/DELETE policy for any role: rows are only ever written by
+-- audit_trigger_fn(), which is SECURITY DEFINER and so bypasses RLS. Nobody,
+-- including admins, can edit or delete an audit row through the API.
+
+-- actor_id alone isn't useful to render in an admin UI without a second
+-- round-trip per row, and that round-trip would need to query
+-- users/admins/customer_supports/providers - tables the admin viewing the
+-- log may not have RLS visibility into for arbitrary rows (public.users only
+-- allows a user to see their own row). Resolving the name here sidesteps
+-- that: SECURITY DEFINER runs with elevated privileges and only has to do
+-- the lookup once, at write time.
+CREATE OR REPLACE FUNCTION public.audit_trigger_fn()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_old jsonb;
+  v_new jsonb;
+  v_changed_old jsonb;
+  v_changed_new jsonb;
+  v_actor_id uuid;
+  v_actor_name text;
+  v_actor_role text;
+BEGIN
+  v_actor_id := auth.uid();
+
+  IF v_actor_id IS NOT NULL THEN
+    SELECT full_name INTO v_actor_name FROM public.users WHERE id = v_actor_id;
+    IF v_actor_name IS NOT NULL THEN
+      v_actor_role := 'user';
+    ELSE
+      SELECT full_name INTO v_actor_name FROM public.admins WHERE id = v_actor_id;
+      IF v_actor_name IS NOT NULL THEN
+        v_actor_role := 'admin';
+      ELSE
+        SELECT full_name INTO v_actor_name FROM public.customer_supports WHERE id = v_actor_id;
+        IF v_actor_name IS NOT NULL THEN
+          v_actor_role := 'support';
+        ELSE
+          SELECT COALESCE(contact_person, company_name) INTO v_actor_name FROM public.providers WHERE id = v_actor_id;
+          IF v_actor_name IS NOT NULL THEN
+            v_actor_role := 'provider';
+          END IF;
+        END IF;
+      END IF;
+    END IF;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    v_old := to_jsonb(OLD);
+    v_new := to_jsonb(NEW);
+
+    SELECT jsonb_object_agg(key, v_old -> key), jsonb_object_agg(key, v_new -> key)
+      INTO v_changed_old, v_changed_new
+    FROM jsonb_object_keys(v_new) AS key
+    WHERE v_old -> key IS DISTINCT FROM v_new -> key;
+
+    IF v_changed_new IS NULL THEN
+      RETURN NEW; -- every column has the same value as before (no-op UPDATE)
+    END IF;
+
+    INSERT INTO public.audit_log (entity_type, entity_id, action, actor_id, actor_name, actor_role, old_values, new_values)
+    VALUES (TG_TABLE_NAME, NEW.id, TG_OP, v_actor_id, v_actor_name, v_actor_role, v_changed_old, v_changed_new);
+    RETURN NEW;
+
+  ELSIF TG_OP = 'INSERT' THEN
+    INSERT INTO public.audit_log (entity_type, entity_id, action, actor_id, actor_name, actor_role, new_values)
+    VALUES (TG_TABLE_NAME, NEW.id, TG_OP, v_actor_id, v_actor_name, v_actor_role, to_jsonb(NEW));
+    RETURN NEW;
+
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO public.audit_log (entity_type, entity_id, action, actor_id, actor_name, actor_role, old_values)
+    VALUES (TG_TABLE_NAME, OLD.id, TG_OP, v_actor_id, v_actor_name, v_actor_role, to_jsonb(OLD));
+    RETURN OLD;
+  END IF;
+END;
+$$;
+
+CREATE TRIGGER audit_applications
+  AFTER INSERT OR UPDATE OR DELETE ON public.applications
+  FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();
+
+CREATE TRIGGER audit_loan_offers
+  AFTER INSERT OR UPDATE OR DELETE ON public.loan_offers
+  FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();

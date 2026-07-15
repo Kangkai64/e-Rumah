@@ -4,6 +4,30 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./sessionController/AuthContext";
 
+// Central place to decide where a given role belongs, so unmatched/forbidden
+// routes always send users back to their own dashboard instead of a blank page.
+// eslint-disable-next-line react-refresh/only-export-components
+export function getRoleHomePath(role, applicationStatus) {
+  if (role === "admin") return "/admin/dashboard";
+  if (role === "support") return "/support/dashboard";
+  if (role === "provider") return "/provider/dashboard";
+  if (role === "user") {
+    return applicationStatus === "incomplete" ? "/application" : "/user/dashboard";
+  }
+  return "/login";
+}
+
+// Catches any path that isn't declared as a <Route> (e.g. a support user
+// typing /admin instead of /admin/dashboard) and sends them to their own home page.
+export function NotFoundRedirect() {
+  const { user, userRole, applicationStatus, loading } = useAuth();
+  const role = user?.role ?? userRole ?? null;
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={getRoleHomePath(role, applicationStatus)} replace />;
+}
+
 export default function ProtectedRoute({ children, requireRole = null }) {
   const { user, userRole, applicationStatus, loading } = useAuth();
   const location = useLocation();
@@ -75,20 +99,7 @@ export default function ProtectedRoute({ children, requireRole = null }) {
   // Role-based access control - only redirect if role doesn't match requirement
   if (requireRole && role !== requireRole) {
     console.log(`🚫 Access denied. Required: ${requireRole}, Current: ${role}`);
-    // Redirect to appropriate dashboard based on role
-    if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
-    if (role === "support") return <Navigate to="/support/dashboard" replace />;
-    if (role === "provider") return <Navigate to="/provider/dashboard" replace />;
-    if (role === "user") {
-      // Terminated or complete users go to dashboard, incomplete go to application
-      return applicationStatus === "incomplete" ? (
-        <Navigate to="/application" replace />
-      ) : (
-        <Navigate to="/user/dashboard" replace />
-      );
-    }
-    // Fallback for unknown roles
-    return <Navigate to="/login" replace />;
+    return <Navigate to={getRoleHomePath(role, applicationStatus)} replace />;
   }
 
   // For terminated users - block access to /application (they cannot apply again until paid)

@@ -331,6 +331,74 @@ export const sendValuationCompletedEmail = async (data) => {
 }
 
 /**
+ * Build HTML email template notifying an applicant their application is
+ * missing a valuation report
+ * @param {Object} data
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @returns {string} Formatted HTML email message
+ */
+export const buildValuationMissingTemplate = (data) => {
+  const { recipientName } = data
+
+  return `
+    <h2 style="color: #A8202D;">Your application is missing a valuation report</h2>
+    <p>Hi ${recipientName || 'Applicant'},</p>
+    <p>We noticed your e-Rumah application does not yet have a Valuation Report on file. This document is required before your application can be processed further.</p>
+
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p>Our team will arrange an official property valuation and get in touch to schedule a visit. You'll be notified by email once it's scheduled, and you can check your application status page for the latest details.</p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send "valuation report missing" notification email to the applicant
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Applicant's email address
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendValuationMissingEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your application is missing a valuation report'
+    const message = buildValuationMissingTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Applicant',
+        subject: subject,
+        message: message,
+        emailType: 'valuation_missing'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending valuation missing email:', error)
+    // Don't throw - allow the caller to decide how to surface the failure
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Build HTML email template notifying a provider that an application has
  * opened for bidding
  * @param {Object} data
@@ -480,6 +548,141 @@ export const sendOfferAcceptedEmail = async (data) => {
   } catch (error) {
     console.error('Error sending offer accepted email:', error)
     // Don't throw - allow acceptance to succeed even if email fails
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Build HTML email template notifying an applicant their nominee change was approved
+ * @param {Object} data
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @returns {string} Formatted HTML email message
+ */
+export const buildNomineeChangeApprovedTemplate = (data) => {
+  const { recipientName } = data
+
+  return `
+    <h2 style="color: #A8202D;">Your nominee change has been approved</h2>
+    <p>Hi ${recipientName || 'Applicant'},</p>
+    <p>Our support team has reviewed and approved the replacement nominee you submitted for your e-Rumah application. Your application is no longer flagged for this issue.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send "nominee change approved" notification email to the applicant
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Applicant's email address
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendNomineeChangeApprovedEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your nominee change has been approved'
+    const message = buildNomineeChangeApprovedTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Applicant',
+        subject: subject,
+        message: message,
+        emailType: 'nominee_change_approved'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending nominee change approved email:', error)
+    // Don't throw - allow the approval to succeed even if email fails
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Build HTML email template notifying an applicant their nominee change was rejected
+ * @param {Object} data
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @param {string} data.rejectionReason - Reason the change was rejected
+ * @returns {string} Formatted HTML email message
+ */
+export const buildNomineeChangeRejectedTemplate = (data) => {
+  const { recipientName, rejectionReason } = data
+
+  return `
+    <h2 style="color: #A8202D;">Your nominee change requires attention</h2>
+    <p>Hi ${recipientName || 'Applicant'},</p>
+    <p>Our support team has reviewed the replacement nominee you submitted for your e-Rumah application and was unable to approve it.</p>
+
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #161519;">Reason:</h3>
+      <p>${rejectionReason || 'No reason provided.'}</p>
+    </div>
+
+    <p>Please log in to your e-Rumah account and submit an updated nominee.</p>
+
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #999; font-size: 12px;">Best regards,<br>The e-Rumah Team</p>
+    <p style="color: #999; font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+  `.trim()
+}
+
+/**
+ * Send "nominee change rejected" notification email to the applicant
+ * @param {Object} data
+ * @param {string} data.recipientEmail - Applicant's email address
+ * @param {string} data.recipientName - Applicant's name (optional)
+ * @param {string} data.rejectionReason - Reason the change was rejected
+ * @returns {Promise<Object>} Response from email service
+ */
+export const sendNomineeChangeRejectedEmail = async (data) => {
+  try {
+    const { recipientEmail, recipientName } = data
+
+    const subject = 'Your nominee change requires attention'
+    const message = buildNomineeChangeRejectedTemplate(data)
+
+    const response = await fetch(SUPABASE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        to: recipientEmail,
+        name: recipientName || 'Applicant',
+        subject: subject,
+        message: message,
+        emailType: 'nominee_change_rejected'
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error || `Email service error: ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    return { success: true, ...result }
+  } catch (error) {
+    console.error('Error sending nominee change rejected email:', error)
+    // Don't throw - allow the rejection to succeed even if email fails
     return { success: false, error: error.message }
   }
 }

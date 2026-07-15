@@ -516,7 +516,24 @@
   }
 
   .property-calculator-range-grid {
-    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .property-calculator-range-card {
+    padding: 14px 12px;
+  }
+
+  .property-calculator-range-value {
+    font-size: 18px;
+  }
+
+  .property-calculator-summary-card,
+  .property-calculator-disclaimer-card {
+    padding: 16px;
+  }
+
+  .property-calculator-value-card {
+    padding: 20px;
   }
 
   .property-calculator-btn-calculate,

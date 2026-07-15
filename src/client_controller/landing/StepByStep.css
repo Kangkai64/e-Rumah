@@ -7,8 +7,7 @@
   align-items: center;
   margin-bottom: 4rem;
   position: relative;
-  overflow: hidden;
-  height: 60vh;
+  min-height: 60vh;
 }
 
 .sbs-page {
@@ -546,8 +545,7 @@
   padding: 0;
   border-radius: 0;
   margin-bottom: 0;
-  margin-left: calc(-50vw + 50%);
-  margin-right: calc(-50vw + 50%);
+  width: 100%;
   overflow: hidden;
   min-height: 450px;
 }

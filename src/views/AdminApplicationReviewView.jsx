@@ -4,6 +4,28 @@
 // NO business logic, NO state management (except local UI state), NO model imports
 
 import '../client_controller/admin/AdminApplicationReviewView.css'
+import { getStateForPostcode } from '../utils/malaysiaStates'
+
+const AUDIT_FIELD_LABEL_OVERRIDES = {
+  ic: 'IC',
+  id: 'ID',
+}
+
+function formatAuditFieldLabel(key) {
+  return key
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map((word) => AUDIT_FIELD_LABEL_OVERRIDES[word.toLowerCase()] || word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function formatAuditFieldValue(value, formatDate) {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return formatDate(value)
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
 
 function AdminApplicationReviewView({
   application,
@@ -24,6 +46,7 @@ function AdminApplicationReviewView({
   viewingDocumentUrl,
   viewingDocumentName,
   loadingApplicationPDF,
+  auditLog,
   onTabChange,
   onApprove,
   onReject,
@@ -45,12 +68,19 @@ function AdminApplicationReviewView({
   showCompleteValuationModal,
   completeValuationForm,
   completingValuation,
+  isDraggingValuationReport,
   onOpenCompleteValuation,
   onCloseCompleteValuation,
   onCompleteValuationFormChange,
   onConfirmCompleteValuation,
+  onValuationReportDragEnter,
+  onValuationReportDragLeave,
+  onValuationReportDragOver,
+  onValuationReportDrop,
   cancellingValuation,
   onCancelValuationSchedule,
+  notifyingMissingValuation,
+  onNotifyMissingValuation,
   onBackToDashboard,
   onViewDocument,
   onClosePDFViewer,
@@ -170,6 +200,12 @@ function AdminApplicationReviewView({
           >
             Nominees
           </button>
+          <button
+            className={`tab-button ${activeTab === 'auditTrail' ? 'active' : ''}`}
+            onClick={() => onTabChange('auditTrail')}
+          >
+            Audit Trail
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -219,6 +255,10 @@ function AdminApplicationReviewView({
                     <span className="info-value">{gv(fd.postcode)}</span>
                   </div>
                   <div className="info-item">
+                    <span className="info-label">State</span>
+                    <span className="info-value">{gv(fd.state)}</span>
+                  </div>
+                  <div className="info-item">
                     <span className="info-label">Email</span>
                     <span className="info-value">{fd.email || application.users?.email || 'N/A'}</span>
                   </div>
@@ -261,6 +301,10 @@ function AdminApplicationReviewView({
                   <div className="info-item">
                     <span className="info-label">Employer Postcode</span>
                     <span className="info-value">{gv(fd.employerPostcode)}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Employer State</span>
+                    <span className="info-value">{gv(fd.employerState)}</span>
                   </div>
                 </div>
 
@@ -342,6 +386,10 @@ function AdminApplicationReviewView({
                       <span className="info-value">{gv(fd.jPostcode)}</span>
                     </div>
                     <div className="info-item">
+                      <span className="info-label">State</span>
+                      <span className="info-value">{gv(fd.jState)}</span>
+                    </div>
+                    <div className="info-item">
                       <span className="info-label">Email</span>
                       <span className="info-value">{gv(fd.jEmail)}</span>
                     </div>
@@ -372,6 +420,10 @@ function AdminApplicationReviewView({
                     <div className="info-item">
                       <span className="info-label">Employer Postcode</span>
                       <span className="info-value">{gv(fd.jEmployerPostcode)}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Employer State</span>
+                      <span className="info-value">{gv(fd.jEmployerState)}</span>
                     </div>
                   </div>
                 </div>
@@ -438,6 +490,10 @@ function AdminApplicationReviewView({
                   <div className="info-item">
                     <span className="info-label">Postcode</span>
                     <span className="info-value">{fd.propertyPostcode || prop.postcode || 'N/A'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">State</span>
+                    <span className="info-value">{fd.propertyState || getStateForPostcode(fd.propertyPostcode || prop.postcode)?.name || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -617,13 +673,20 @@ function AdminApplicationReviewView({
                               </button>
                             </div>
                           )}
-                          {showValuationScheduling && (!valuationSchedule || valuationSchedule.status === 'cancelled') && (
+                          {showValuationScheduling && valuationSchedule?.status !== 'scheduled' && (
                             <div className="document-actions">
                               <button
                                 className="view-document-btn"
                                 onClick={onOpenScheduleValuation}
                               >
                                 Schedule Valuation
+                              </button>
+                              <button
+                                className="notify-document-btn"
+                                onClick={onNotifyMissingValuation}
+                                disabled={notifyingMissingValuation}
+                              >
+                                {notifyingMissingValuation ? 'Notifying...' : 'Notify Applicant'}
                               </button>
                             </div>
                           )}
@@ -723,12 +786,60 @@ function AdminApplicationReviewView({
                             <span className="info-label">Postcode</span>
                             <span className="info-value">{nominee.postcode || 'N/A'}</span>
                           </div>
+                          <div className="info-item">
+                            <span className="info-label">State</span>
+                            <span className="info-value">{getStateForPostcode(nominee.postcode)?.name || 'N/A'}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="no-nominees">No nominees added to this application</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Audit Trail Tab */}
+          {activeTab === 'auditTrail' && (
+            <div className="audit-trail-tab">
+              <div className="info-section">
+                <h2>Audit Trail</h2>
+                {auditLog && auditLog.length > 0 ? (
+                  <div className="audit-log-list">
+                    {auditLog.map((entry) => {
+                      const changedKeys = Object.keys(entry.newValues || entry.oldValues || {})
+                      return (
+                        <div key={entry.id} className="audit-entry">
+                          <div className="audit-entry-header">
+                            <span className={`audit-action-badge audit-action-${entry.action.toLowerCase()}`}>
+                              {entry.action === 'INSERT' ? 'Created' : entry.action === 'DELETE' ? 'Deleted' : 'Updated'}
+                            </span>
+                            <span className="audit-entry-entity">{entry.entityLabel}</span>
+                            <span className="audit-entry-actor">
+                              {entry.actorName ? `${entry.actorName}${entry.actorRole ? ` (${entry.actorRole})` : ''}` : 'System'}
+                            </span>
+                            <span className="audit-entry-date">{formatDate(entry.createdAt)}</span>
+                          </div>
+                          {entry.action === 'UPDATE' && (
+                            <div className="audit-diff-list">
+                              {changedKeys.map((key) => (
+                                <div key={key} className="audit-diff-row">
+                                  <span className="audit-diff-label">{formatAuditFieldLabel(key)}</span>
+                                  <span className="audit-diff-value">
+                                    {formatAuditFieldValue(entry.oldValues?.[key], formatDate)} → {formatAuditFieldValue(entry.newValues?.[key], formatDate)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="no-nominees">No recorded changes yet</p>
                 )}
               </div>
             </div>
@@ -750,11 +861,15 @@ function AdminApplicationReviewView({
                 step="0.01"
                 min="0"
               />
-              {(fd.expectedMarketValue || prop.expected_market_value) && (
+              {prop.indicative_market_value ? (
                 <span className="approved-amount-hint">
-                  Suggested: 70% of applicant expected market value ({formatCurrency((fd.expectedMarketValue || prop.expected_market_value) * 0.7)})
+                  Suggested: 70% of the official valuation report's market value ({formatCurrency(prop.indicative_market_value * 0.7)})
                 </span>
-              )}
+              ) : (fd.expectedMarketValue || prop.expected_market_value) ? (
+                <span className="approved-amount-hint">
+                  Suggested: 70% of applicant's expected market value ({formatCurrency((fd.expectedMarketValue || prop.expected_market_value) * 0.7)}) — pending official valuation report
+                </span>
+              ) : null}
             </div>
           </div>
         )}
@@ -917,17 +1032,79 @@ function AdminApplicationReviewView({
               <label>Valuation Date</label>
               <input
                 type="date"
+                max={new Date().toISOString().slice(0, 10)}
                 value={completeValuationForm.valuationDate}
                 onChange={(e) => onCompleteValuationFormChange('valuationDate', e.target.value)}
               />
             </div>
             <div className="form-group">
-              <label>Valuation Report File *</label>
+              <label>Valuer Name</label>
               <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => onCompleteValuationFormChange('reportFile', e.target.files[0] || null)}
+                type="text"
+                value={completeValuationForm.valuerName}
+                onChange={(e) => onCompleteValuationFormChange('valuerName', e.target.value)}
+                placeholder="e.g. Ahmad Zaki (ABC Valuers)"
               />
+            </div>
+            <div className="form-group">
+              <label>Valuer Contact</label>
+              <input
+                type="text"
+                value={completeValuationForm.valuerContact}
+                onChange={(e) => onCompleteValuationFormChange('valuerContact', e.target.value)}
+                placeholder="Phone number or email"
+              />
+            </div>
+            <div className="form-group">
+              <label>Property Age (years)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={completeValuationForm.propertyAge}
+                onChange={(e) => onCompleteValuationFormChange('propertyAge', e.target.value)}
+                placeholder="Leave blank to use purchase-year estimate"
+              />
+            </div>
+            <div className="form-group">
+              <label>Valuation Report File *</label>
+              <div
+                className={`valuation-upload-area ${isDraggingValuationReport ? 'drag-active' : ''}`}
+                onDragEnter={onValuationReportDragEnter}
+                onDragLeave={onValuationReportDragLeave}
+                onDragOver={onValuationReportDragOver}
+                onDrop={onValuationReportDrop}
+              >
+                <input
+                  id="valuation-report-file-input"
+                  type="file"
+                  className="valuation-upload-input-hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => onCompleteValuationFormChange('reportFile', e.target.files[0] || null)}
+                />
+                {completeValuationForm.reportFile ? (
+                  <div className="valuation-upload-file">
+                    <span className="valuation-upload-file-name">📄 {completeValuationForm.reportFile.name}</span>
+                    <button
+                      type="button"
+                      className="valuation-upload-remove-btn"
+                      onClick={() => onCompleteValuationFormChange('reportFile', null)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label htmlFor="valuation-report-file-input" className="valuation-upload-label">
+                    <span className="valuation-upload-icon">📤</span>
+                    <span>
+                      {isDraggingValuationReport
+                        ? 'Drop file to attach'
+                        : 'Drag & drop a file here, or click to browse'}
+                    </span>
+                    <span className="valuation-upload-hint">PDF, JPG, PNG, WEBP</span>
+                  </label>
+                )}
+              </div>
             </div>
             <div className="modal-actions">
               <button className="cancel-button" onClick={onCloseCompleteValuation}>

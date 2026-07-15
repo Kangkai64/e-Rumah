@@ -111,6 +111,34 @@ const calcMissedMonths = (approvedAt, disbursementCount) => {
   return Math.max(monthsElapsed - disbursementCount, 0);
 };
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+// Payback owes only what was actually disbursed plus simple interest accrued
+// on each payout from its own disbursement date - never the full approved
+// facility (which may include months not yet paid out) and never the
+// property-value-based apportioned proceeds figure.
+const calculatePaybackAmount = (transactions, interestRate, asOfDate = new Date()) => {
+  const rate = toNumber(interestRate) / 100;
+
+  return (transactions || []).reduce(
+    (totals, transaction) => {
+      const amount = toNumber(transaction.amount);
+      const disbursedAt = new Date(transaction.transaction_date);
+      const daysElapsed = Number.isNaN(disbursedAt.getTime())
+        ? 0
+        : Math.max(0, (asOfDate - disbursedAt) / MS_PER_DAY);
+      const interest = amount * rate * (daysElapsed / 365);
+
+      return {
+        principal: totals.principal + amount,
+        accruedInterest: totals.accruedInterest + interest,
+        totalPayback: totals.totalPayback + amount + interest,
+      };
+    },
+    { principal: 0, accruedInterest: 0, totalPayback: 0 },
+  );
+};
+
 // Reverse mortgage is non-recourse: nominees split whatever remains after
 // the sale proceeds settle the amount actually disbursed, never a shortfall.
 const calculateApportionedProceeds = (application, totalDisbursed) => {
@@ -811,6 +839,44 @@ const LoanDisbursement = {
       };
     } catch (error) {
       console.error("Error calculating termination proceeds:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Calculate what a terminated (non-deceased) applicant actually owes the
+   * provider: the disbursed principal plus simple interest accrued on each
+   * payout since its own disbursement date - not the full approved facility.
+   * @param {string} applicationId - Application ID
+   * @returns {Promise<{success: boolean, data: Object, error: any}>}
+   */
+  async getPaybackAmount(applicationId) {
+    try {
+      const { data: application, error } = await supabase
+        .from("applications")
+        .select("id, interest_rate")
+        .eq("id", applicationId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!application) {
+        return { success: false, error: "Application not found" };
+      }
+
+      const { data: transactions, error: transactionError } = await supabase
+        .from("transactions")
+        .select("amount, transaction_date")
+        .eq("application_id", applicationId)
+        .eq("transaction_type", DISBURSEMENT_TYPE);
+
+      if (transactionError) throw transactionError;
+
+      return {
+        success: true,
+        data: calculatePaybackAmount(transactions || [], application.interest_rate),
+      };
+    } catch (error) {
+      console.error("Error calculating payback amount:", error);
       return { success: false, error: error.message };
     }
   },

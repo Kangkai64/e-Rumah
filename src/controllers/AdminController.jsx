@@ -654,6 +654,8 @@ const handleCloseReportGenerator = () => {
         return "auctioning";
       case "rejected":
         return "rejected";
+      case "cancelled":
+        return "rejected";
       default:
         return "";
     }
@@ -691,6 +693,8 @@ const handleCloseReportGenerator = () => {
         return "Rejected";
       case "terminated":
         return "Terminated";
+      case "cancelled":
+        return "Cancelled";
       default:
         return status;
     }

@@ -5,15 +5,24 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { PDFDocument, PDFName, PDFDict, PDFRawStream } from "pdf-lib";
+import {
+  PDFDocument,
+  PDFName,
+  PDFDict,
+  PDFRawStream,
+  drawCheckBox,
+  rgb,
+} from "pdf-lib";
 import Application from "../models/Application";
 import { validateStep } from "../utils/applicationValidation";
 import ApplicationFormView from "../views/ApplicationFormView";
 import { parseICNumber, getCurrentDate, calculateAge, isSalutationCompatibleWithSex } from "../utils/icParser";
+import { getStateForPostcode } from "../utils/malaysiaStates";
 import { getCurrentUser } from "../services/authService";
 import {
   loadApplicationData,
   saveApplicationData,
+  saveNominees,
   saveToLocalStorage,
   loadFromLocalStorage,
   checkDuplicateNRIC,
@@ -39,6 +48,68 @@ const UNDERLINE_RADIO_FIELDS = [
   "property_tenureTitle",
   "property_encumbered",
 ];
+
+// Radio fields whose widgets sit next to a standalone option (e.g. a tick
+// box before "Newspaper" / "Lump Sum"). pdf-lib's default appearance for a
+// selected radio widget is a filled dot, but these boxes are meant to be
+// ticked like the form's real checkboxes, so we redraw the "on" state with
+// a checkmark instead.
+const TICK_RADIO_FIELDS = [
+  "fromWhere",
+  "applicant_payout",
+  "applicant_lumpSumUsage",
+  "applicant_payment",
+  "ssb_prefererence",
+  "property_fireInsurance",
+  "property_fireInsurance_notAvailable",
+  "property_renewalFireInsurance",
+];
+
+const tickRadioAppearanceProvider = (_radioGroup, widget) => {
+  const { width, height } = widget.getRectangle();
+  const borderWidth = widget.getBorderStyle()?.getWidth() ?? 0;
+  const black = rgb(0, 0, 0);
+  const options = {
+    x: borderWidth / 2,
+    y: borderWidth / 2,
+    width: width - borderWidth,
+    height: height - borderWidth,
+    thickness: 1.5,
+    borderWidth,
+    borderColor: black,
+    markColor: black,
+  };
+  return {
+    normal: {
+      on: drawCheckBox({ ...options, filled: true }),
+      off: drawCheckBox({ ...options, filled: false }),
+    },
+  };
+};
+
+const applyTickAppearanceForRadioFields = (form) => {
+  for (const fieldName of TICK_RADIO_FIELDS) {
+    try {
+      const field = form.getRadioGroup(fieldName);
+      field.updateAppearances(tickRadioAppearanceProvider);
+    } catch (e) {
+      // Field doesn't exist in this template, skip
+    }
+  }
+};
+
+// Maps each Postcode field to the State field it auto-fills, so the state
+// is always derived from what was typed rather than picked independently
+// (which is how a state/postcode mismatch would happen in the first place).
+const POSTCODE_STATE_FIELD = {
+  postcode: "state",
+  employerPostcode: "employerState",
+  jPostcode: "jState",
+  jEmployerPostcode: "jEmployerState",
+  propertyPostcode: "propertyState",
+  nominee1Postcode: "nominee1State",
+  nominee2Postcode: "nominee2State",
+};
 
 const applyUnderlineAppearanceForDotFields = (pdfDoc, form) => {
   const { context } = pdfDoc;
@@ -117,6 +188,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     nricNo: "",
     address: "",
     postcode: "",
+    state: "",
     email: "",
     residencePhone: "",
     telephone: "",
@@ -138,6 +210,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     employerName: "",
     employerAddress: "",
     employerPostcode: "",
+    employerState: "",
     purposeOfApplication: "",
     payoutOption: "",
     lumpSumUsage: "",
@@ -150,6 +223,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     jSameAddress: true,
     jAddress: "",
     jPostcode: "",
+    jState: "",
     jEmail: "",
     jResidencePhone: "",
     jTelephone: "",
@@ -166,6 +240,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     jEmployerName: "",
     jEmployerAddress: "",
     jEmployerPostcode: "",
+    jEmployerState: "",
 
     // Banking
     bankName: "",
@@ -181,6 +256,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     propertyDistrict: "",
     propertyMukim: "",
     propertyPostcode: "",
+    propertyState: "",
     indicativeMarketValue: "",
     valuationDay: "",
     valuationMonth: "",
@@ -211,8 +287,10 @@ function ApplicationController({ editNomineeOnly = false }) {
     nominee1Salutation: "",
     nominee1Name: "",
     nominee1Ic: "",
+    nominee1SameAsApplicant: false,
     nominee1Address: "",
     nominee1Postcode: "",
+    nominee1State: "",
     nominee1Email: "",
     nominee1ResidencePhone: "",
     nominee1Telephone: "",
@@ -230,8 +308,10 @@ function ApplicationController({ editNomineeOnly = false }) {
     nominee2Salutation: "",
     nominee2Name: "",
     nominee2Ic: "",
+    nominee2SameAsApplicant: false,
     nominee2Address: "",
     nominee2Postcode: "",
+    nominee2State: "",
     nominee2Email: "",
     nominee2ResidencePhone: "",
     nominee2Telephone: "",
@@ -247,6 +327,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     nominee2EmployerName: "",
 
     // Acknowledgement
+    ack_nomineeSource: "nominee1",
     ack_nomineeName: "",
     ack_nomineeNRIC: "",
     ack_nomineeAddress: "",
@@ -427,6 +508,7 @@ function ApplicationController({ editNomineeOnly = false }) {
                 nominee1Relationship: loadedData.nominee2Relationship,
                 nominee1Address: loadedData.nominee2Address,
                 nominee1Postcode: loadedData.nominee2Postcode,
+                nominee1State: loadedData.nominee2State,
                 nominee1Email: loadedData.nominee2Email,
                 nominee1Telephone: loadedData.nominee2Telephone,
                 nominee1ResidencePhone: loadedData.nominee2ResidencePhone,
@@ -447,6 +529,7 @@ function ApplicationController({ editNomineeOnly = false }) {
                 nominee2Relationship: "",
                 nominee2Address: "",
                 nominee2Postcode: "",
+                nominee2State: "",
                 nominee2Email: "",
                 nominee2Telephone: "",
                 nominee2ResidencePhone: "",
@@ -455,6 +538,8 @@ function ApplicationController({ editNomineeOnly = false }) {
                 hasSecondNominee: false,
                 // Clear old nominee 1 signature - user must re-sign
                 ackNominee_signature: "",
+                // Nominee 2 no longer exists post-promotion, so the signer must be nominee 1
+                ack_nomineeSource: "nominee1",
               };
               console.log("✅ Promoting nominee 2 to nominee 1");
             }
@@ -538,15 +623,34 @@ function ApplicationController({ editNomineeOnly = false }) {
       updates.jApplicant_signature_date = `${currentDate.day}/${currentDate.month}/${currentDate.year}`;
     }
 
-    // Step 6: Acknowledgement fields
-    if (formData.nominee1Name && !formData.ack_nomineeName) {
-      updates.ack_nomineeName = formData.nominee1Name;
+    // Step 6: Acknowledgement fields — mirrors whichever nominee is
+    // selected as the signer (ack_nomineeSource), defaulting to nominee 1.
+    // Kept in sync (not just filled-once) since these fields are read-only
+    // in the UI and must always reflect the currently selected nominee.
+    const signingNominee =
+      formData.ack_nomineeSource === "nominee2" ? "nominee2" : "nominee1";
+    const signingNomineeName =
+      signingNominee === "nominee2"
+        ? formData.nominee2Name
+        : formData.nominee1Name;
+    const signingNomineeIc =
+      signingNominee === "nominee2" ? formData.nominee2Ic : formData.nominee1Ic;
+    const signingNomineeAddress =
+      signingNominee === "nominee2"
+        ? formData.nominee2Address
+        : formData.nominee1Address;
+
+    if (signingNomineeName && formData.ack_nomineeName !== signingNomineeName) {
+      updates.ack_nomineeName = signingNomineeName;
     }
-    if (formData.nominee1Ic && !formData.ack_nomineeNRIC) {
-      updates.ack_nomineeNRIC = formData.nominee1Ic;
+    if (signingNomineeIc && formData.ack_nomineeNRIC !== signingNomineeIc) {
+      updates.ack_nomineeNRIC = signingNomineeIc;
     }
-    if (formData.nominee1Address && !formData.ack_nomineeAddress) {
-      updates.ack_nomineeAddress = formData.nominee1Address;
+    if (
+      signingNomineeAddress &&
+      formData.ack_nomineeAddress !== signingNomineeAddress
+    ) {
+      updates.ack_nomineeAddress = signingNomineeAddress;
     }
     if (formData.nameAsPerNRIC && !formData.ack_applicantName) {
       updates.ack_applicantName = formData.nameAsPerNRIC;
@@ -583,9 +687,13 @@ function ApplicationController({ editNomineeOnly = false }) {
   }, [
     formData.nameAsPerNRIC,
     formData.jName,
+    formData.ack_nomineeSource,
     formData.nominee1Name,
     formData.nominee1Ic,
     formData.nominee1Address,
+    formData.nominee2Name,
+    formData.nominee2Ic,
+    formData.nominee2Address,
     formData.nricNo,
     formData.address,
     formData.jIc,
@@ -804,6 +912,50 @@ function ApplicationController({ editNomineeOnly = false }) {
         [name]: type === "checkbox" ? checked : value,
       };
 
+      // Auto-fill: derive the State field from whichever Postcode field was
+      // typed, instead of leaving it to be picked independently
+      if (POSTCODE_STATE_FIELD[name]) {
+        updates[POSTCODE_STATE_FIELD[name]] = getStateForPostcode(value)?.name || "";
+      }
+
+      // Auto-fill: nominee address mirrors the applicant's address when
+      // "Same as Applicant's Address" is checked, and stays in sync if the
+      // applicant's address is edited afterwards while it's still checked
+      if (name === "nominee1SameAsApplicant" && checked) {
+        updates.nominee1Address = prev.address;
+        updates.nominee1Postcode = prev.postcode;
+        updates.nominee1State = prev.state;
+        updates.nominee1ResidencePhone = prev.residencePhone;
+        if (prev.address) updates.ack_nomineeAddress = prev.address;
+      }
+      if (name === "nominee2SameAsApplicant" && checked) {
+        updates.nominee2Address = prev.address;
+        updates.nominee2Postcode = prev.postcode;
+        updates.nominee2State = prev.state;
+        updates.nominee2ResidencePhone = prev.residencePhone;
+      }
+      if (name === "address" && prev.nominee1SameAsApplicant) {
+        updates.nominee1Address = value;
+        updates.ack_nomineeAddress = value;
+      }
+      if (name === "address" && prev.nominee2SameAsApplicant) {
+        updates.nominee2Address = value;
+      }
+      if (name === "postcode" && prev.nominee1SameAsApplicant) {
+        updates.nominee1Postcode = value;
+        updates.nominee1State = updates.state;
+      }
+      if (name === "postcode" && prev.nominee2SameAsApplicant) {
+        updates.nominee2Postcode = value;
+        updates.nominee2State = updates.state;
+      }
+      if (name === "residencePhone" && prev.nominee1SameAsApplicant) {
+        updates.nominee1ResidencePhone = value;
+      }
+      if (name === "residencePhone" && prev.nominee2SameAsApplicant) {
+        updates.nominee2ResidencePhone = value;
+      }
+
       // Auto-fill: Sync accountPreference with preferredScheme
       if (name === "accountPreference") {
         updates.preferredScheme = value;
@@ -947,17 +1099,22 @@ function ApplicationController({ editNomineeOnly = false }) {
         prev.jSameAddress
       ) {
         if (name === "address") updates.jAddress = value;
-        if (name === "postcode") updates.jPostcode = value;
+        if (name === "postcode") {
+          updates.jPostcode = value;
+          updates.jState = getStateForPostcode(value)?.name || "";
+        }
         if (name === "residencePhone") updates.jResidencePhone = value;
       }
       if (name === "jSameAddress" && checked) {
         updates.jAddress = prev.address;
         updates.jPostcode = prev.postcode;
+        updates.jState = prev.state;
         updates.jResidencePhone = prev.residencePhone;
       }
       if (name === "isJointApplicant" && checked && prev.jSameAddress) {
         updates.jAddress = prev.address;
         updates.jPostcode = prev.postcode;
+        updates.jState = prev.state;
         updates.jResidencePhone = prev.residencePhone;
       }
 
@@ -1136,6 +1293,17 @@ function ApplicationController({ editNomineeOnly = false }) {
     if (salutationClearedMessage) {
       showToast(salutationClearedMessage, "info");
     }
+
+    // If the applicant now says they don't have a valuation report yet,
+    // any report they'd already uploaded is obsolete — an official one will
+    // be arranged for them instead, so remove the stale upload.
+    if (
+      name === "valuationReportPending" &&
+      checked &&
+      formData.documents?.valuationReport?.url
+    ) {
+      handleFileDelete("valuationReport", null, { skipConfirm: true });
+    }
   };
 
   /**
@@ -1243,13 +1411,15 @@ function ApplicationController({ editNomineeOnly = false }) {
   /**
    * Handle file deletion
    */
-  const handleFileDelete = async (documentType, arrayIndex = null) => {
+  const handleFileDelete = async (documentType, arrayIndex = null, options = {}) => {
+    const { skipConfirm = false } = options;
+
     if (!currentUser) {
       showToast("Please log in to delete files", "warning");
       return;
     }
 
-    if (!window.confirm("Are you sure you want to delete this file?")) {
+    if (!skipConfirm && !window.confirm("Are you sure you want to delete this file?")) {
       return;
     }
 
@@ -1307,6 +1477,13 @@ function ApplicationController({ editNomineeOnly = false }) {
       });
 
       console.log("✅ File deleted");
+
+      if (skipConfirm) {
+        showToast(
+          "Your previously uploaded valuation report was removed since an official valuation will be arranged for you.",
+          "info",
+        );
+      }
     } catch (error) {
       console.error("Delete error:", error);
       showToast("Failed to delete file. Please try again.", "error");
@@ -1341,6 +1518,7 @@ function ApplicationController({ editNomineeOnly = false }) {
         nominee1Relationship: existingNomineeData.nominee1Relationship || "",
         nominee1Address: existingNomineeData.nominee1Address || "",
         nominee1Postcode: existingNomineeData.nominee1Postcode || "",
+        nominee1State: existingNomineeData.nominee1State || "",
         nominee1Email: existingNomineeData.nominee1Email || "",
         nominee1Telephone: existingNomineeData.nominee1Telephone || "",
         nominee1ResidencePhone:
@@ -1360,6 +1538,7 @@ function ApplicationController({ editNomineeOnly = false }) {
         nominee2Relationship: existingNomineeData.nominee2Relationship || "",
         nominee2Address: existingNomineeData.nominee2Address || "",
         nominee2Postcode: existingNomineeData.nominee2Postcode || "",
+        nominee2State: existingNomineeData.nominee2State || "",
         nominee2Email: existingNomineeData.nominee2Email || "",
         nominee2Telephone: existingNomineeData.nominee2Telephone || "",
         nominee2ResidencePhone:
@@ -1454,6 +1633,22 @@ function ApplicationController({ editNomineeOnly = false }) {
             return;
           }
           console.log("✅ Nominee data saved to Supabase");
+
+          // Sync the nominees table itself (saveApplicationData only writes
+          // the application_data.form_data JSON blob, not the nominees rows
+          // that admin/support screens actually read)
+          const { error: nomineeSyncError } = await saveNominees(
+            applicationId,
+            updatedFormData,
+          );
+          if (nomineeSyncError) {
+            console.error(
+              "❌ Error syncing nominees table:",
+              nomineeSyncError,
+            );
+            showToast("Error saving nominee data. Please try again.", "error");
+            return;
+          }
         } else {
           console.error("❌ Missing currentUser or applicationId:", {
             currentUser: !!currentUser,
@@ -1466,17 +1661,18 @@ function ApplicationController({ editNomineeOnly = false }) {
           return;
         }
 
-        // Clear flagged status when nominee is updated
+        // Mark the nominee change as pending staff review (the flag itself
+        // stays in place until support approves or rejects the replacement)
         if (applicationId) {
           console.log(
-            "🧹 Clearing flagged status for application:",
+            "📨 Submitting nominee change for review:",
             applicationId,
           );
-          const result = await Application.clearFlaggedStatus(applicationId);
+          const result = await Application.submitNomineeChange(applicationId);
           if (!result.success) {
-            console.error("Error clearing flagged status:", result.error);
+            console.error("Error submitting nominee change:", result.error);
           } else {
-            console.log("✅ Cleared flagged status for application");
+            console.log("✅ Nominee change submitted for review");
           }
         }
 
@@ -1531,6 +1727,10 @@ function ApplicationController({ editNomineeOnly = false }) {
         }
 
         // Redirect back to user application page
+        showToast(
+          "Nominee change submitted for review by our support team.",
+          "success",
+        );
         console.log("Redirecting to user application page...");
         navigate("/user/application");
       } catch (error) {
@@ -1785,6 +1985,7 @@ function ApplicationController({ editNomineeOnly = false }) {
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     const form = pdfDoc.getForm();
     applyUnderlineAppearanceForDotFields(pdfDoc, form);
+    applyTickAppearanceForRadioFields(form);
 
     // Helper to fill radio groups safely
     const fillRadio = (form, fieldName, value) => {

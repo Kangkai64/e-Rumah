@@ -222,6 +222,86 @@ const Application = {
   },
 
   /**
+   * Mark a nominee replacement as submitted and awaiting staff review.
+   * Keeps is_flagged/flagged_code/flagged_reason intact so staff still know
+   * which nominee was flagged and why.
+   * @param {string} applicationId - The application ID
+   * @returns {Promise<Object>} Updated application
+   */
+  async submitNomineeChange(applicationId) {
+    try {
+      const result = await corsProxyUpdate('applications', applicationId, {
+        nominee_change_pending: true,
+        nominee_change_submitted_at: new Date().toISOString(),
+        nominee_change_rejected_reason: null,
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error submitting nominee change:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Approve a pending nominee change (customer support). Clears the flag
+   * entirely since the replacement nominee is now accepted as active.
+   * @param {string} applicationId - The application ID
+   * @param {string} staffUserId - Auth uid of the reviewing staff member
+   * @returns {Promise<Object>} Updated application
+   */
+  async approveNomineeChange(applicationId, staffUserId) {
+    try {
+      const result = await corsProxyUpdate('applications', applicationId, {
+        is_flagged: false,
+        flagged_code: null,
+        flagged_reason: null,
+        flagged_at: null,
+        flagged_by: null,
+        nominee_change_pending: false,
+        nominee_change_rejected_reason: null,
+        nominee_change_reviewed_at: new Date().toISOString(),
+        nominee_change_reviewed_by: staffUserId,
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error approving nominee change:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Reject a pending nominee change (customer support). Keeps the
+   * application flagged so the user is prompted to resubmit.
+   * @param {string} applicationId - The application ID
+   * @param {string} staffUserId - Auth uid of the reviewing staff member
+   * @param {string} reason - Reason for rejecting the nominee change
+   * @returns {Promise<Object>} Updated application
+   */
+  async rejectNomineeChange(applicationId, staffUserId, reason) {
+    try {
+      const result = await corsProxyUpdate('applications', applicationId, {
+        nominee_change_pending: false,
+        nominee_change_rejected_reason: reason,
+        nominee_change_reviewed_at: new Date().toISOString(),
+        nominee_change_reviewed_by: staffUserId,
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error rejecting nominee change:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
    * Terminate application with user-provided reason
    * Sets status to 'underReviewed' for admin approval of termination
    * @param {string} applicationId - The application ID
@@ -241,6 +321,31 @@ const Application = {
       return { success: true, data: result.data }
     } catch (error) {
       console.error('Error submitting termination request:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+  /**
+   * Cancel application before approval (self-service, no admin review needed
+   * since nothing has been disbursed yet). Only valid while status is
+   * 'submitted' or 'underReviewed' - enforced by the caller/UI, not here.
+   * @param {string} applicationId - The application ID
+   * @param {string} cancellationReason - Reason for cancelling
+   * @returns {Promise<Object>} Updated application
+   */
+  async cancelApplication(applicationId, cancellationReason) {
+    try {
+      const result = await corsProxyUpdate('applications', applicationId, {
+        status: 'cancelled',
+        cancellation_reason: cancellationReason,
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+
+      if (!result.success) throw new Error(result.error)
+      return { success: true, data: result.data }
+    } catch (error) {
+      console.error('Error cancelling application:', error)
       return { success: false, error: error.message }
     }
   },

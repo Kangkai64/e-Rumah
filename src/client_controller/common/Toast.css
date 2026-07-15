@@ -15,13 +15,13 @@
   gap: 0.75rem;
   padding: 0.9rem 1rem;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--color-bg-elevated, #ffffff);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   border-left: 5px solid #A8202D;
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   font-size: 0.95rem;
   line-height: 1.4;
-  color: #161519;
+  color: var(--color-text, #161519);
   animation: toast-in 0.25s ease-out;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .toast-close:hover {
-  color: #161519;
+  color: var(--color-text, #161519);
 }
 
 .toast-error {

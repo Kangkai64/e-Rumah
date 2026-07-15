@@ -1034,6 +1034,63 @@ const Admin = {
       return { success: false, error: error.message };
     }
   },
+
+  /**
+   * Get the audit trail for an application: its own audit_log rows plus
+   * those of every loan_offers row tied to it (loan_offers has no
+   * bid-history ledger of its own - see migrations/023_*.sql /
+   * migrations/026_*.sql - so its history only exists in audit_log).
+   * @param {string} applicationId
+   * @returns {Promise<Object>} { success, data: [{ id, entityType, entityLabel, action, actorName, actorRole, oldValues, newValues, createdAt }] }
+   */
+  async getAuditLog(applicationId) {
+    try {
+      const { data: offers, error: offersError } = await supabase
+        .from("loan_offers")
+        .select("id, providers(company_name)")
+        .eq("application_id", applicationId);
+
+      if (offersError) throw offersError;
+
+      const offerLabelById = new Map(
+        (offers || []).map((offer) => [
+          offer.id,
+          offer.providers?.company_name
+            ? `Loan Offer — ${offer.providers.company_name}`
+            : "Loan Offer",
+        ]),
+      );
+      const entityIds = [applicationId, ...offerLabelById.keys()];
+
+      const { data: logRows, error: logError } = await supabase
+        .from("audit_log")
+        .select("*")
+        .in("entity_id", entityIds)
+        .order("created_at", { ascending: false });
+
+      if (logError) throw logError;
+
+      const data = (logRows || []).map((row) => ({
+        id: row.id,
+        entityType: row.entity_type,
+        entityLabel:
+          row.entity_type === "loan_offers"
+            ? offerLabelById.get(row.entity_id) || "Loan Offer"
+            : "Application",
+        action: row.action,
+        actorName: row.actor_name,
+        actorRole: row.actor_role,
+        oldValues: row.old_values,
+        newValues: row.new_values,
+        createdAt: row.created_at,
+      }));
+
+      return { success: true, data };
+    } catch (error) {
+      console.error("Error fetching audit log:", error);
+      return { success: false, error: error.message };
+    }
+  },
 };
 
 export default Admin;

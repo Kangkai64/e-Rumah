@@ -16,8 +16,11 @@ function MaintainApplicationView({
   application,
   applicationStatus,
   approvedAmount,
+  paybackAmount = null,
   flaggedCode,
   flaggedReason,
+  nomineeChangePending = false,
+  nomineeChangeRejectedReason = null,
   timeline,
   documents = [],
   documentsLoading = false,
@@ -29,8 +32,11 @@ function MaintainApplicationView({
   pdfError = null,
   onDownloadPDF = null,
   onTerminateApplication,
+  onCancelApplication,
   showRejectTerminationReason = true,
-  onDismissRejectReason = null
+  onDismissRejectReason = null,
+  mainApplicantDeceased = false,
+  onContactSupport = null
 }) {
   const [selectedMissingDoc, setSelectedMissingDoc] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -40,6 +46,11 @@ function MaintainApplicationView({
   const [terminationReason, setTerminationReason] = useState('')
   const [terminationReasonError, setTerminationReasonError] = useState(null)
   const [terminatingApp, setTerminatingApp] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [cancellationReasonError, setCancellationReasonError] = useState(null)
+  const [cancellingApp, setCancellingApp] = useState(false)
+  const [showValuationDetailsModal, setShowValuationDetailsModal] = useState(false)
 
   const handleMissingDocClick = (doc) => {
     setSelectedMissingDoc(doc)
@@ -63,6 +74,24 @@ function MaintainApplicationView({
     await onTerminateApplication(terminationReason)
     setTerminatingApp(false)
     setShowTerminateModal(false)
+  }
+
+  const handleCancelClick = () => {
+    setShowCancelModal(true)
+    setCancellationReason('')
+    setCancellationReasonError(null)
+  }
+
+  const handleCancelConfirm = async () => {
+    if (!cancellationReason.trim()) {
+      setCancellationReasonError('Please provide a reason for cancelling the application.')
+      return
+    }
+    setCancellationReasonError(null)
+    setCancellingApp(true)
+    await onCancelApplication(cancellationReason)
+    setCancellingApp(false)
+    setShowCancelModal(false)
   }
 
   const handleFileUpload = async (event) => {
@@ -263,9 +292,27 @@ function MaintainApplicationView({
             <div className="terminated-icon">⚠️</div>
             <div className="terminated-message">
               <h3>Application Terminated</h3>
-              <p>Your application has been terminated. You are required to pay back the approved amount of <strong>RM {formatCurrency(approvedAmount)}</strong> to our organization before you can apply again.</p>
+              {mainApplicantDeceased ? (
+                <p>This application was terminated following the passing of the main applicant. Property sale and proceeds distribution to nominees is handled directly by our team outside of this system.</p>
+              ) : (
+                <p>Your application has been terminated. You are required to pay back the disbursed amount of <strong>RM {formatCurrency(paybackAmount?.totalPayback)}</strong> (including accrued interest) to our organization before you can apply again.</p>
+              )}
               {application?.termination_update_at && (
                 <p className="terminated-date">Terminated on: {new Date(application.termination_update_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Cancelled Status Banner */}
+        {applicationStatus === 'cancelled' && (
+          <div className="terminated-status-banner">
+            <div className="terminated-icon">✕</div>
+            <div className="terminated-message">
+              <h3>Application Cancelled</h3>
+              <p>You cancelled this application before it was approved. No amount is owed - you may submit a new application at any time.</p>
+              {application?.cancelled_at && (
+                <p className="terminated-date">Cancelled on: {new Date(application.cancelled_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
               )}
             </div>
           </div>
@@ -298,6 +345,31 @@ function MaintainApplicationView({
               <p><strong>Reason:</strong> {flaggedReason}</p>
               <p className="rejection-note">Please upload a corrected copy of the document below. The flagged document has been removed and is shown as missing.</p>
             </div>
+          </div>
+        )}
+
+        {/* Valuation Report Missing Banner */}
+        {documents.find((doc) => doc.displayName === 'Valuation Report')?.status === 'MISSING' && (
+          <div className="valuation-status-banner">
+            <div className="valuation-banner-icon">
+              {valuationSchedule?.status === 'scheduled' ? '📅' : '📋'}
+            </div>
+            <div className="valuation-banner-message">
+              <h3>This application doesn't have a valuation report yet</h3>
+              {valuationSchedule?.status === 'scheduled' ? (
+                <p>A property valuation visit has already been scheduled. See the details below.</p>
+              ) : (
+                <p>Our admin team will be in touch to arrange a property valuation visit. You'll be notified once it's scheduled.</p>
+              )}
+            </div>
+            {valuationSchedule?.status === 'scheduled' && (
+              <button
+                className="valuation-banner-btn"
+                onClick={() => setShowValuationDetailsModal(true)}
+              >
+                View Details
+              </button>
+            )}
           </div>
         )}
 
@@ -346,7 +418,7 @@ function MaintainApplicationView({
                   <span className="value">{formData.telephone || '-'}</span>
                 </div>
                 <div className="info-row">
-                  <span className="label">Dependents</span>
+                  <span className="label">Marital Status</span>
                   <span className="value">{formData.maritalStatus || '-'}</span>
                 </div>
               </div>
@@ -411,11 +483,24 @@ function MaintainApplicationView({
                 </div>
                 <div className="info-row">
                   <span className="label">Property Age</span>
-                  <span className="value">{propertyOwnershipDuration ? `${propertyOwnershipDuration} years` : '-'}</span>
+                  <span className="value">
+                    {(() => {
+                      const age = valuationSchedule?.status === 'completed' && valuationSchedule?.resultPropertyAge != null
+                        ? valuationSchedule.resultPropertyAge
+                        : propertyOwnershipDuration
+                      return age ? `${age} years` : '-'
+                    })()}
+                  </span>
                 </div>
                 <div className="info-row">
                   <span className="label">Estimated Value</span>
-                  <span className="value">RM {formatCurrency(formData.purchasePrice) || '-'}</span>
+                  <span className="value">
+                    RM {formatCurrency(
+                      valuationSchedule?.status === 'completed' && valuationSchedule?.resultValue != null
+                        ? valuationSchedule.resultValue
+                        : formData.purchasePrice
+                    ) || '-'}
+                  </span>
                 </div>
               </div>
             </section>
@@ -433,21 +518,37 @@ function MaintainApplicationView({
                       (isNominee1 && (flaggedCode === 'nominee1_inactive' || flaggedCode === 'both_nominees_inactive')) ||
                       (isNominee2 && (flaggedCode === 'nominee2_inactive' || flaggedCode === 'both_nominees_inactive'))
 
+                    const isPending = isInactive && nomineeChangePending
+                    const statusClass = isPending ? 'nominee-pending' : (isInactive ? 'nominee-inactive' : '')
+
                     return (
-                      <div 
-                        key={index} 
-                        className={`nominee-item ${isInactive ? 'nominee-inactive' : ''}`}
+                      <div
+                        key={index}
+                        className={`nominee-item ${statusClass}`}
                       >
-                        {isInactive && (
+                        {isPending && (
+                          <div className="nominee-pending-badge">PENDING REVIEW</div>
+                        )}
+                        {isInactive && !isPending && (
                           <div className="nominee-inactive-badge">INACTIVE - REQUIRES ACTION</div>
                         )}
-                        {isInactive && flaggedReason && (
+                        {isInactive && !isPending && flaggedReason && (
                           <div className="nominee-flagged-reason">
                             <strong>Reason:</strong> {flaggedReason}
                           </div>
                         )}
+                        {isPending && (
+                          <div className="nominee-pending-message">
+                            Your replacement nominee has been submitted and is awaiting review by our support team.
+                          </div>
+                        )}
+                        {isInactive && !isPending && nomineeChangeRejectedReason && (
+                          <div className="nominee-flagged-reason">
+                            <strong>Nominee change rejected:</strong> {nomineeChangeRejectedReason}
+                          </div>
+                        )}
                         <div className="nominee-header">NOMINEE {index + 1}</div>
-                        
+
                         <div className="nominee-content">
                           <div className="nominee-row">
                             <span className="label">NAME:</span>
@@ -461,17 +562,17 @@ function MaintainApplicationView({
                             <span className="label">RELATIONSHIP:</span>
                             <span className="value">{nominee.relationship || '-'}</span>
                           </div>
-                          {isInactive && (
+                          {isInactive && !isPending && (
                             <div className="nominee-actions">
                               {nominees.length === 2 && isNominee1 && (flaggedCode === 'nominee1_inactive') && (
-                                <button 
+                                <button
                                   className="btn btn-secondary"
                                   onClick={handlePromoteNominee2}
                                 >
                                   Promote Nominee 2 to Nominee 1
                                 </button>
                               )}
-                              <button 
+                              <button
                                 className="btn btn-secondary"
                                 onClick={handleUpdateNomineeInForm}
                               >
@@ -613,24 +714,62 @@ function MaintainApplicationView({
             {/* Approved Amount Section */}
             {(applicationStatus === 'approved' || applicationStatus === 'auctioning' || applicationStatus === 'terminated' || (applicationStatus === 'underReviewed' && application?.termination_submitted_at !== null && application?.termination_submitted_at !== undefined)) && (
               <>
+                {applicationStatus === 'terminated' && mainApplicantDeceased ? (
+                  <section className="maintain-application-section payback-section estate-settlement-section">
+                    <h2>ESTATE SETTLEMENT</h2>
+                    <p className="estate-settlement-note">
+                      This application was terminated following the passing of the
+                      main applicant. The property sale and distribution of proceeds
+                      to nominees is handled directly by our team and the appointed
+                      estate representative outside of this system — no action is
+                      required here.
+                    </p>
+                  </section>
+                ) : (
                 <section className={`maintain-application-section ${applicationStatus === 'terminated' ? 'payback-section' : 'approved-section'}`}>
                   <h2>{applicationStatus === 'terminated' ? 'PAYBACK AMOUNT' : 'APPROVED AMOUNT'}</h2>
                   <div className={`approved-card ${applicationStatus === 'terminated' ? 'payback-card' : ''}`}>
-                    <div className="approved-item primary-item">
-                      <span className="label">{applicationStatus === 'terminated' ? 'AMOUNT TO PAYBACK' : 'TOTAL APPROVED'}</span>
-                      <span className="amount">RM {formatCurrency(approvedAmount)}</span>
-                    </div>
-                    <div className="approved-item">
-                      <span className="label">PURCHASE PRICE</span>
-                      <span className="amount">RM {formatCurrency(formData.purchasePrice)}</span>
-                    </div>
+                    {applicationStatus === 'terminated' ? (
+                      <>
+                        <div className="approved-item primary-item">
+                          <span className="label">AMOUNT TO PAYBACK</span>
+                          <span className="amount">
+                            RM {formatCurrency(paybackAmount?.totalPayback)}
+                          </span>
+                        </div>
+                        <div className="approved-item">
+                          <span className="label">PRINCIPAL DISBURSED</span>
+                          <span className="amount">RM {formatCurrency(paybackAmount?.principal)}</span>
+                        </div>
+                        <div className="approved-item">
+                          <span className="label">INTEREST ACCRUED</span>
+                          <span className="amount">RM {formatCurrency(paybackAmount?.accruedInterest)}</span>
+                        </div>
+                        <p className="payback-note">
+                          This is the outstanding disbursed amount plus interest owed
+                          to the provider — not the full approved facility.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="approved-item primary-item">
+                          <span className="label">TOTAL APPROVED</span>
+                          <span className="amount">RM {formatCurrency(approvedAmount)}</span>
+                        </div>
+                        <div className="approved-item">
+                          <span className="label">PURCHASE PRICE</span>
+                          <span className="amount">RM {formatCurrency(formData.purchasePrice)}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                   {applicationStatus === 'terminated' && (
-                    <button className="btn-payback" disabled>
-                      Pay Now
+                    <button className="btn-payback" onClick={onContactSupport}>
+                      Contact Us to Arrange Repayment
                     </button>
                   )}
                 </section>
+                )}
 
                 {/* Actions Section - Hide when terminated */}
                 {applicationStatus !== 'terminated' && (
@@ -669,6 +808,43 @@ function MaintainApplicationView({
                 </section>
                 )}
               </>
+            )}
+
+            {/* Actions Section for pre-approval applications (submitted / under review, not already mid-termination) */}
+            {(applicationStatus === 'submitted' ||
+              (applicationStatus === 'underReviewed' && !application?.termination_submitted_at)) && (
+              <section className="maintain-application-section actions-box-section">
+                <h3 className="actions-title">Actions</h3>
+                <div className="actions-section">
+                  <button
+                    onClick={onDownloadPDF}
+                    disabled={downloadingPDF}
+                    className="btn-download-pdf"
+                    title="Download application PDF"
+                  >
+                    {downloadingPDF ? (
+                      <>
+                        <span className="spinner-small"></span> Downloading...
+                      </>
+                    ) : (
+                      <>↓ Download PDF</>
+                    )}
+                  </button>
+                  {pdfError && (
+                    <div className="pdf-error-message">
+                      <span className="error-icon">❌</span>
+                      {pdfError}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleCancelClick}
+                    className="btn-outline-danger"
+                    title="Cancel this application"
+                  >
+                    ✕ Cancel Application
+                  </button>
+                </div>
+              </section>
             )}
 
             {/* Need Help Section */}
@@ -753,6 +929,36 @@ function MaintainApplicationView({
       </div>
     )}
 
+    {/* Valuation Details Modal */}
+    {showValuationDetailsModal && valuationSchedule && (
+      <div className="modal-overlay">
+        <div className="modal">
+          <h3>Property Valuation Details</h3>
+          <div className="valuation-details-list">
+            <p><strong>Status:</strong> {valuationSchedule.status === 'scheduled' ? 'Scheduled' : valuationSchedule.status}</p>
+            <p><strong>Date & Time:</strong> {formatDate(valuationSchedule.scheduledDate)}</p>
+            {valuationSchedule.valuerName && (
+              <p><strong>Valuer:</strong> {valuationSchedule.valuerName}</p>
+            )}
+            {valuationSchedule.valuerContact && (
+              <p><strong>Valuer Contact:</strong> {valuationSchedule.valuerContact}</p>
+            )}
+            {valuationSchedule.locationNotes && (
+              <p><strong>Notes:</strong> {valuationSchedule.locationNotes}</p>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowValuationDetailsModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Terminate Application Modal */}
     {showTerminateModal && (
       <div className="modal-overlay">
@@ -794,6 +1000,48 @@ function MaintainApplicationView({
         </div>
       </div>
     )}
+
+    {/* Cancel Application Modal */}
+    {showCancelModal && (
+      <div className="modal-overlay">
+        <div className="modal terminate-modal">
+          <h3>Cancel Application</h3>
+          <p>Your application has not been approved yet, so it can be cancelled immediately - no admin review needed. Please provide a reason:</p>
+          <textarea
+            className="terminate-reason-input"
+            placeholder="Enter reason for cancelling (required)"
+            value={cancellationReason}
+            onChange={(e) => {
+              setCancellationReason(e.target.value)
+              if (cancellationReasonError) setCancellationReasonError(null)
+            }}
+            rows={5}
+          />
+          {cancellationReasonError && (
+            <div className="error-alert">
+              <span className="error-icon">⚠️</span>
+              <span className="error-text">{cancellationReasonError}</span>
+            </div>
+          )}
+          <div className="modal-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowCancelModal(false)}
+              disabled={cancellingApp}
+            >
+              Keep Application
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleCancelConfirm}
+              disabled={cancellingApp}
+            >
+              {cancellingApp ? 'Cancelling...' : 'Confirm Cancellation'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </>
   )
 }
@@ -811,6 +1059,8 @@ function getStatusColor(status) {
       return 'status-rejected'
     case 'terminated':
       return 'status-terminated'
+    case 'cancelled':
+      return 'status-rejected'
     default:
       return 'status-default'
   }

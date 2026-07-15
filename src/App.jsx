@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useParams } from "react-router-dom";
 import { AuthProvider } from "./client_controller/sessionController/AuthContext";
 import { ToastProvider } from "./client_controller/common/ToastContext";
+import { AppearanceProvider } from "./client_controller/common/AppearanceContext";
 import { supabase } from "./config/supabase";
 import Header from "./layouts/Header";
 import Footer from "./layouts/Footer";
@@ -26,7 +27,7 @@ import ProviderLoginPage from "./client_controller/auth/ProviderLoginPage";
 import RegistrationPage from "./client_controller/auth/RegistrationPage";
 import EligibilityCheck from "./client_controller/eligibility/EligibilityCheck";
 import HealthReportController from "./controllers/HealthReportController.jsx";
-import ProtectedRoute from "./client_controller/ProtectedRoute";
+import ProtectedRoute, { NotFoundRedirect } from "./client_controller/ProtectedRoute";
 import downloadIcon from "./assets/icons/health_report_page/icon_download.svg";
 import infoIcon from "./assets/icons/health_report_page/icon_info.svg";
 
@@ -494,6 +495,7 @@ const SharedReportPage = () => {
 
 function App() {
   return (
+    <AppearanceProvider>
     <ToastProvider>
       <AuthProvider>
         <ScrollToTop />
@@ -747,10 +749,13 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route path="*" element={<NotFoundRedirect />} />
           </Routes>
         </div>
       </AuthProvider>
     </ToastProvider>
+    </AppearanceProvider>
   );
 }
 

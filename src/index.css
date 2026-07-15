@@ -4,9 +4,19 @@
   font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
-  color: #161519;
-  background-color: #F5F5F5;
+
+  --app-font-scale: 1;
+
+  /* Light theme (default) */
+  --color-bg: #F5F5F5;
+  --color-bg-elevated: #ffffff;
+  --color-text: #161519;
+  --color-text-muted: #4b5563;
+  --color-border: #e5e7eb;
+  --color-hover: #f5f5f5;
+
+  color: var(--color-text);
+  background-color: var(--color-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -14,9 +24,19 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root[data-theme='dark'] {
+  --color-bg: #17181c;
+  --color-bg-elevated: #212226;
+  --color-text: #ececec;
+  --color-text-muted: #a3a3a8;
+  --color-border: #34353a;
+  --color-hover: #2a2b30;
+}
+
 body {
   margin: 0;
   padding: 0;
+  background-color: var(--color-bg);
 }
 
 button {

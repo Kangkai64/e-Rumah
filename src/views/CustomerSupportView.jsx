@@ -216,6 +216,72 @@ function FlagApplicationModal({ onClose, onFlag }) {
   )
 }
 
+// Reject Nominee Change Modal Component
+function RejectNomineeChangeModal({ onClose, onReject }) {
+  const [reason, setReason] = useState('')
+  const [isRejecting, setIsRejecting] = useState(false)
+  const { showToast } = useToast()
+
+  const handleReject = async () => {
+    if (!reason.trim() || isRejecting) return
+
+    setIsRejecting(true)
+    const result = await onReject(reason)
+
+    if (result?.success) {
+      setReason('')
+      onClose()
+    } else {
+      showToast('Failed to reject nominee change: ' + (result?.error || 'Unknown error'), 'error')
+    }
+    setIsRejecting(false)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="flag-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="inquiry-card">
+          <div className="inquiry-header">
+            <h2>Reject Nominee Change</h2>
+          </div>
+
+          <div className="inquiry-details">
+            <div className="detail-field">
+              <label>Reason for Rejection</label>
+              <p style={{fontSize: '0.875rem', color: '#6b7280', marginBottom: '8px'}}>
+                Explain what's wrong with the replacement nominee so the applicant knows what to fix.
+              </p>
+              <textarea
+                className="reply-textarea"
+                placeholder="Enter detailed reason for rejecting this nominee change..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={isRejecting}
+                rows={4}
+                style={{width: '100%', padding: '12px', fontSize: '0.875rem'}}
+              />
+            </div>
+          </div>
+
+          <div className="modal-actions" style={{marginTop: '24px'}}>
+            <button className="btn-secondary" onClick={onClose} disabled={isRejecting}>
+              Cancel
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleReject}
+              disabled={isRejecting || !reason.trim()}
+              style={{backgroundColor: '#dc2626'}}
+            >
+              {isRejecting ? 'Rejecting...' : 'Reject Nominee Change'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Inquiry Detail Modal Component
 function InquiryDetailModal({ inquiry, conversations, onClose, onSendReply, onSaveDraft, onMarkResolved, nominees, activeTab, onFlag }) {
   const [replyMessage, setReplyMessage] = useState('')
@@ -585,11 +651,14 @@ export default function CustomerSupportView({
   data,
   selectedItem,
   selectedNominees,
+  selectedApplication,
   onSelectItem,
   conversations,
   onSendReply,
   onUpdateStatus,
   onFlagApplication,
+  onApproveNomineeChange,
+  onRejectNomineeChange,
   loading,
   searchTerm,
   onSearch,
@@ -613,6 +682,8 @@ export default function CustomerSupportView({
   const [showModal, setShowModal] = useState(false)
   const [showNomineeModal, setShowNomineeModal] = useState(false)
   const [showFlagModal, setShowFlagModal] = useState(false)
+  const [showRejectNomineeChangeModal, setShowRejectNomineeChangeModal] = useState(false)
+  const { showToast } = useToast()
   const [showPDFViewer, setShowPDFViewer] = useState(false)
   const [pdfUrl, setPdfUrl] = useState('')
   const [pdfFileName, setPdfFileName] = useState('')
@@ -688,6 +759,29 @@ export default function CustomerSupportView({
 
   const handleFlagApplication = async (reason, flaggedCode) => {
     return await onFlagApplication(reason, flaggedCode)
+  }
+
+  // Handle reject nominee change modal
+  const handleOpenRejectNomineeChangeModal = () => {
+    setShowRejectNomineeChangeModal(true)
+  }
+
+  const handleCloseRejectNomineeChangeModal = () => {
+    setShowRejectNomineeChangeModal(false)
+  }
+
+  const handleRejectNomineeChange = async (reason) => {
+    return await onRejectNomineeChange(reason)
+  }
+
+  // Handle approve nominee change
+  const handleApproveNomineeChange = async () => {
+    if (!window.confirm('Approve this nominee change? The application will no longer be flagged.')) return
+
+    const result = await onApproveNomineeChange()
+    if (!result?.success) {
+      showToast('Failed to approve nominee change: ' + (result?.error || 'Unknown error'), 'error')
+    }
   }
 
   // Handle PDF viewer
@@ -1202,6 +1296,42 @@ export default function CustomerSupportView({
                       Flag Application
                     </button>
                   )}
+                  {activeTab === 'nominees' && selectedApplication?.nominee_change_pending && (
+                    <button
+                      className="btn-approve-nominee-change"
+                      onClick={handleApproveNomineeChange}
+                      style={{
+                        backgroundColor: '#16a34a',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        marginRight: '8px'
+                      }}
+                    >
+                      Approve Nominee Change
+                    </button>
+                  )}
+                  {activeTab === 'nominees' && selectedApplication?.nominee_change_pending && (
+                    <button
+                      className="btn-reject-nominee-change"
+                      onClick={handleOpenRejectNomineeChangeModal}
+                      style={{
+                        backgroundColor: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px 20px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        marginRight: '8px'
+                      }}
+                    >
+                      Reject Nominee Change
+                    </button>
+                  )}
                   {activeTab === 'nominees' && selectedItem && selectedItem.status !== 'resolved' && (
                     <button 
                       className="btn-resolve"
@@ -1410,6 +1540,14 @@ export default function CustomerSupportView({
         <FlagApplicationModal
           onClose={handleCloseFlagModal}
           onFlag={handleFlagApplication}
+        />
+      )}
+
+      {/* Reject Nominee Change Modal */}
+      {showRejectNomineeChangeModal && selectedItem && (
+        <RejectNomineeChangeModal
+          onClose={handleCloseRejectNomineeChangeModal}
+          onReject={handleRejectNomineeChange}
         />
       )}
 

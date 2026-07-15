@@ -4,10 +4,12 @@ import { useAuth } from '../client_controller/sessionController/AuthContext'
 import Inquiry from '../models/Inquiry'
 import Nominee from '../models/Nominee'
 import Application from '../models/Application'
+import User from '../models/User'
 import SupportConversation from '../models/SupportConversation'
 import HealthReport from '../models/HealthReport'
 import CustomerSupportView from '../views/CustomerSupportView'
 import { getCompanyContactInfo, setCompanyContactInfo } from '../services/settingsService'
+import { sendNomineeChangeApprovedEmail, sendNomineeChangeRejectedEmail } from '../services/emailService'
 import { isTempEmail } from '../utils/emailBlacklist'
 
 export default function CustomerSupportController() {
@@ -20,6 +22,7 @@ export default function CustomerSupportController() {
   const [healthReports, setHealthReports] = useState([])
   const [selectedItem, setSelectedItem] = useState(null) // Currently selected item
   const [selectedNominees, setSelectedNominees] = useState([]) // Nominees of the currently selected item
+  const [selectedApplication, setSelectedApplication] = useState(null) // Application (flag/nominee-change state) of the currently selected item
   const [conversations, setConversations] = useState([]) // Conversations (all tabs)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -193,6 +196,7 @@ export default function CustomerSupportController() {
     setActiveTab(tab)
     setSelectedItem(null) // Clear selected item
     setSelectedNominees([]) // Clear nominees
+    setSelectedApplication(null) // Clear application state
     setConversations([])
     setSearchTerm('')
     setFilterField('status')
@@ -204,9 +208,10 @@ export default function CustomerSupportController() {
     setSelectedItem(item)
     setConversations([]) // Clear previous conversations
     setSelectedNominees([]) // Clear previous nominees
-    
+    setSelectedApplication(null) // Clear previous application state
+
     if (!item.id) return
-    
+
     // Load nominees if in nominees or healthReports tab
     if ((activeTab === 'nominees' || activeTab === 'healthReports') && item.user_id) {
       const { data: nomineesData, success: nomineesSuccess } = await Nominee.getByUserId(item.user_id)
@@ -214,7 +219,15 @@ export default function CustomerSupportController() {
         setSelectedNominees(nomineesData || [])
       }
     }
-    
+
+    // Load the related application's flag / nominee-change-review state
+    if (activeTab === 'nominees' && item.user_id) {
+      const { data: applicationsData, success: applicationsSuccess } = await Application.getByUserId(item.user_id)
+      if (applicationsSuccess) {
+        setSelectedApplication(applicationsData?.[0] || null)
+      }
+    }
+
     // Load conversations - unified use of SupportConversation
     let entityType = ''
     if (activeTab === 'inquiries') entityType = 'inquiry'
@@ -479,6 +492,76 @@ export default function CustomerSupportController() {
     }
   }
 
+  // Fire-and-forget notification for nominee change decisions - never blocks the action
+  const notifyNomineeChangeDecision = async (userId, decision, rejectionReason) => {
+    try {
+      const profile = await User.getProfile(userId)
+      if (!profile?.email) return
+      if (decision === 'approved') {
+        await sendNomineeChangeApprovedEmail({
+          recipientEmail: profile.email,
+          recipientName: profile.full_name
+        })
+      } else {
+        await sendNomineeChangeRejectedEmail({
+          recipientEmail: profile.email,
+          recipientName: profile.full_name,
+          rejectionReason
+        })
+      }
+    } catch (err) {
+      console.warn('Failed to notify user of nominee change decision:', err)
+    }
+  }
+
+  // 9.6 Approve a pending nominee change
+  const handleApproveNomineeChange = async () => {
+    if (!selectedApplication?.id) {
+      return { success: false, error: 'No application selected' }
+    }
+
+    try {
+      const currentUserId = user?.id
+      if (!currentUserId) return { success: false, error: 'Not authenticated' }
+      const result = await Application.approveNomineeChange(selectedApplication.id, currentUserId)
+
+      if (result.success) {
+        setSelectedApplication(result.data)
+        notifyNomineeChangeDecision(selectedItem?.user_id, 'approved')
+        await fetchData()
+        return { success: true }
+      }
+      return { success: false, error: result.error }
+    } catch (error) {
+      console.error('Failed to approve nominee change:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 9.7 Reject a pending nominee change
+  const handleRejectNomineeChange = async (reason) => {
+    if (!selectedApplication?.id || !reason?.trim()) {
+      return { success: false, error: 'Missing application or rejection reason' }
+    }
+
+    try {
+      const currentUserId = user?.id
+      if (!currentUserId) return { success: false, error: 'Not authenticated' }
+      const result = await Application.rejectNomineeChange(selectedApplication.id, currentUserId, reason)
+
+      if (result.success) {
+        setSelectedApplication(result.data)
+        notifyNomineeChangeDecision(selectedItem?.user_id, 'rejected', reason)
+        await fetchData()
+        return { success: true }
+      }
+      return { success: false, error: result.error }
+    } catch (error) {
+      console.error('Failed to reject nominee change:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
   // 10. Get Current Data (Including Sorting)
   const getCurrentData = () => {
     let data = []
@@ -525,11 +608,14 @@ export default function CustomerSupportController() {
       data={getCurrentData()}
       selectedItem={selectedItem}
       selectedNominees={selectedNominees}
+      selectedApplication={selectedApplication}
       onSelectItem={handleSelectItem}
       conversations={conversations}
       onSendReply={handleSendReply}
       onUpdateStatus={handleUpdateStatus}
       onFlagApplication={handleFlagApplication}
+      onApproveNomineeChange={handleApproveNomineeChange}
+      onRejectNomineeChange={handleRejectNomineeChange}
       loading={loading}
       searchTerm={searchTerm}
       onSearch={handleSearch}

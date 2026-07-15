@@ -18,6 +18,7 @@ import ascIcon from '../assets/icons/health_report_page/icon_arrow_up.svg'
 import descIcon from '../assets/icons/health_report_page/icon_arrow_down.svg'
 import warningIcon from '../assets/icons/health_report_page/icon_warning.svg'
 import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
+import { generateHealthReportCode } from '../services/fileUploadService'
 import '../client_controller/health_report/HealthMonitoringView.css'
 import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
 import { useToast } from '../client_controller/common/ToastContext'
@@ -179,10 +180,52 @@ function ShareModal({
   successMessage,
   shareLinks = [],
   isShareLinksLoading = false,
+  shareOptions = { caregivers: [], familyMembers: [], healthcareProviders: [] },
+  isShareOptionsLoading = false,
   onCopyShareLink,
   onRevokeShareLink
 }) {
   if (!show) return null
+
+  const expiryDaysSelect = (
+    <div className="form-group">
+      <label htmlFor="expiryDays">Link Expires In (Days)</label>
+      <select
+        id="expiryDays"
+        value={shareForm.expiryDays}
+        onChange={(e) => onShareFormChange('expiryDays', parseInt(e.target.value))}
+      >
+        <option value={1}>1 Day</option>
+        <option value={7}>7 Days</option>
+        <option value={30}>30 Days</option>
+        <option value={90}>90 Days</option>
+      </select>
+    </div>
+  )
+
+  const renderRecipientSelect = (label, field, options, emptyHint) => (
+    <div className="form-group">
+      <label htmlFor={`share-${field}`}>{label} *</label>
+      {isShareOptionsLoading ? (
+        <div>Loading...</div>
+      ) : options.length === 0 ? (
+        <span className="error-text">{emptyHint}</span>
+      ) : (
+        <select
+          id={`share-${field}`}
+          value={shareForm[field]}
+          onChange={(e) => onShareFormChange(field, e.target.value)}
+        >
+          <option value="">Select {label.toLowerCase()}</option>
+          {options.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.full_name || option.email}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  )
 
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -248,7 +291,28 @@ function ShareModal({
             </div>
           </div>
 
-          {(shareForm.shareOption === 'caregiver' || shareForm.shareOption === 'family' || shareForm.shareOption === 'healthcare' || shareForm.shareOption === 'email') && (
+          {shareForm.shareOption === 'caregiver' && (
+            <>
+              {renderRecipientSelect('Caregiver', 'caregiverId', shareOptions.caregivers, 'No active caregiver contract found')}
+              {expiryDaysSelect}
+            </>
+          )}
+
+          {shareForm.shareOption === 'family' && (
+            <>
+              {renderRecipientSelect('Family Member', 'familyMemberId', shareOptions.familyMembers, 'No verified family member found')}
+              {expiryDaysSelect}
+            </>
+          )}
+
+          {shareForm.shareOption === 'healthcare' && (
+            <>
+              {renderRecipientSelect('Healthcare Provider', 'healthcareProviderId', shareOptions.healthcareProviders, 'No active healthcare provider contract found')}
+              {expiryDaysSelect}
+            </>
+          )}
+
+          {shareForm.shareOption === 'email' && (
             <>
               <div className="form-group">
                 <label htmlFor="shareEmail">Email Address *</label>
@@ -261,38 +325,11 @@ function ShareModal({
                 />
                 {errors.shareEmail && <span className="error-text">{errors.shareEmail}</span>}
               </div>
-
-              <div className="form-group">
-                <label htmlFor="expiryDays">Link Expires In (Days)</label>
-                <select
-                  id="expiryDays"
-                  value={shareForm.expiryDays}
-                  onChange={(e) => onShareFormChange('expiryDays', parseInt(e.target.value))}
-                >
-                  <option value={1}>1 Day</option>
-                  <option value={7}>7 Days</option>
-                  <option value={30}>30 Days</option>
-                  <option value={90}>90 Days</option>
-                </select>
-              </div>
+              {expiryDaysSelect}
             </>
           )}
 
-          {shareForm.shareOption === 'link' && (
-            <div className="form-group">
-              <label htmlFor="expiryDays">Link Expires In (Days)</label>
-              <select
-                id="expiryDays"
-                value={shareForm.expiryDays}
-                onChange={(e) => onShareFormChange('expiryDays', parseInt(e.target.value))}
-              >
-                <option value={1}>1 Day</option>
-                <option value={7}>7 Days</option>
-                <option value={30}>30 Days</option>
-                <option value={90}>90 Days</option>
-              </select>
-            </div>
-          )}
+          {shareForm.shareOption === 'link' && expiryDaysSelect}
 
           <div className="form-group">
             <label>Manage Shared Links</label>
@@ -559,6 +596,8 @@ function UserHealthReportView({
   shareForm,
   shareLinks,
   isShareLinksLoading,
+  shareOptions,
+  isShareOptionsLoading,
   multiUploadForm,
   searchKey,
   filters,
@@ -717,6 +756,25 @@ function UserHealthReportView({
   // File input ref for programmatic file selection
   const fileInputRef = useRef(null);
   const dateCloseTimerRef = useRef(null);
+
+  // Cache of meaningful display names for selected files, keyed by file
+  // identity so a name stays stable across re-renders even as the list
+  // is reordered by add/remove. Uses the same HR-<TYPE>-<DATE>-<SUFFIX>
+  // scheme the upload service assigns in Supabase Storage, so the name
+  // shown in the preview matches what the report will actually be called.
+  const fileDisplayNameCache = useRef(new Map());
+
+  const getDisplayFileName = (file) => {
+    if (!fileDisplayNameCache.current.has(file)) {
+      const ext = file.name.includes('.') ? file.name.split('.').pop() : 'pdf';
+      const reportType = multiUploadForm?.reportType === 'Others'
+        ? (multiUploadForm?.customReportType || 'Others')
+        : multiUploadForm?.reportType;
+      const code = generateHealthReportCode(reportType, multiUploadForm?.reportDate);
+      fileDisplayNameCache.current.set(file, `${code}.${ext}`);
+    }
+    return fileDisplayNameCache.current.get(file);
+  };
 
   // Enhanced drag handlers for full-page detection
   const handleDragEnter = (e) => {
@@ -943,12 +1001,16 @@ function UserHealthReportView({
 
   // Remove file from selection
   const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => {
+      fileDisplayNameCache.current.delete(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // Clear all selected files and reset the file input
   const clearAllFiles = () => {
     setSelectedFiles([]);
+    fileDisplayNameCache.current.clear();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -1083,7 +1145,11 @@ function UserHealthReportView({
                 {successModalData.error ? 'Upload Failed' : 'Upload Successful!'}
               </h2>
               <p className="modal-message">
-                {successModalData.error ? successModalData.message : `Successfully uploaded ${successModalData.fileCount} health report${successModalData.fileCount > 1 ? 's' : ''}!`}
+                {successModalData.error
+                  ? successModalData.message
+                  : successModalData.fileCount > 1
+                    ? `Successfully uploaded! Your ${successModalData.fileCount} files were combined into a single health report.`
+                    : 'Successfully uploaded your health report!'}
               </p>
               {!successModalData.error && successModalData.fileNames && (
                 <div className="modal-file-list">
@@ -1093,7 +1159,7 @@ function UserHealthReportView({
               )}
               {!successModalData.error && (
                 <p className="modal-message" style={{ fontSize: '14px', color: '#666', marginTop: '10px' }}>
-                  Your reports are now under review and will appear in your health records.
+                  Your report is now under review and will appear in your health records.
                 </p>
               )}
             </div>
@@ -1338,7 +1404,7 @@ function UserHealthReportView({
                         📄
                       </div>
                       <div className="file-info">
-                        <div className="file-name" title={file.name}>{file.name}</div>
+                        <div className="file-name" title={`Original file: ${file.name}`}>{getDisplayFileName(file)}</div>
                         <div className="file-size">{formatFileSize(file.size)}</div>
                       </div>
                       <button
@@ -1601,9 +1667,9 @@ function UserHealthReportView({
 
               {archivedReports.length > 0 ? archivedReports.slice(0, 3).map((report) => (
                 <div key={report.id} className="table-row">
-                  <div className="table-col">{report.report_title || report.report_type || 'Medical Report'}</div>
-                  <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
-                  <div className="table-col table-actions">
+                  <div className="table-col" data-label="Report Title">{report.report_title || report.report_type || 'Medical Report'}</div>
+                  <div className="table-col" data-label="Date">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
+                  <div className="table-col table-actions" data-label="Actions">
                     <button
                       className="btn-secondary btn-action"
                       onClick={() => onDownload?.(report.id)}
@@ -1957,33 +2023,39 @@ function UserHealthReportView({
               {reports && reports.length > 0 ? (
                 reports.map((report) => (
                   <div key={report.id} className="table-data-row">
-                    <div className="table-data-col">
-                      <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
-                      <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                    <div className="table-data-col" data-label="Report Title">
+                      <div className="cell-value">
+                        <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
+                        <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                      </div>
                     </div>
-                    <div className="table-data-col">
-                      {new Date(report.report_date).toLocaleDateString('en-GB')}
+                    <div className="table-data-col" data-label="Report Date">
+                      <div className="cell-value">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <div className="table-data-col">
-                      {new Date(report.created_at).toLocaleDateString('en-GB')}
+                    <div className="table-data-col" data-label="Upload Date">
+                      <div className="cell-value">{new Date(report.created_at).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <div className="table-data-col">
-                      {report.provider_name || report.providerName || 'N/A'}
+                    <div className="table-data-col" data-label="Provider Name">
+                      <div className="cell-value">{report.provider_name || report.providerName || 'N/A'}</div>
                     </div>
-                    <div className="table-data-col"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
-                    <div className="table-data-col table-actions">
-                      <button
-                        className="btn-secondary btn-action"
-                        onClick={() => safeOnDownload(report.id)}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="btn-primary btn-action"
-                        onClick={() => safeOnShareClick(report)}
-                      >
-                        Share
-                      </button>
+                    <div className="table-data-col" data-label="Report Status">
+                      <div className="cell-value"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
+                    </div>
+                    <div className="table-data-col" data-label="Actions">
+                      <div className="cell-value table-actions">
+                        <button
+                          className="btn-secondary btn-action"
+                          onClick={() => safeOnDownload(report.id)}
+                        >
+                          View
+                        </button>
+                        <button
+                          className="btn-primary btn-action"
+                          onClick={() => safeOnShareClick(report)}
+                        >
+                          Share
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -2020,6 +2092,8 @@ function UserHealthReportView({
             successMessage={successMessage}
             shareLinks={shareLinks}
             isShareLinksLoading={isShareLinksLoading}
+            shareOptions={shareOptions}
+            isShareOptionsLoading={isShareOptionsLoading}
             onCopyShareLink={onCopyShareLink}
             onRevokeShareLink={onRevokeShareLink}
           />
@@ -2160,9 +2234,9 @@ function UserHealthReportView({
                     </div>
                     {archivedReports.map((report) => (
                       <div key={report.id} className="table-row">
-                        <div className="table-col">{report.report_title || report.report_type || 'Medical Report'}</div>
-                        <div className="table-col">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
-                        <div className="table-col table-actions">
+                        <div className="table-col" data-label="Report Title">{report.report_title || report.report_type || 'Medical Report'}</div>
+                        <div className="table-col" data-label="Date">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
+                        <div className="table-col table-actions" data-label="Actions">
                           <button
                             className="btn-secondary btn-action"
                             onClick={() => onDownload?.(report.id)}
@@ -2821,42 +2895,50 @@ function AdminHealthReportDashboardView({
               {reports && reports.length > 0 ? (
                 reports.map((report) => (
                   <div key={report.id} className="table-data-row">
-                    <div className="table-data-col">
-                      <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
-                      <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                    <div className="table-data-col" data-label="Report Title">
+                      <div className="cell-value">
+                        <div className="report-title">{report.report_title || report.report_type || 'Health Report'}</div>
+                        <div className="report-ref">Ref: {report.id.slice(-8).toUpperCase()}</div>
+                      </div>
                     </div>
-                    <div className="table-data-col">
-                      <div className="user-name">{report.userData?.full_name || 'N/A'}</div>
-                      <div className="user-email" style={{ fontSize: '0.85rem', color: '#666' }}>{report.userData?.email || ''}</div>
+                    <div className="table-data-col" data-label="User Name">
+                      <div className="cell-value">
+                        <div className="user-name">{report.userData?.full_name || 'N/A'}</div>
+                        <div className="user-email" style={{ fontSize: '0.85rem', color: '#666' }}>{report.userData?.email || ''}</div>
+                      </div>
                     </div>
-                    <div className="table-data-col">
-                      {new Date(report.report_date).toLocaleDateString('en-GB')}
+                    <div className="table-data-col" data-label="Report Date">
+                      <div className="cell-value">{new Date(report.report_date).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <div className="table-data-col">
-                      {new Date(report.created_at).toLocaleDateString('en-GB')}
+                    <div className="table-data-col" data-label="Upload Date">
+                      <div className="cell-value">{new Date(report.created_at).toLocaleDateString('en-GB')}</div>
                     </div>
-                    <div className="table-data-col"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
-                    <div className="table-data-col table-actions">
-                      <button
-                        className="btn-secondary btn-action"
-                        onClick={() => safeOnDownload(report.id)}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="btn-approve"
-                        onClick={() => safeOnApproveClick(report)}
-                        disabled={report.health_report_status?.toLowerCase() === 'flagged' || report.health_report_status?.toLowerCase() === 'reviewed'}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn-flag"
-                        onClick={() => safeOnFlagClick(report)}
-                        disabled={report.health_report_status?.toLowerCase() === 'flagged' || report.health_report_status?.toLowerCase() === 'reviewed'}
-                      >
-                        Flag
-                      </button>
+                    <div className="table-data-col" data-label="Report Status">
+                      <div className="cell-value"><StatusBadge status={report.health_report_status || report.due_status || 'Up to Date'} /></div>
+                    </div>
+                    <div className="table-data-col" data-label="Actions">
+                      <div className="cell-value table-actions">
+                        <button
+                          className="btn-secondary btn-action"
+                          onClick={() => safeOnDownload(report.id)}
+                        >
+                          View
+                        </button>
+                        <button
+                          className="btn-approve"
+                          onClick={() => safeOnApproveClick(report)}
+                          disabled={report.health_report_status?.toLowerCase() === 'flagged' || report.health_report_status?.toLowerCase() === 'reviewed'}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="btn-flag"
+                          onClick={() => safeOnFlagClick(report)}
+                          disabled={report.health_report_status?.toLowerCase() === 'flagged' || report.health_report_status?.toLowerCase() === 'reviewed'}
+                        >
+                          Flag
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -3060,6 +3142,8 @@ export default function HealthMonitoringView({
   shareForm,
   shareLinks,
   isShareLinksLoading,
+  shareOptions,
+  isShareOptionsLoading,
   multiUploadForm,
   searchKey,
   filters,
@@ -3222,6 +3306,8 @@ export default function HealthMonitoringView({
       shareForm={shareForm}
       shareLinks={shareLinks}
       isShareLinksLoading={isShareLinksLoading}
+      shareOptions={shareOptions}
+      isShareOptionsLoading={isShareOptionsLoading}
       multiUploadForm={multiUploadForm}
       searchKey={searchKey}
       filters={filters}

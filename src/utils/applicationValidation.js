@@ -4,6 +4,7 @@ import { parseICNumber } from "./icParser";
 import { KL_POSTCODES } from "./klPostcodes";
 import { findMatchingListedBank } from "./malaysianBanks";
 import { isTempEmail } from "./emailBlacklist";
+import { getStateForPostcode } from "./malaysiaStates";
 
 // IC Number validation: xxxxxx-xx-xxxx with valid date
 export const validateIC = (ic) => {
@@ -110,11 +111,15 @@ export const validateAtLeastOnePhone = (residencePhone, telephone) => {
   return null;
 };
 
-// Postcode validation: 5 digits
+// Postcode validation: 5 digits, and must fall within a known Malaysian
+// state/territory postcode range (the State field is auto-filled from this,
+// so an out-of-range postcode has nowhere valid to derive a state from)
 export const validatePostcode = (postcode) => {
   if (!postcode) return "Postcode is required";
   const postcodePattern = /^\d{5}$/;
   if (!postcodePattern.test(postcode)) return "Postcode must be 5 digits";
+  if (!getStateForPostcode(postcode))
+    return "Postcode does not match any known Malaysian state/territory";
   return null;
 };
 
@@ -153,8 +158,8 @@ export const validateAge = (day, month, year, label = "Applicant") => {
 };
 
 // Date cannot be in future
-export const validateDateNotFuture = (day, month, year, label) => {
-  if (!day || !month || !year) return `${label} is required`;
+export const validateDateNotFuture = (day, month, year, label, required = true) => {
+  if (!day || !month || !year) return required ? `${label} is required` : null;
 
   const date = new Date(year, month - 1, day);
   const today = new Date();
@@ -222,6 +227,25 @@ const addDuplicatePersonErrors = (
     if (sourceName && targetName && sourceName === targetName) {
       errors[source.nameField] = message;
     }
+  }
+};
+
+// H/P numbers must be unique within the application - reusing the same
+// mobile number for two different people (applicant, joint applicant,
+// nominees) isn't allowed. Residence phone is intentionally excluded since
+// people living at the same address are expected to share that number.
+const addDuplicatePhoneError = (
+  errors,
+  sourcePhone,
+  sourceField,
+  targetPhone,
+  sourceLabel,
+  targetLabel,
+) => {
+  if (!sourcePhone || !targetPhone) return;
+  if (normalizeComparableValue(sourcePhone) === normalizeComparableValue(targetPhone)) {
+    errors[sourceField] =
+      `${sourceLabel} H/P number must not be the same as ${targetLabel}'s H/P number`;
   }
 };
 
@@ -526,6 +550,16 @@ export const validateStep2 = (formData) => {
     if (formData.jTelephone && !errors.jTelephone) {
       errors.jTelephone = validatePhone(formData.jTelephone);
     }
+    if (!errors.jTelephone) {
+      addDuplicatePhoneError(
+        errors,
+        formData.jTelephone,
+        "jTelephone",
+        formData.telephone,
+        "Joint Applicant",
+        "Applicant",
+      );
+    }
 
     // Date of birth and age validation
     errors.jDob = validateAge(
@@ -584,7 +618,10 @@ export const validateStep2 = (formData) => {
   // Banking details (always required)
   errors.bankName = validateRequired(formData.bankName, "Bank Name");
   if (formData.bankName === "Other") {
-    errors.otherBankName = validateRequired(formData.otherBankName, "Bank Name");
+    errors.otherBankName = validateRequired(
+      formData.otherBankName,
+      "Bank Name",
+    );
     if (!errors.otherBankName) {
       const matchedBank = findMatchingListedBank(formData.otherBankName);
       if (matchedBank) {
@@ -652,30 +689,36 @@ export const validateStep3 = (formData) => {
   errors.indicativeMarketValue = validateNumeric(
     formData.indicativeMarketValue,
     "Indicative Market Value",
+    !formData.valuationReportPending,
   );
   errors.expectedMarketValue = validateNumeric(
     formData.expectedMarketValue,
     "Expected Market Value",
+    !formData.valuationReportPending,
   );
   errors.purchasePrice = validateNumeric(
     formData.purchasePrice,
     "Purchase Price",
+    false,
   );
   errors.buildUpArea = validateNumeric(formData.buildUpArea, "Build Up Area");
   errors.landArea = validateNumeric(formData.landArea, "Land Area");
 
   // Dates
-  errors.valuationDate = validateDateNotFuture(
-    formData.valuationDay,
-    formData.valuationMonth,
-    formData.valuationYear,
-    "Valuation Date",
-  );
+  errors.valuationDate = formData.valuationReportPending
+    ? null
+    : validateDateNotFuture(
+        formData.valuationDay,
+        formData.valuationMonth,
+        formData.valuationYear,
+        "Valuation Date",
+      );
   errors.purchaseDate = validateDateNotFuture(
     formData.purchaseDay,
     formData.purchaseMonth,
     formData.purchaseYear,
     "Purchase Date",
+    false,
   );
 
   // Tenure
@@ -806,6 +849,26 @@ export const validateStep4 = (formData) => {
   if (formData.nominee1Telephone && !errors.nominee1Telephone) {
     errors.nominee1Telephone = validatePhone(formData.nominee1Telephone);
   }
+  if (!errors.nominee1Telephone) {
+    addDuplicatePhoneError(
+      errors,
+      formData.nominee1Telephone,
+      "nominee1Telephone",
+      formData.telephone,
+      "Nominee 1",
+      "Applicant",
+    );
+    if (formData.isJointApplicant) {
+      addDuplicatePhoneError(
+        errors,
+        formData.nominee1Telephone,
+        "nominee1Telephone",
+        formData.jTelephone,
+        "Nominee 1",
+        "Joint Applicant",
+      );
+    }
+  }
 
   Object.assign(
     errors,
@@ -894,6 +957,34 @@ export const validateStep4 = (formData) => {
     );
     if (formData.nominee2Telephone && !errors.nominee2Telephone) {
       errors.nominee2Telephone = validatePhone(formData.nominee2Telephone);
+    }
+    if (!errors.nominee2Telephone) {
+      addDuplicatePhoneError(
+        errors,
+        formData.nominee2Telephone,
+        "nominee2Telephone",
+        formData.telephone,
+        "Nominee 2",
+        "Applicant",
+      );
+      if (formData.isJointApplicant) {
+        addDuplicatePhoneError(
+          errors,
+          formData.nominee2Telephone,
+          "nominee2Telephone",
+          formData.jTelephone,
+          "Nominee 2",
+          "Joint Applicant",
+        );
+      }
+      addDuplicatePhoneError(
+        errors,
+        formData.nominee2Telephone,
+        "nominee2Telephone",
+        formData.nominee1Telephone,
+        "Nominee 2",
+        "Nominee 1",
+      );
     }
 
     // DOB required
@@ -1045,29 +1136,34 @@ export const validateStep6 = (formData) => {
     "Applicant Address",
   );
 
+  const signingNominee =
+    formData.ack_nomineeSource === "nominee2" ? "nominee2" : "nominee1";
+  const signingNomineeLabel =
+    signingNominee === "nominee2" ? "Nominee 2" : "Nominee 1";
+
   validateFieldMatches(
     errors,
     formData.ack_nomineeName,
-    formData.nominee1Name,
+    formData[`${signingNominee}Name`],
     "ack_nomineeName",
     "Nominee Name",
-    "Nominee 1 Name",
+    `${signingNomineeLabel} Name`,
   );
   validateFieldMatches(
     errors,
     formData.ack_nomineeNRIC,
-    formData.nominee1Ic,
+    formData[`${signingNominee}Ic`],
     "ack_nomineeNRIC",
     "Nominee NRIC",
-    "Nominee 1 NRIC",
+    `${signingNomineeLabel} NRIC`,
   );
   validateFieldMatches(
     errors,
     formData.ack_nomineeAddress,
-    formData.nominee1Address,
+    formData[`${signingNominee}Address`],
     "ack_nomineeAddress",
     "Nominee Address",
-    "Nominee 1 Address",
+    `${signingNomineeLabel} Address`,
   );
   validateFieldMatches(
     errors,

@@ -1,5 +1,6 @@
 // PDF Conversion Utility - Converts images to PDF
 import jsPDF from 'jspdf'
+import { PDFDocument } from 'pdf-lib'
 import { validatePDF, processPDF } from './pdfCompression'
 
 /**
@@ -106,6 +107,30 @@ export const convertImagesToPDF = async (imageFiles, fileName = 'health_report.p
     console.error('Error converting images to PDF:', error)
     throw new Error('Failed to convert images to PDF: ' + error.message)
   }
+}
+
+/**
+ * Merge multiple PDF files into a single PDF, in the given order
+ * @param {File[]} pdfFiles - PDF files to merge
+ * @param {string} fileName - Name for the merged PDF
+ * @returns {Promise<File>} - Merged PDF file
+ */
+export const mergePDFs = async (pdfFiles, fileName = 'health_report.pdf') => {
+  const mergedPdf = await PDFDocument.create()
+
+  for (const pdfFile of pdfFiles) {
+    const arrayBuffer = await pdfFile.arrayBuffer()
+    const sourcePdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+    const copiedPages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices())
+    copiedPages.forEach((page) => mergedPdf.addPage(page))
+  }
+
+  const mergedBytes = await mergedPdf.save()
+
+  return new File([mergedBytes], fileName, {
+    type: 'application/pdf',
+    lastModified: Date.now()
+  })
 }
 
 /**

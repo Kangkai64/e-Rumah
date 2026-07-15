@@ -432,11 +432,28 @@
     flex-direction: column;
   }
 
-  .loan-disbursement-summary-grid,
   .loan-disbursement-layout,
   .selected-summary-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .loan-disbursement-summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .summary-card {
+    padding: 12px;
+  }
+
+  .summary-card strong {
+    margin-top: 6px;
+    font-size: 18px;
+  }
+
+  .summary-label {
+    font-size: 11px;
   }
 
   .history-table-head {

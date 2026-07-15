@@ -1,0 +1,124 @@
+.appearance-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  padding: 1rem;
+}
+
+.appearance-modal {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem;
+}
+
+.appearance-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.appearance-modal-header h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.appearance-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.appearance-modal-close:hover {
+  color: var(--color-text);
+}
+
+.appearance-modal-section {
+  margin-bottom: 1.25rem;
+}
+
+.appearance-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.appearance-modal-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.appearance-theme-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.appearance-theme-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem 0.5rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.appearance-theme-btn:hover {
+  background: var(--color-hover);
+}
+
+.appearance-theme-btn.active {
+  border-color: #A8202D;
+  color: #A8202D;
+}
+
+.appearance-fontsize-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+
+.appearance-fontsize-btn {
+  padding: 0.6rem 0.5rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.appearance-fontsize-btn:hover {
+  background: var(--color-hover);
+}
+
+.appearance-fontsize-btn.active {
+  border-color: #A8202D;
+  color: #A8202D;
+}

@@ -6,8 +6,18 @@
 
 .app {
   min-height: 100vh;
-  background: #F5F5F5;
-  color: #161519;
+  background: var(--color-bg);
+  color: var(--color-text);
+  zoom: var(--app-font-scale, 1);
+}
+
+@supports not (zoom: 1) {
+  .app {
+    transform: scale(var(--app-font-scale, 1));
+    transform-origin: top left;
+    width: calc(100% / var(--app-font-scale, 1));
+    min-height: calc(100vh / var(--app-font-scale, 1));
+  }
 }
 
 /* Container */

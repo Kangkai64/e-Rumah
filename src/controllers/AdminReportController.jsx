@@ -15,6 +15,7 @@ import {
 import Admin from '../models/Admin'
 import Application from '../models/Application'
 import PropertyValuation from '../models/PropertyValuation'
+import { sendValuationMissingEmail } from '../services/emailService'
 import { supabase } from '../config/supabase'
 import AdminApplicationReviewView from '../views/AdminApplicationReviewView'
 import AdminReportView from '../views/AdminReportView'
@@ -58,15 +59,20 @@ function AdminReportController({ mode = 'reports' }) {
   const [flagDocumentReason, setFlagDocumentReason] = useState('')
   const [flaggingDocument, setFlaggingDocument] = useState(false)
 
+  // Audit trail state
+  const [auditLog, setAuditLog] = useState([])
+
   // Property valuation scheduling state
   const [valuationSchedule, setValuationSchedule] = useState(null)
   const [showScheduleValuationModal, setShowScheduleValuationModal] = useState(false)
   const [scheduleValuationForm, setScheduleValuationForm] = useState({ scheduledDate: '', valuerName: '', valuerContact: '', locationNotes: '' })
   const [schedulingValuation, setSchedulingValuation] = useState(false)
   const [showCompleteValuationModal, setShowCompleteValuationModal] = useState(false)
-  const [completeValuationForm, setCompleteValuationForm] = useState({ resultValue: '', valuationDate: '', reportFile: null })
+  const [completeValuationForm, setCompleteValuationForm] = useState({ resultValue: '', valuationDate: '', valuerName: '', valuerContact: '', propertyAge: '', reportFile: null })
   const [completingValuation, setCompletingValuation] = useState(false)
   const [cancellingValuation, setCancellingValuation] = useState(false)
+  const [notifyingMissingValuation, setNotifyingMissingValuation] = useState(false)
+  const [isDraggingValuationReport, setIsDraggingValuationReport] = useState(false)
 
   // PDF Viewer state
   const [showPDFViewer, setShowPDFViewer] = useState(false)
@@ -209,20 +215,26 @@ function AdminReportController({ mode = 'reports' }) {
 
       setApplication(appData)
 
-      // Suggest an approved amount (70% of the applicant's expected market value)
-      // when the application is awaiting review and no amount has been set yet.
+      // Suggest an approved amount (70% of market value) when the application
+      // is awaiting review and no amount has been set yet. Prefer the official
+      // valuation report's result (indicative_market_value, only written once
+      // the valuation is completed) over the applicant's self-reported
+      // expected market value, which is just an estimate.
       if (appData.approved_amount) {
         setApprovedAmount(String(appData.approved_amount))
       } else if (appData.status === 'underReviewed') {
-        const expectedMarketValue = parseFloat(
-          appData.application_data?.form_data?.expectedMarketValue ?? appData.properties?.expected_market_value
+        const marketValue = parseFloat(
+          appData.properties?.indicative_market_value ??
+          appData.application_data?.form_data?.expectedMarketValue ??
+          appData.properties?.expected_market_value
         )
-        if (!isNaN(expectedMarketValue) && expectedMarketValue > 0) {
-          setApprovedAmount((expectedMarketValue * 0.7).toFixed(2))
+        if (!isNaN(marketValue) && marketValue > 0) {
+          setApprovedAmount((marketValue * 0.7).toFixed(2))
         }
       }
 
       // Fetch documents
+      let requiredDocuments = null
       if (appData.user_id) {
         const documentsResult = await Application.getRequiredDocuments(
           appData.user_id,
@@ -230,13 +242,29 @@ function AdminReportController({ mode = 'reports' }) {
         )
         if (documentsResult.success) {
           setDocuments(documentsResult.data)
+          requiredDocuments = documentsResult.data
         }
       }
 
       // Fetch property valuation schedule, if any
       const valuationResult = await PropertyValuation.getByApplicationId(applicationId)
+      let schedule = null
       if (valuationResult.success) {
         setValuationSchedule(valuationResult.data)
+        schedule = valuationResult.data
+      }
+
+      // Flag it up front for the admin - a missing valuation report is easy to
+      // miss buried in the documents tab
+      const valuationDoc = requiredDocuments?.find((doc) => doc.displayName === 'Valuation Report')
+      if (valuationDoc?.status === 'MISSING' && schedule?.status !== 'scheduled') {
+        showToast("This application doesn't have a valuation report yet", 'warning')
+      }
+
+      // Fetch audit trail (application + any of its loan offers)
+      const auditResult = await Admin.getAuditLog(applicationId)
+      if (auditResult.success) {
+        setAuditLog(auditResult.data)
       }
 
       setError(null)
@@ -438,7 +466,14 @@ function AdminReportController({ mode = 'reports' }) {
   }
 
   const handleOpenCompleteValuation = () => {
-    setCompleteValuationForm({ resultValue: '', valuationDate: '', reportFile: null })
+    setCompleteValuationForm({
+      resultValue: '',
+      valuationDate: '',
+      valuerName: valuationSchedule?.valuerName || '',
+      valuerContact: valuationSchedule?.valuerContact || '',
+      propertyAge: '',
+      reportFile: null,
+    })
     setShowCompleteValuationModal(true)
   }
 
@@ -450,6 +485,34 @@ function AdminReportController({ mode = 'reports' }) {
     setCompleteValuationForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleValuationReportDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingValuationReport(true)
+  }
+
+  const handleValuationReportDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingValuationReport(false)
+  }
+
+  const handleValuationReportDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleValuationReportDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingValuationReport(false)
+
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      handleCompleteValuationFormChange('reportFile', file)
+    }
+  }
+
   const handleConfirmCompleteValuation = async () => {
     if (!completeValuationForm.resultValue || parseFloat(completeValuationForm.resultValue) <= 0) {
       showToast('Please enter a valid valuation result', 'warning')
@@ -457,6 +520,17 @@ function AdminReportController({ mode = 'reports' }) {
     }
     if (!completeValuationForm.reportFile) {
       showToast('Please upload the valuation report file', 'warning')
+      return
+    }
+    if (completeValuationForm.valuationDate) {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      if (completeValuationForm.valuationDate > todayStr) {
+        showToast('Valuation date cannot be in the future', 'warning')
+        return
+      }
+    }
+    if (completeValuationForm.propertyAge && parseInt(completeValuationForm.propertyAge, 10) < 0) {
+      showToast('Property age cannot be negative', 'warning')
       return
     }
 
@@ -469,6 +543,9 @@ function AdminReportController({ mode = 'reports' }) {
         {
           resultValue: parseFloat(completeValuationForm.resultValue),
           valuationDate: completeValuationForm.valuationDate || undefined,
+          valuerName: completeValuationForm.valuerName,
+          valuerContact: completeValuationForm.valuerContact,
+          propertyAge: completeValuationForm.propertyAge ? parseInt(completeValuationForm.propertyAge, 10) : undefined,
           reportFile: completeValuationForm.reportFile,
           adminId: user?.id,
           recipientEmail: application.users?.email,
@@ -480,6 +557,18 @@ function AdminReportController({ mode = 'reports' }) {
         setValuationSchedule(result.data)
         setShowCompleteValuationModal(false)
         showToast('Valuation marked as complete! The applicant has been notified.', 'success')
+
+        // The property's official market value is only written once the
+        // valuation completes, so reflect it locally and (re-)trigger the
+        // approved amount suggestion now that a real market value exists.
+        const marketValue = result.data.resultValue
+        setApplication((prev) => prev && ({
+          ...prev,
+          properties: { ...prev.properties, indicative_market_value: marketValue },
+        }))
+        if (application?.status === 'underReviewed' && !application?.approved_amount && marketValue > 0) {
+          setApprovedAmount((marketValue * 0.7).toFixed(2))
+        }
 
         // Refresh documents so the report now shows as FOUND
         const documentsResult = await Application.getRequiredDocuments(
@@ -515,6 +604,31 @@ function AdminReportController({ mode = 'reports' }) {
       showToast('Error: ' + err.message, 'error')
     } finally {
       setCancellingValuation(false)
+    }
+  }
+
+  const handleNotifyMissingValuation = async () => {
+    if (!application?.users?.email) {
+      showToast('No email address on file for this applicant', 'error')
+      return
+    }
+
+    setNotifyingMissingValuation(true)
+    try {
+      const result = await sendValuationMissingEmail({
+        recipientEmail: application.users.email,
+        recipientName: application.users.full_name,
+      })
+
+      if (result.success) {
+        showToast('Applicant notified by email', 'success')
+      } else {
+        showToast('Error notifying applicant: ' + result.error, 'error')
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error')
+    } finally {
+      setNotifyingMissingValuation(false)
     }
   }
 
@@ -760,6 +874,8 @@ function AdminReportController({ mode = 'reports' }) {
         return 'status-rejected'
       case 'terminated':
         return 'status-terminated'
+      case 'cancelled':
+        return 'status-rejected'
       default:
         return ''
     }
@@ -779,6 +895,8 @@ function AdminReportController({ mode = 'reports' }) {
         return 'Rejected'
       case 'terminated':
         return 'Terminated'
+      case 'cancelled':
+        return 'Cancelled'
       default:
         return status
     }
@@ -936,6 +1054,7 @@ function AdminReportController({ mode = 'reports' }) {
         onConfirmFlagDocument={handleConfirmFlagDocument}
         onCancelFlagDocument={handleCancelFlagDocument}
         onFlagDocumentReasonChange={handleFlagDocumentReasonChange}
+        auditLog={auditLog}
         valuationSchedule={valuationSchedule}
         showScheduleValuationModal={showScheduleValuationModal}
         scheduleValuationForm={scheduleValuationForm}
@@ -947,12 +1066,19 @@ function AdminReportController({ mode = 'reports' }) {
         showCompleteValuationModal={showCompleteValuationModal}
         completeValuationForm={completeValuationForm}
         completingValuation={completingValuation}
+        isDraggingValuationReport={isDraggingValuationReport}
         onOpenCompleteValuation={handleOpenCompleteValuation}
         onCloseCompleteValuation={handleCloseCompleteValuation}
         onCompleteValuationFormChange={handleCompleteValuationFormChange}
         onConfirmCompleteValuation={handleConfirmCompleteValuation}
+        onValuationReportDragEnter={handleValuationReportDragEnter}
+        onValuationReportDragLeave={handleValuationReportDragLeave}
+        onValuationReportDragOver={handleValuationReportDragOver}
+        onValuationReportDrop={handleValuationReportDrop}
         cancellingValuation={cancellingValuation}
         onCancelValuationSchedule={handleCancelValuationSchedule}
+        notifyingMissingValuation={notifyingMissingValuation}
+        onNotifyMissingValuation={handleNotifyMissingValuation}
         onViewApplicationPDF={handleViewApplicationPDF}
         onDownloadApplicationPDF={handleDownloadApplicationPDF}
         formatCurrency={formatCurrency}

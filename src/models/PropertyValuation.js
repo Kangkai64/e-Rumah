@@ -27,6 +27,7 @@ const mapSchedule = (row) => ({
   completedAt: row.completed_at,
   completedBy: row.completed_by,
   resultValue: row.result_value != null ? toNumber(row.result_value) : null,
+  resultPropertyAge: row.result_property_age != null ? toNumber(row.result_property_age) : null,
   cancelledReason: row.cancelled_reason || '',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -184,6 +185,16 @@ const PropertyValuation = {
       if (!payload.reportFile) {
         return { success: false, error: 'Valuation report file is required' }
       }
+      if (payload.valuationDate && payload.valuationDate > new Date().toISOString().slice(0, 10)) {
+        return { success: false, error: 'Valuation date cannot be in the future' }
+      }
+      let propertyAge = null
+      if (payload.propertyAge !== undefined && payload.propertyAge !== null && payload.propertyAge !== '') {
+        propertyAge = toNumber(payload.propertyAge)
+        if (propertyAge < 0) {
+          return { success: false, error: 'Property age cannot be negative' }
+        }
+      }
 
       const uploadResult = await uploadDocument(payload.reportFile, userId, 'valuationReport')
       if (uploadResult.error) {
@@ -210,15 +221,20 @@ const PropertyValuation = {
         return { success: false, error: propertyUpdate.error || 'Failed to update property valuation' }
       }
 
+      const scheduleUpdate = {
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        completed_by: payload.adminId || null,
+        result_value: resultValue,
+        result_property_age: propertyAge,
+        updated_at: new Date().toISOString(),
+      }
+      if (payload.valuerName !== undefined) scheduleUpdate.valuer_name = payload.valuerName || null
+      if (payload.valuerContact !== undefined) scheduleUpdate.valuer_contact = payload.valuerContact || null
+
       const { data: updated, error } = await supabase
         .from('property_valuation_schedules')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          completed_by: payload.adminId || null,
-          result_value: resultValue,
-          updated_at: new Date().toISOString(),
-        })
+        .update(scheduleUpdate)
         .eq('id', scheduleId)
         .select('*')
         .single()

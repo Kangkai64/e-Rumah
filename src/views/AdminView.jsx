@@ -239,6 +239,7 @@ function AdminView({
                     <option value="auctioning">In Auction</option>
                     <option value="rejected">Rejected</option>
                     <option value="terminated">Terminated</option>
+                    <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
 
@@ -561,14 +562,23 @@ function AdminView({
 
                           {selectedApplication?.main_applicant_deceased && (
                             <div className="admin-proceeds-section">
-                              <h3>Apportioned Proceeds</h3>
+                              <h3>Estimated Apportioned Proceeds</h3>
                               {loadingProceeds ? (
                                 <p>Calculating proceeds...</p>
                               ) : terminationProceeds ? (
                                 <>
+                                  <p className="admin-proceeds-disclaimer">
+                                    ⚠️ These figures are an estimate based on the
+                                    property's last recorded market value, not the
+                                    final sale price. The actual property sale and
+                                    redemption is completed off-system by the
+                                    appointed estate representative; treat these
+                                    numbers as indicative only until the real sale
+                                    proceeds are confirmed.
+                                  </p>
                                   <div className="admin-proceeds-summary">
                                     <p>
-                                      <strong>Property Value:</strong> RM{" "}
+                                      <strong>Estimated Property Value:</strong> RM{" "}
                                       {terminationProceeds.propertyValue.toLocaleString()}
                                     </p>
                                     <p>
@@ -577,7 +587,7 @@ function AdminView({
                                       {terminationProceeds.outstandingLoanAmount.toLocaleString()}
                                     </p>
                                     <p>
-                                      <strong>Net Proceeds for Distribution:</strong>{" "}
+                                      <strong>Estimated Net Proceeds for Distribution:</strong>{" "}
                                       RM {terminationProceeds.netProceeds.toLocaleString()}
                                     </p>
                                     {terminationProceeds.isNonRecourseShortfall && (
@@ -598,7 +608,7 @@ function AdminView({
                                         <th>Nominee</th>
                                         <th>Type</th>
                                         <th>Share</th>
-                                        <th>Amount</th>
+                                        <th>Estimated Amount</th>
                                       </tr>
                                     </thead>
                                     <tbody>

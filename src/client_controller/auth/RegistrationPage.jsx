@@ -18,7 +18,7 @@ import leftArrow from "../../assets/icons/icon_arrowLeft.svg";
 import { useToast } from "../common/ToastContext";
 import PasswordInput from "../common/PasswordInput";
 
-const NAME_PATTERN = /^[A-Za-z\s'-]+$/;
+const NAME_PATTERN = /^[A-Za-z\s'/-]+$/;
 const SPECIAL_CHAR_PATTERN = /[!"#$%&'()*+,\-./:;<=>?@[\]^_`{|}~\\]/;
 
 // Individual password requirement checks, reused by validation and the
@@ -40,7 +40,7 @@ const validateField = (name, formData) => {
       if (formData.fullName.trim().length < 2)
         return "Full Name must be at least 2 characters";
       if (!NAME_PATTERN.test(formData.fullName))
-        return "Full Name must only contain letters, spaces, hyphens and apostrophes";
+        return "Full Name must only contain letters, spaces, hyphens, apostrophes and forward slashes";
       return null;
     }
     case "icNumber": {
@@ -203,6 +203,13 @@ export default function SignupPage() {
     if (name === "email") {
       const dupError = await checkDuplicateEmail(formData.email);
       setErrors((prev) => ({ ...prev, email: dupError }));
+
+      // Re-check the confirm-email match, since editing the email field can
+      // silently invalidate (or fix) a previously entered confirmation.
+      if (formData.confirmEmail) {
+        const confirmError = validateField("confirmEmail", formData);
+        setErrors((prev) => ({ ...prev, confirmEmail: confirmError }));
+      }
     } else if (name === "icNumber") {
       const dupError = await checkDuplicateIC(formData.icNumber);
       setErrors((prev) => ({ ...prev, icNumber: dupError }));

@@ -14,6 +14,12 @@ const devLog = (...args) => {
   }
 };
 
+// Log the user out after this long with no mouse/keyboard/touch activity,
+// regardless of Supabase's own token refresh cycle (which would otherwise
+// keep a forgotten-but-open tab signed in indefinitely).
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000;
+const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -303,6 +309,35 @@ export function AuthProvider({ children }) {
       subscription?.unsubscribe();
     };
   }, []);
+
+  const lastActivityRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (!user) return;
+
+    lastActivityRef.current = Date.now();
+    const markActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    ACTIVITY_EVENTS.forEach((event) =>
+      window.addEventListener(event, markActivity, { passive: true }),
+    );
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= INACTIVITY_LIMIT_MS) {
+        devLog("⏰ Signing out after 30 minutes of inactivity");
+        supabase.auth.signOut();
+      }
+    }, 60 * 1000);
+
+    return () => {
+      ACTIVITY_EVENTS.forEach((event) =>
+        window.removeEventListener(event, markActivity),
+      );
+      clearInterval(intervalId);
+    };
+  }, [user]);
 
   const value = {
     user,

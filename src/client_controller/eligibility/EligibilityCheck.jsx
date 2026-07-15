@@ -348,6 +348,23 @@ const EligibilityCheck = () => {
         }
         const birthDate = new Date(value);
         const today = new Date();
+
+        if (isNaN(birthDate.getTime()) || birthDate.getFullYear() < 1900) {
+          setErrors((prev) => ({
+            ...prev,
+            [field]: "Please enter a valid date of birth",
+          }));
+          return false;
+        }
+
+        if (birthDate > today) {
+          setErrors((prev) => ({
+            ...prev,
+            [field]: "Date of birth cannot be in the future",
+          }));
+          return false;
+        }
+
         let age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
         if (
@@ -364,6 +381,15 @@ const EligibilityCheck = () => {
           }));
           return false;
         }
+
+        if (age > 120) {
+          setErrors((prev) => ({
+            ...prev,
+            [field]: "Please enter a valid date of birth",
+          }));
+          return false;
+        }
+
         return true;
 
       case "isPrimaryResidence":

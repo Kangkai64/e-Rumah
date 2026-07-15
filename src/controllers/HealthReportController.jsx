@@ -15,19 +15,24 @@ import {
   shareHealthReport,
   getHealthReportShares,
   revokeHealthReportShare,
+  getCaregiverOptions,
+  getFamilyMemberOptions,
+  getHealthcareProviderOptions,
   checkHealthReportAlerts,
   getAllHealthReports,
   approveHealthReport,
   flagHealthReport,
   archiveHealthReport,
+  archiveSupersededOverdueReports,
   reuploadHealthReport,
+  computeDueStatus,
   RemindersService,
   REMINDER_TYPES,
   REMINDER_CATEGORIES
 } from '../models/HealthReport'
 import { useAuth } from '../client_controller/sessionController/AuthContext'
 import { processPDF } from '../utils/pdfCompression'
-import { convertImagesToPDF, isImageFile, isPDFFile, validateHealthReportFile } from '../utils/pdfConverter'
+import { convertImagesToPDF, isImageFile, isPDFFile, mergePDFs, validateHealthReportFile } from '../utils/pdfConverter'
 import { deriveUserBirthDate } from '../utils/deriveUserBirthDate'
 import { corsProxyFunctionInvoke } from '../services/corsProxyService'
 import { isTempEmail } from '../utils/emailBlacklist'
@@ -117,12 +122,15 @@ function HealthReportController() {
     shareOption: '',
     caregiverId: '',
     familyMemberId: '',
+    healthcareProviderId: '',
     providerEmail: '',
     email: '',
     expiryDays: 7
   })
   const [shareLinks, setShareLinks] = useState([])
   const [isShareLinksLoading, setIsShareLinksLoading] = useState(false)
+  const [shareOptions, setShareOptions] = useState({ caregivers: [], familyMembers: [], healthcareProviders: [] })
+  const [isShareOptionsLoading, setIsShareOptionsLoading] = useState(false)
 
   // ============================================================================
   // REMINDERS STATE MANAGEMENT
@@ -396,7 +404,7 @@ function HealthReportController() {
     if (activeTab !== 'all') {
       switch (activeTab) {
         case 'overdue':
-          filtered = filtered.filter(r => r.due_status === 'Overdue')
+          filtered = filtered.filter(r => r.due_status === 'Overdue' && r.health_report_status !== 'Archived')
           break
         case 'due-soon':
           filtered = filtered.filter(r => r.due_status === 'Due Soon')
@@ -558,6 +566,12 @@ function HealthReportController() {
           file: null
         })
 
+        // Archive any older overdue report of the same type - it's been superseded
+        const archiveResult = await archiveSupersededOverdueReports(currentUser.id, result.data.report_type, [result.data.id])
+        if (!archiveResult.success) {
+          console.error('Failed to archive superseded overdue reports:', archiveResult.error)
+        }
+
         // Refresh reports
         await fetchReports(currentUser.id)
         await checkAlerts(currentUser.id)
@@ -572,16 +586,14 @@ function HealthReportController() {
     }
   }
 
-  // Handle multiple file upload - NEW BUSINESS LOGIC
+  // Handle multiple file upload - merges every selected file into a single PDF
+  // and saves it as one health_reports record (instead of one record per file)
   const handleMultipleFileUpload = async (files) => {
     try {
       console.log('🚀 Starting upload process for', files.length, 'files');
-      
+
       // Get user's application ID if not provided in URL
       const finalApplicationId = applicationId || await getUserApplicationId(currentUser.id)
-
-      const uploadResults = [];
-      const healthReportRecords = [];
 
       // Validate all required fields first
       const validationErrors = {}
@@ -634,97 +646,96 @@ function HealthReportController() {
       // Clear any previous errors
       setErrors({})
 
-      // Upload each file to Supabase Storage
+      // Convert every selected file to a PDF (images become single-page PDFs)
+      // so they can all be merged into one document
+      const pdfFiles = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log(`📤 Processing file ${i + 1}/${files.length}:`, file.name);
+        console.log(`📄 Preparing file ${i + 1}/${files.length}:`, file.name);
 
-        // Process PDF (compress, validate, repair if needed)
-        let processedFile = file;
-        if (file.type === 'application/pdf') {
-          console.log('🔄 Processing PDF file...');
-          const processResult = await processPDF(file, {
-            compress: true,
-            compressionLevel: 0.8,
-            maxFileSize: 5 * 1024 * 1024 // 5MB
-          });
-          
-          if (processResult.success) {
-            processedFile = processResult.file;
-            console.log('✅ PDF processed successfully');
-          } else {
-            console.warn('⚠️ PDF processing failed, using original file:', processResult.error);
-          }
+        if (isImageFile(file)) {
+          const convertedFile = await convertImagesToPDF([file], `${file.name.replace(/\.[^/.]+$/, '')}.pdf`);
+          pdfFiles.push(convertedFile);
+        } else {
+          pdfFiles.push(file);
         }
-
-        // Upload file using the health report specific service (PDF only)
-        const uploadResult = await uploadHealthReportFile(
-          processedFile,
-          currentUser.id,
-          'health_report',
-          {
-            signedUrlDuration: 31536000, // 1 year
-            reportType,
-            reportDate: multiUploadForm.reportDate
-          }
-        );
-
-        if (uploadResult.error) {
-          console.error('❌ Upload failed for', processedFile.name, ':', uploadResult.error);
-          return {
-            success: false,
-            error: `Failed to upload ${processedFile.name}: ${uploadResult.error.message}`
-          };
-        }
-
-        uploadResults.push({
-          file: processedFile,
-          originalFile: file,
-          uploadResult
-        });
-
-        // Prepare health report record
-        const healthReportRecord = {
-          user_id: currentUser.id,
-          application_id: finalApplicationId || null, // Use finalApplicationId
-          report_date: multiUploadForm.reportDate,
-          report_type: reportType,
-          report_title: multiUploadForm.reportTitle,
-          provider_name: multiUploadForm.providerName,
-          report_file_url: uploadResult.url,
-          notes: '', // Left empty for admin purpose
-          health_report_status: 'Pending',
-          due_status: 'Up to Date'
-        };
-
-        console.log('💾 Health report record being prepared:', healthReportRecord);
-
-        healthReportRecords.push(healthReportRecord);
-
-        console.log('✅ File uploaded successfully:', {
-          fileName: processedFile.name,
-          url: uploadResult.url,
-          size: formatFileSize(file.size)
-        });
       }
 
-      // Insert health report records into database
-      console.log('💾 Inserting health report records into database...');
+      // Merge all files into a single PDF so they save as one report/one record
+      let mergedFile = pdfFiles[0];
+      if (pdfFiles.length > 1) {
+        console.log('🔗 Merging', pdfFiles.length, 'files into a single PDF...');
+        mergedFile = await mergePDFs(pdfFiles, `${(multiUploadForm.reportTitle || 'health_report').trim()}.pdf`);
+      }
+
+      // Validate, repair, and compress the merged PDF
+      const processResult = await processPDF(mergedFile, {
+        compress: true,
+        compressionLevel: 0.8,
+        maxFileSize: 5 * 1024 * 1024 // 5MB
+      });
+      const finalFile = processResult.success ? processResult.file : mergedFile;
+
+      // Upload the single merged file
+      const uploadResult = await uploadHealthReportFile(
+        finalFile,
+        currentUser.id,
+        'health_report',
+        {
+          signedUrlDuration: 31536000, // 1 year
+          reportType,
+          reportDate: multiUploadForm.reportDate
+        }
+      );
+
+      if (uploadResult.error) {
+        console.error('❌ Upload failed:', uploadResult.error);
+        return {
+          success: false,
+          error: `Failed to upload report: ${uploadResult.error.message}`
+        };
+      }
+
+      // Insert a single health report record for the merged file
+      const healthReportRecord = {
+        user_id: currentUser.id,
+        application_id: finalApplicationId || null, // Use finalApplicationId
+        report_date: multiUploadForm.reportDate,
+        report_type: reportType,
+        report_title: multiUploadForm.reportTitle,
+        provider_name: multiUploadForm.providerName,
+        report_file_url: uploadResult.url,
+        notes: '', // Left empty for admin purpose
+        health_report_status: 'Pending',
+        due_status: computeDueStatus(multiUploadForm.reportDate, reportType)
+      };
+
+      console.log('💾 Inserting health report record into database...', healthReportRecord);
 
       const { data: insertedRecords, error: insertError } = await supabase
         .from('health_reports')
-        .insert(healthReportRecords)
+        .insert([healthReportRecord])
         .select();
 
       if (insertError) {
         console.error('❌ Database insertion failed:', insertError);
         return {
           success: false,
-          error: 'Files uploaded but failed to save records to database. Please contact support.'
+          error: 'Report uploaded but failed to save the record to database. Please contact support.'
         };
       }
 
-      console.log('✅ Health report records created successfully:', insertedRecords);
+      console.log('✅ Health report record created successfully:', insertedRecords);
+
+      // Archive any older overdue report of the same type - it's been superseded
+      const archiveResult = await archiveSupersededOverdueReports(
+        currentUser.id,
+        reportType,
+        insertedRecords.map(record => record.id)
+      );
+      if (!archiveResult.success) {
+        console.error('Failed to archive superseded overdue reports:', archiveResult.error)
+      }
 
       // Refresh reports
       await fetchReports(currentUser.id);
@@ -735,7 +746,6 @@ function HealthReportController() {
       return {
         success: true,
         data: {
-          uploadResults,
           healthReportRecords: insertedRecords,
           fileCount: files.length
         }
@@ -748,15 +758,6 @@ function HealthReportController() {
         error: error.message || 'An unexpected error occurred. Please try again.'
       };
     }
-  }
-
-  // Helper function for file size formatting
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   // Handle report selection
@@ -791,6 +792,31 @@ function HealthReportController() {
       setShareLinks([])
     } finally {
       setIsShareLinksLoading(false)
+    }
+  }, [])
+
+  // Load caregiver/family/healthcare-provider dropdown options for the share modal
+  const loadShareOptions = useCallback(async (elderId) => {
+    if (!elderId) return
+
+    try {
+      setIsShareOptionsLoading(true)
+      const [caregiverResult, familyResult, healthcareResult] = await Promise.all([
+        getCaregiverOptions(elderId),
+        getFamilyMemberOptions(elderId),
+        getHealthcareProviderOptions(elderId)
+      ])
+
+      setShareOptions({
+        caregivers: caregiverResult.success ? caregiverResult.data : [],
+        familyMembers: familyResult.success ? familyResult.data : [],
+        healthcareProviders: healthcareResult.success ? healthcareResult.data : []
+      })
+    } catch (err) {
+      console.error('Error loading share options:', err)
+      setShareOptions({ caregivers: [], familyMembers: [], healthcareProviders: [] })
+    } finally {
+      setIsShareOptionsLoading(false)
     }
   }, [])
 
@@ -831,7 +857,8 @@ function HealthReportController() {
     setSuccessMessage(null)
     setShowShareModal(true)
     loadShareLinks(report?.id)
-  }, [loadShareLinks])
+    loadShareOptions(user?.id)
+  }, [loadShareLinks, loadShareOptions, user])
 
   // Handle view all archived reports
   const handleViewAllArchived = useCallback(() => {
@@ -848,7 +875,22 @@ function HealthReportController() {
         return
       }
 
-      if (['caregiver', 'family', 'healthcare', 'email'].includes(shareForm.shareOption)) {
+      if (shareForm.shareOption === 'caregiver' && !shareForm.caregiverId) {
+        setError('Please select a caregiver')
+        return
+      }
+
+      if (shareForm.shareOption === 'family' && !shareForm.familyMemberId) {
+        setError('Please select a family member')
+        return
+      }
+
+      if (shareForm.shareOption === 'healthcare' && !shareForm.healthcareProviderId) {
+        setError('Please select a healthcare provider')
+        return
+      }
+
+      if (shareForm.shareOption === 'email') {
         const email = (shareForm.email || '').trim()
         if (!email) {
           setErrors((prev) => ({ ...prev, shareEmail: 'Email address is required' }))
@@ -900,6 +942,7 @@ function HealthReportController() {
         shareOption: '',
         caregiverId: '',
         familyMemberId: '',
+        healthcareProviderId: '',
         providerEmail: '',
         email: '',
         expiryDays: 7
@@ -962,6 +1005,8 @@ function HealthReportController() {
     setSelectedReport(null)
     setShareLinks([])
     setIsShareLinksLoading(false)
+    setShareOptions({ caregivers: [], familyMembers: [], healthcareProviders: [] })
+    setIsShareOptionsLoading(false)
     setUploadForm({
       reportType: '',
       reportDate: '',
@@ -974,6 +1019,7 @@ function HealthReportController() {
       shareOption: '',
       caregiverId: '',
       familyMemberId: '',
+      healthcareProviderId: '',
       providerEmail: '',
       email: '',
       expiryDays: 7
@@ -990,7 +1036,7 @@ function HealthReportController() {
   useEffect(() => {
     if (reports && reports.length > 0) {
       const stats = {
-        overdueHealthReport: reports.filter(r => r.due_status === 'Overdue').length,
+        overdueHealthReport: reports.filter(r => r.due_status === 'Overdue' && r.health_report_status !== 'Archived').length,
         healthReportDueSoon: reports.filter(r => r.due_status === 'Due Soon').length,
         pending: reports.filter(r => !r.health_report_status || r.health_report_status?.toLowerCase() === 'pending').length,
         reviewed: reports.filter(r => r.health_report_status?.toLowerCase() === 'reviewed').length,
@@ -1789,6 +1835,8 @@ function HealthReportController() {
       shareForm={shareForm}
       shareLinks={shareLinks}
       isShareLinksLoading={isShareLinksLoading}
+      shareOptions={shareOptions}
+      isShareOptionsLoading={isShareOptionsLoading}
       multiUploadForm={multiUploadForm}
 
       // Handlers

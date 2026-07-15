@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Application from '../models/Application'
 import PropertyValuation from '../models/PropertyValuation'
+import LoanDisbursement from '../models/LoanDisbursement'
 import { getCurrentUser } from '../services/authService'
 import MaintainApplicationView from '../views/MaintainApplicationView'
 import { useToast } from '../client_controller/common/ToastContext'
@@ -23,8 +24,11 @@ function MaintainApplicationController() {
   const [application, setApplication] = useState(null)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [approvedAmount, setApprovedAmount] = useState(null)
+  const [paybackAmount, setPaybackAmount] = useState(null)
   const [flaggedCode, setFlaggedCode] = useState(null)
   const [flaggedReason, setFlaggedReason] = useState(null)
+  const [nomineeChangePending, setNomineeChangePending] = useState(false)
+  const [nomineeChangeRejectedReason, setNomineeChangeRejectedReason] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [documents, setDocuments] = useState([])
   const [documentsLoading, setDocumentsLoading] = useState(false)
@@ -83,12 +87,23 @@ function MaintainApplicationController() {
         setApplicationStatus(appData.status)
         setFlaggedCode(appData.flagged_code)
         setFlaggedReason(appData.flagged_reason)
+        setNomineeChangePending(!!appData.nominee_change_pending)
+        setNomineeChangeRejectedReason(appData.nominee_change_rejected_reason)
         
         // Use approved_amount from the application record
         if (appData.approved_amount !== null && appData.approved_amount !== undefined) {
           setApprovedAmount(appData.approved_amount)
         }
-        
+
+        // Terminated (non-deceased) applicants owe the disbursed principal plus
+        // accrued interest, not the full approved facility - fetch that separately
+        if (appData.status === 'terminated' && !appData.main_applicant_deceased) {
+          const paybackResult = await LoanDisbursement.getPaybackAmount(appData.id)
+          setPaybackAmount(paybackResult.success ? paybackResult.data : null)
+        } else {
+          setPaybackAmount(null)
+        }
+
         buildTimeline(appData)
         setError(null)
       } catch (err) {
@@ -274,7 +289,16 @@ function MaintainApplicationController() {
         status: 'completed'
       })
     }
-    
+
+    // Add cancellation event if exists
+    if (appData.cancelled_at && appData.status === 'cancelled') {
+      events.push({
+        date: appData.cancelled_at,
+        title: 'Application Cancelled',
+        status: 'completed'
+      })
+    }
+
     setTimeline(events)
   }
   
@@ -295,6 +319,26 @@ function MaintainApplicationController() {
     } catch (err) {
       console.error('Error submitting termination request:', err)
       setError('Failed to submit termination request')
+    }
+  }
+
+  // Handle cancel application (pre-approval, self-service, no admin review)
+  const handleCancelApplication = async (cancellationReason) => {
+    try {
+      const result = await Application.cancelApplication(application.id, cancellationReason)
+
+      if (result.success) {
+        setApplicationStatus('cancelled')
+        setError(null)
+        // Redirect to the application wizard so the user can start a new one
+        showToast('Application cancelled. Redirecting...', 'success')
+        window.location.href = '/application'
+      } else {
+        setError('Failed to cancel application')
+      }
+    } catch (err) {
+      console.error('Error cancelling application:', err)
+      setError('Failed to cancel application')
     }
   }
 
@@ -390,8 +434,11 @@ function MaintainApplicationController() {
       application={application}
       applicationStatus={applicationStatus}
       approvedAmount={approvedAmount}
+      paybackAmount={paybackAmount}
       flaggedCode={flaggedCode}
       flaggedReason={flaggedReason}
+      nomineeChangePending={nomineeChangePending}
+      nomineeChangeRejectedReason={nomineeChangeRejectedReason}
       timeline={timeline}
       documents={documents}
       documentsLoading={documentsLoading}
@@ -403,8 +450,11 @@ function MaintainApplicationController() {
       pdfError={pdfError}
       onDownloadPDF={handleDownloadPDF}
       onTerminateApplication={handleTerminateApplication}
+      onCancelApplication={handleCancelApplication}
       showRejectTerminationReason={showRejectTerminationReason}
       onDismissRejectReason={handleDismissRejectReason}
+      mainApplicantDeceased={!!application?.main_applicant_deceased}
+      onContactSupport={() => navigate('/user/support')}
     />
   )
 }
