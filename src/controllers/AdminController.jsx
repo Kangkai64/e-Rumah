@@ -18,6 +18,7 @@ function AdminController() {
   // State management
   const [statistics, setStatistics] = useState({
     pending: 0,
+    pendingValuation: 0,
     approved: 0,
     auctioning: 0,
     rejected: 0,
@@ -191,6 +192,20 @@ function AdminController() {
   };
 
   /**
+   * Quick filter: show only applications still waiting on a valuation
+   * (no result on file and no valuer appointment booked yet), sorted
+   * oldest-first so admin can schedule the longest-waiting ones first
+   */
+  const handleValuationPendingQuickFilter = () => {
+    setFilters({
+      ...filters,
+      status: "valuationPending",
+      sortBy: "submitted_at",
+      sortOrder: "asc",
+    });
+  };
+
+  /**
    * Handle sort change - toggles between newest and oldest
    */
   const handleSortChange = (sortBy, sortOrder) => {
@@ -309,6 +324,17 @@ function AdminController() {
 
     if (selectedApplication.status === "underReviewed" && !approvedAmount) {
       showToast("Please enter the approved amount", "warning");
+      return;
+    }
+
+    if (
+      selectedApplication.status === "underReviewed" &&
+      !(parseFloat(selectedApplication.property?.indicative_market_value) > 0)
+    ) {
+      showToast(
+        "Cannot approve: a completed valuation report with an estimated market value is required first",
+        "warning",
+      );
       return;
     }
 
@@ -738,6 +764,7 @@ const handleCloseReportGenerator = () => {
       onFilterFieldChange={handleFilterFieldChange}
       onFilterValueChange={handleFilterValueChange}
       onPendingQuickFilter={handlePendingQuickFilter}
+      onValuationPendingQuickFilter={handleValuationPendingQuickFilter}
       onSortChange={handleSortChange}
       onApplicationClick={handleApplicationClick}
       onApproveApplication={handleApproveApplication}

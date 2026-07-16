@@ -125,6 +125,11 @@ function AdminApplicationReviewView({
   const fd = application.application_data?.form_data || {}
   const prop = application.properties || {}
 
+  // Approval requires a completed valuation report and its resulting estimated market value
+  const valuationDoc = documents?.find((doc) => doc.displayName === 'Valuation Report')
+  const missingValuation = application.status === 'underReviewed' &&
+    (valuationDoc?.status === 'MISSING' || !(parseFloat(prop.indicative_market_value) > 0))
+
   const gv = (value) => {
     if (value === true) return 'Yes'
     if (value === false) return 'No'
@@ -887,10 +892,16 @@ function AdminApplicationReviewView({
             <button
               className="approve-button"
               onClick={onApprove}
-              disabled={approvalLoading || application.status === 'approved'}
+              disabled={approvalLoading || application.status === 'approved' || missingValuation}
+              title={missingValuation ? "A completed valuation report with an estimated market value is required before approval" : undefined}
             >
               {approvalLoading ? 'Processing...' : application.status === 'approved' ? 'Already Approved' : 'Approve Application'}
             </button>
+            {missingValuation && (
+              <p className="approve-blocked-hint">
+                Approval is blocked until a completed valuation report and estimated market value are on file.
+              </p>
+            )}
           </div>
         )}
       </div>

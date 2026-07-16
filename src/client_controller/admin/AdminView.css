@@ -515,6 +515,20 @@
   color: #854d0e;
 }
 
+.status-badge-valuation-pending {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-family: "Poppins", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+  background: #cffafe;
+  color: #0e7490;
+}
+
 /* Table Actions */
 .admin-table-actions {
   display: flex;
@@ -773,6 +787,12 @@
   background-color: #9ca3af;
   transform: none;
   box-shadow: none;
+}
+
+.admin-approve-blocked-hint {
+  margin: 0 16px 12px;
+  font-size: 12px;
+  color: #b45309;
 }
 
 /* Nominees Content */

@@ -16,6 +16,7 @@ import Admin from '../models/Admin'
 import Application from '../models/Application'
 import PropertyValuation from '../models/PropertyValuation'
 import { sendValuationMissingEmail } from '../services/emailService'
+import { generateApplicationPDF } from '../services/applicationPdfService'
 import { supabase } from '../config/supabase'
 import AdminApplicationReviewView from '../views/AdminApplicationReviewView'
 import AdminReportView from '../views/AdminReportView'
@@ -284,6 +285,15 @@ function AdminReportController({ mode = 'reports' }) {
     if (application?.status === 'underReviewed' && (!approvedAmount || isNaN(parseFloat(approvedAmount)) || parseFloat(approvedAmount) <= 0)) {
       showToast('Please enter a valid approved amount before approving', 'warning')
       return
+    }
+
+    if (application?.status === 'underReviewed') {
+      const valuationDoc = documents?.find((doc) => doc.displayName === 'Valuation Report')
+      const marketValue = parseFloat(application?.properties?.indicative_market_value)
+      if (valuationDoc?.status === 'MISSING' || isNaN(marketValue) || marketValue <= 0) {
+        showToast('Cannot approve: a completed valuation report with an estimated market value is required first', 'warning')
+        return
+      }
     }
 
     setApprovalLoading(true)
@@ -577,6 +587,40 @@ function AdminReportController({ mode = 'reports' }) {
         )
         if (documentsResult.success) {
           setDocuments(documentsResult.data)
+        }
+
+        // Regenerate the SSB application PDF so its "Indicative Market
+        // Value" / valuation date fields reflect the official valuer's
+        // result instead of the applicant's self-declared figure. Best
+        // effort - don't block the valuation-completion flow if this fails.
+        try {
+          const baseFormData = application.submitted_form_data || application.application_data?.form_data
+          const nricDigits = baseFormData?.nricNo?.replace(/[^0-9]/g, '')
+          if (baseFormData && application.user_id && nricDigits) {
+            const valuationDateStr = completeValuationForm.valuationDate || new Date().toISOString().slice(0, 10)
+            const [valYear, valMonth, valDay] = valuationDateStr.split('-')
+            const updatedFormData = {
+              ...baseFormData,
+              indicativeMarketValue: String(marketValue),
+              valuationDay: valDay,
+              valuationMonth: valMonth,
+              valuationYear: valYear,
+            }
+            const pdfBlob = await generateApplicationPDF(updatedFormData)
+            const filePath = `${application.user_id}/SSB_Application_${nricDigits}.pdf`
+            const { error: pdfUploadError } = await supabase.storage
+              .from('application-forms')
+              .upload(filePath, pdfBlob, {
+                contentType: 'application/pdf',
+                cacheControl: '3600',
+                upsert: true,
+              })
+            if (pdfUploadError) {
+              console.error('Failed to re-upload updated application PDF:', pdfUploadError)
+            }
+          }
+        } catch (pdfError) {
+          console.error('Failed to regenerate application PDF after valuation completion:', pdfError)
         }
       } else {
         showToast('Error completing valuation: ' + result.error, 'error')

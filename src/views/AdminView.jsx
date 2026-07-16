@@ -44,6 +44,7 @@ function AdminView({
   onFilterFieldChange,
   onFilterValueChange,
   onPendingQuickFilter,
+  onValuationPendingQuickFilter,
   onSortChange,
   onApplicationClick,
   onApproveApplication,
@@ -151,6 +152,28 @@ function AdminView({
               <div className="admin-stat-subtitle">Awaiting review &mdash; click to filter</div>
             </div>
 
+            <div
+              className="admin-stat-card admin-stat-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={onValuationPendingQuickFilter}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onValuationPendingQuickFilter();
+                }
+              }}
+              title="Show applications awaiting a valuation only"
+            >
+              <div className="admin-stat-label">Valuation Pending</div>
+              <div className="admin-stat-value">
+                {statistics.pendingValuation || 0}
+              </div>
+              <div className="admin-stat-subtitle">
+                Needs scheduling &mdash; click to filter
+              </div>
+            </div>
+
             <div className="admin-stat-card">
               <div className="admin-stat-label">Approved</div>
               <div className="admin-stat-value">{statistics.approved || 0}</div>
@@ -213,6 +236,14 @@ function AdminView({
                   ⏳ Pending Only
                 </button>
 
+                <button
+                  type="button"
+                  className={`admin-quick-filter-btn ${filters.status === "valuationPending" ? "admin-quick-filter-btn-active" : ""}`}
+                  onClick={onValuationPendingQuickFilter}
+                >
+                  🏚️ Valuation Pending
+                </button>
+
                 <div className="admin-filter-group">
                   <span className="admin-filter-label">Value:</span>
                   <select
@@ -233,6 +264,7 @@ function AdminView({
                   >
                     <option value="all">All</option>
                     <option value="pending">Pending (Submitted + Under Review)</option>
+                    <option value="valuationPending">Valuation Pending</option>
                     <option value="submitted">Submitted</option>
                     <option value="underReviewed">Under Review</option>
                     <option value="approved">Approved</option>
@@ -340,6 +372,11 @@ function AdminView({
                             className={`admin-status-badge admin-status-${getStatusBadgeClass(app.status)}`}
                           >
                             {getStatusDisplayText(app.status)}
+                          </span>
+                        )}
+                        {app.needsValuationSchedule && (
+                          <span className="status-badge-valuation-pending">
+                            Needs Valuation
                           </span>
                         )}
                       </div>
@@ -726,20 +763,36 @@ function AdminView({
                       {/* Approve Button - Hide when termination is pending or terminated */}
                       {!selectedApplication?.termination_submitted_at &&
                         selectedApplication?.status !== "terminated" && (
-                          <button
-                            className="admin-approve-btn"
-                            onClick={onApproveApplication}
-                            disabled={
-                              selectedApplication?.status === "approved" ||
-                              selectedApplication?.status === "auctioning"
-                            }
-                          >
-                            {selectedApplication?.status === "approved"
-                              ? "Already Approved"
-                              : selectedApplication?.status === "auctioning"
-                                ? "Auction In Progress"
-                                : "Approve Application"}
-                          </button>
+                          <>
+                            <button
+                              className="admin-approve-btn"
+                              onClick={onApproveApplication}
+                              disabled={
+                                selectedApplication?.status === "approved" ||
+                                selectedApplication?.status === "auctioning" ||
+                                (selectedApplication?.status === "underReviewed" &&
+                                  !(parseFloat(selectedApplication?.property?.indicative_market_value) > 0))
+                              }
+                              title={
+                                selectedApplication?.status === "underReviewed" &&
+                                !(parseFloat(selectedApplication?.property?.indicative_market_value) > 0)
+                                  ? "A completed valuation report with an estimated market value is required before approval"
+                                  : undefined
+                              }
+                            >
+                              {selectedApplication?.status === "approved"
+                                ? "Already Approved"
+                                : selectedApplication?.status === "auctioning"
+                                  ? "Auction In Progress"
+                                  : "Approve Application"}
+                            </button>
+                            {selectedApplication?.status === "underReviewed" &&
+                              !(parseFloat(selectedApplication?.property?.indicative_market_value) > 0) && (
+                                <p className="admin-approve-blocked-hint">
+                                  Approval is blocked until a completed valuation report and estimated market value are on file.
+                                </p>
+                              )}
+                          </>
                         )}
                     </>
                   ) : (

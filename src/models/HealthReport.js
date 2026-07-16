@@ -2,10 +2,13 @@
 // Handles all database operations for health reports
 // NO imports from other models allowed!
 
-import { supabase } from '../config/supabase'
-import { corsProxyUpdate } from '../services/corsProxyService'
-import { uploadHealthReport as uploadHealthReportFile, deleteDocument } from '../services/fileUploadService'
-import { sendHealthReportShareEmail } from '../services/emailService'
+import { supabase } from "../config/supabase";
+import { corsProxyUpdate } from "../services/corsProxyService";
+import {
+  uploadHealthReport as uploadHealthReportFile,
+  deleteDocument,
+} from "../services/fileUploadService";
+import { sendHealthReportShareEmail } from "../services/emailService";
 
 const HealthReport = {
   /**
@@ -16,26 +19,30 @@ const HealthReport = {
   async create(reportData) {
     try {
       const { data, error } = await supabase
-        .from('health_reports')
-        .insert([{
-          user_id: reportData.userId,
-          application_id: reportData.applicationId || null,
-          report_type: reportData.reportType,
-          report_date: reportData.reportDate,
-          report_title: reportData.reportTitle,
-          report_file_url: reportData.reportFileUrl,
-          notes: reportData.notes,
-          health_report_status: reportData.healthReportStatus || 'Pending',
-          due_status: reportData.dueStatus || computeDueStatus(reportData.reportDate, reportData.reportType)
-        }])
+        .from("health_reports")
+        .insert([
+          {
+            user_id: reportData.userId,
+            application_id: reportData.applicationId || null,
+            report_type: reportData.reportType,
+            report_date: reportData.reportDate,
+            report_title: reportData.reportTitle,
+            report_file_url: reportData.reportFileUrl,
+            notes: reportData.notes,
+            health_report_status: reportData.healthReportStatus || "Pending",
+            due_status:
+              reportData.dueStatus ||
+              computeDueStatus(reportData.reportDate, reportData.reportType),
+          },
+        ])
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return { success: true, data }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error('Error creating health report:', error)
-      return { success: false, error: error.message }
+      console.error("Error creating health report:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -47,16 +54,16 @@ const HealthReport = {
   async getById(reportId) {
     try {
       const { data, error } = await supabase
-        .from('health_reports')
-        .select('*')
-        .eq('id', reportId)
-        .single()
+        .from("health_reports")
+        .select("*")
+        .eq("id", reportId)
+        .single();
 
-      if (error) throw error
-      return { success: true, data }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error('Error fetching health report:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching health report:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -69,39 +76,39 @@ const HealthReport = {
   async getByUser(userId, filters = {}) {
     try {
       let query = supabase
-        .from('health_reports')
-        .select('*')
-        .eq('user_id', userId)
+        .from("health_reports")
+        .select("*")
+        .eq("user_id", userId);
 
       // Apply filters
       if (filters.reportType) {
-        query = query.eq('report_type', filters.reportType)
+        query = query.eq("report_type", filters.reportType);
       }
 
       if (filters.applicationId) {
-        query = query.eq('application_id', filters.applicationId)
+        query = query.eq("application_id", filters.applicationId);
       }
 
       if (filters.startDate && filters.endDate) {
-        query = query.gte('report_date', filters.startDate)
-        query = query.lte('report_date', filters.endDate)
+        query = query.gte("report_date", filters.startDate);
+        query = query.lte("report_date", filters.endDate);
       }
 
       // Apply sorting
       if (filters.sortBy) {
-        const order = filters.sortOrder || 'asc'
-        query = query.order(filters.sortBy, { ascending: order === 'asc' })
+        const order = filters.sortOrder || "asc";
+        query = query.order(filters.sortBy, { ascending: order === "asc" });
       } else {
-        query = query.order('report_date', { ascending: false })
+        query = query.order("report_date", { ascending: false });
       }
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
-      return { success: true, data }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error('Error fetching health reports:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching health reports:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -114,17 +121,19 @@ const HealthReport = {
   async search(userId, searchKey) {
     try {
       const { data, error } = await supabase
-        .from('health_reports')
-        .select('*')
-        .eq('user_id', userId)
-        .or(`report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%,report_title.ilike.%${searchKey}%`)
-        .order('report_date', { ascending: false })
+        .from("health_reports")
+        .select("*")
+        .eq("user_id", userId)
+        .or(
+          `report_type.ilike.%${searchKey}%,notes.ilike.%${searchKey}%,report_title.ilike.%${searchKey}%`,
+        )
+        .order("report_date", { ascending: false });
 
-      if (error) throw error
-      return { success: true, data }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error('Error searching health reports:', error)
-      return { success: false, error: error.message }
+      console.error("Error searching health reports:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -136,13 +145,13 @@ const HealthReport = {
    */
   async update(reportId, updates) {
     try {
-      const result = await corsProxyUpdate('health_reports', reportId, updates)
+      const result = await corsProxyUpdate("health_reports", reportId, updates);
 
-      if (!result.success) throw new Error(result.error)
-      return { success: true, data: result.data }
+      if (!result.success) throw new Error(result.error);
+      return { success: true, data: result.data };
     } catch (error) {
-      console.error('Error updating health report:', error)
-      return { success: false, error: error.message }
+      console.error("Error updating health report:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -154,15 +163,15 @@ const HealthReport = {
   async delete(reportId) {
     try {
       const { error } = await supabase
-        .from('health_reports')
+        .from("health_reports")
         .delete()
-        .eq('id', reportId)
+        .eq("id", reportId);
 
-      if (error) throw error
-      return { success: true }
+      if (error) throw error;
+      return { success: true };
     } catch (error) {
-      console.error('Error deleting health report:', error)
-      return { success: false, error: error.message }
+      console.error("Error deleting health report:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -178,16 +187,19 @@ const HealthReport = {
       const uploadResult = await uploadHealthReportFile(
         file,
         userId,
-        'health-report',
+        "health-report",
         {
-          bucket: 'health-reports',
+          bucket: "health-reports",
           reportType: metadata.reportType,
-          reportDate: metadata.reportDate
-        }
-      )
+          reportDate: metadata.reportDate,
+        },
+      );
 
       if (uploadResult.error) {
-        return { success: false, error: uploadResult.error.message || 'Failed to upload file' }
+        return {
+          success: false,
+          error: uploadResult.error.message || "Failed to upload file",
+        };
       }
 
       return {
@@ -195,12 +207,12 @@ const HealthReport = {
         data: {
           url: uploadResult.url,
           fileName: uploadResult.fileName,
-          uploadedAt: uploadResult.uploadedAt
-        }
-      }
+          uploadedAt: uploadResult.uploadedAt,
+        },
+      };
     } catch (error) {
-      console.error('Error uploading file:', error)
-      return { success: false, error: error.message }
+      console.error("Error uploading file:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -212,16 +224,16 @@ const HealthReport = {
   async getByApplication(applicationId) {
     try {
       const { data, error } = await supabase
-        .from('health_reports')
-        .select('*')
-        .eq('application_id', applicationId)
-        .order('report_date', { ascending: false })
+        .from("health_reports")
+        .select("*")
+        .eq("application_id", applicationId)
+        .order("report_date", { ascending: false });
 
-      if (error) throw error
-      return { success: true, data }
+      if (error) throw error;
+      return { success: true, data };
     } catch (error) {
-      console.error('Error fetching reports by application:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching reports by application:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -232,8 +244,9 @@ const HealthReport = {
   async getFlagged() {
     try {
       const { data, error } = await supabase
-        .from('health_reports')
-        .select(`
+        .from("health_reports")
+        .select(
+          `
           *,
           user:users!health_reports_user_id_fkey (
             id,
@@ -242,16 +255,17 @@ const HealthReport = {
             phone,
             ic_number
           )
-        `)
-        .eq('health_report_status', 'Flagged')
-        .order('created_at', { ascending: false })
+        `,
+        )
+        .eq("health_report_status", "Flagged")
+        .order("created_at", { ascending: false });
 
-      if (error) throw error
+      if (error) throw error;
 
-      return { success: true, data: data || [] }
+      return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Error fetching flagged health reports:', error)
-      return { success: false, error: error.message, data: [] }
+      console.error("Error fetching flagged health reports:", error);
+      return { success: false, error: error.message, data: [] };
     }
   },
 
@@ -263,16 +277,16 @@ const HealthReport = {
    */
   async updateStatus(reportId, status) {
     try {
-      const result = await corsProxyUpdate('health_reports', reportId, {
+      const result = await corsProxyUpdate("health_reports", reportId, {
         health_report_status: status,
-        updated_at: new Date().toISOString()
-      })
+        updated_at: new Date().toISOString(),
+      });
 
-      if (!result.success) throw new Error(result.error)
-      return { success: true, data: result.data }
+      if (!result.success) throw new Error(result.error);
+      return { success: true, data: result.data };
     } catch (error) {
-      console.error('Error updating health report status:', error)
-      return { success: false, error: error.message }
+      console.error("Error updating health report status:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -284,19 +298,19 @@ const HealthReport = {
    */
   async updateDueStatus(reportId, dueStatus) {
     try {
-      const result = await corsProxyUpdate('health_reports', reportId, {
+      const result = await corsProxyUpdate("health_reports", reportId, {
         due_status: dueStatus,
-        updated_at: new Date().toISOString()
-      })
+        updated_at: new Date().toISOString(),
+      });
 
-      if (!result.success) throw new Error(result.error)
-      return { success: true, data: result.data }
+      if (!result.success) throw new Error(result.error);
+      return { success: true, data: result.data };
     } catch (error) {
-      console.error('Error updating due status:', error)
-      return { success: false, error: error.message }
+      console.error("Error updating due status:", error);
+      return { success: false, error: error.message };
     }
-  }
-}
+  },
+};
 
 /**
  * Upload a health report file and create database record
@@ -307,17 +321,20 @@ const HealthReport = {
  */
 export const uploadHealthReport = async (userId, file, metadata = {}) => {
   try {
-    const validationResult = validateFile(file)
+    const validationResult = validateFile(file);
     if (!validationResult.valid) {
-      return { success: false, error: validationResult.error }
+      return { success: false, error: validationResult.error };
     }
 
     const uploadResult = await HealthReport.uploadFile(userId, file, {
       reportType: metadata.reportType,
-      reportDate: metadata.reportDate
-    })
+      reportDate: metadata.reportDate,
+    });
     if (!uploadResult.success) {
-      return { success: false, error: uploadResult.error || 'Failed to upload file' }
+      return {
+        success: false,
+        error: uploadResult.error || "Failed to upload file",
+      };
     }
 
     const reportData = {
@@ -327,15 +344,15 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
       reportDate: metadata.reportDate,
       reportTitle: metadata.reportTitle,
       reportFileUrl: uploadResult.data.url,
-      notes: metadata.notes
-    }
+      notes: metadata.notes,
+    };
 
-    return await HealthReport.create(reportData)
+    return await HealthReport.create(reportData);
   } catch (error) {
-    console.error('Error in uploadHealthReport:', error)
-    return { success: false, error: error.message }
+    console.error("Error in uploadHealthReport:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Archive a user's previous overdue reports of the same type once a fresh one has
@@ -347,48 +364,58 @@ export const uploadHealthReport = async (userId, file, metadata = {}) => {
  * @param {string[]} excludeReportIds - Newly created report IDs to leave untouched
  * @returns {Promise<Object>} IDs of reports archived
  */
-export const archiveSupersededOverdueReports = async (userId, reportType, excludeReportIds = []) => {
+export const archiveSupersededOverdueReports = async (
+  userId,
+  reportType,
+  excludeReportIds = [],
+) => {
   try {
     let query = supabase
-      .from('health_reports')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('report_type', reportType)
-      .eq('due_status', 'Overdue')
-      .neq('health_report_status', 'Archived')
+      .from("health_reports")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("report_type", reportType)
+      .eq("due_status", "Overdue")
+      .neq("health_report_status", "Archived");
 
     if (excludeReportIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeReportIds.join(',')})`)
+      query = query.not("id", "in", `(${excludeReportIds.join(",")})`);
     }
 
-    const { data: staleReports, error } = await query
-    if (error) throw error
-    console.log(`[archiveSupersededOverdueReports] user=${userId} type=${reportType} exclude=${excludeReportIds.join(',')} -> found ${staleReports?.length || 0} stale overdue report(s)`, staleReports)
+    const { data: staleReports, error } = await query;
+    if (error) throw error;
+    console.log(
+      `[archiveSupersededOverdueReports] user=${userId} type=${reportType} exclude=${excludeReportIds.join(",")} -> found ${staleReports?.length || 0} stale overdue report(s)`,
+      staleReports,
+    );
     if (!staleReports || staleReports.length === 0) {
-      return { success: true, data: [] }
+      return { success: true, data: [] };
     }
 
-    const timestamp = new Date().toISOString()
-    const archivedIds = []
+    const timestamp = new Date().toISOString();
+    const archivedIds = [];
     for (const report of staleReports) {
-      const result = await corsProxyUpdate('health_reports', report.id, {
-        health_report_status: 'Archived',
+      const result = await corsProxyUpdate("health_reports", report.id, {
+        health_report_status: "Archived",
         updated_at: timestamp,
-        notes: `Automatically archived - superseded by a newer ${reportType} report`
-      })
+        notes: `Automatically archived - superseded by a newer ${reportType} report`,
+      });
       if (result.success) {
-        archivedIds.push(report.id)
+        archivedIds.push(report.id);
       } else {
-        console.error(`[archiveSupersededOverdueReports] failed to archive report ${report.id}:`, result.error)
+        console.error(
+          `[archiveSupersededOverdueReports] failed to archive report ${report.id}:`,
+          result.error,
+        );
       }
     }
 
-    return { success: true, data: archivedIds }
+    return { success: true, data: archivedIds };
   } catch (error) {
-    console.error('Error archiving superseded overdue reports:', error)
-    return { success: false, error: error.message }
+    console.error("Error archiving superseded overdue reports:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get all health reports for a user
@@ -399,15 +426,15 @@ export const archiveSupersededOverdueReports = async (userId, reportType, exclud
 export const getHealthReports = async (userId, options = {}) => {
   try {
     if (options.searchKey) {
-      return await HealthReport.search(userId, options.searchKey)
+      return await HealthReport.search(userId, options.searchKey);
     }
 
-    return await HealthReport.getByUser(userId, options)
+    return await HealthReport.getByUser(userId, options);
   } catch (error) {
-    console.error('Error in getHealthReports:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getHealthReports:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Check for due and overdue health report alerts
@@ -417,40 +444,42 @@ export const getHealthReports = async (userId, options = {}) => {
 export const checkHealthReportAlerts = async (userId) => {
   try {
     const result = await HealthReport.getByUser(userId, {
-      sortBy: 'report_date',
-      sortOrder: 'desc'
-    })
+      sortBy: "report_date",
+      sortOrder: "desc",
+    });
 
-    if (!result.success) return result
+    if (!result.success) return result;
 
-    const now = new Date()
+    const now = new Date();
     const alerts = result.data
-      .filter(report => report.health_report_status !== 'Archived') // Exclude archived reports
+      .filter((report) => report.health_report_status !== "Archived") // Exclude archived reports
       .reduce((acc, report) => {
-        const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
-        const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)
+        const dueDate = new Date(
+          calculateDueDate(report.report_date, report.report_type),
+        );
+        const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30);
 
         if (monthsOverdue >= 3) {
           acc.push({
-            type: 'error',
-            message: `Health report due: ${report.report_type} from ${formatDate(new Date(report.report_date))} is overdue (due ${formatDate(dueDate)})`
-          })
+            type: "error",
+            message: `Health report due: ${report.report_type} from ${formatDate(new Date(report.report_date))} is overdue (due ${formatDate(dueDate)})`,
+          });
         } else if (monthsOverdue >= 2) {
           acc.push({
-            type: 'warning', 
-            message: `Approaching due date: ${report.report_type} is due on ${formatDate(dueDate)}`
-          })
+            type: "warning",
+            message: `Approaching due date: ${report.report_type} is due on ${formatDate(dueDate)}`,
+          });
         }
 
-        return acc
-      }, [])
+        return acc;
+      }, []);
 
-    return { success: true, data: alerts }
+    return { success: true, data: alerts };
   } catch (error) {
-    console.error('Error in checkHealthReportAlerts:', error)
-    return { success: false, error: error.message }
+    console.error("Error in checkHealthReportAlerts:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get due and overdue reports within a timeframe
@@ -459,42 +488,44 @@ export const checkHealthReportAlerts = async (userId) => {
  * @returns {Promise<Object>} Due reports
  */
 export const getDueReports = async (userId, options = {}) => {
-  const withinDays = options.withinDays ?? 30
+  const withinDays = options.withinDays ?? 30;
 
   try {
     const result = await HealthReport.getByUser(userId, {
-      sortBy: 'report_date',
-      sortOrder: 'desc'
-    })
+      sortBy: "report_date",
+      sortOrder: "desc",
+    });
 
-    if (!result.success) return result
+    if (!result.success) return result;
 
-    const now = new Date()
-    const threshold = new Date()
-    threshold.setDate(threshold.getDate() + withinDays)
+    const now = new Date();
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() + withinDays);
 
     const dueReports = result.data
-      .filter((report) => report.health_report_status !== 'Archived') // Exclude archived reports
+      .filter((report) => report.health_report_status !== "Archived") // Exclude archived reports
       .map((report) => {
-        const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
-        const status = dueDate < now ? 'overdue' : 'due'
+        const dueDate = new Date(
+          calculateDueDate(report.report_date, report.report_type),
+        );
+        const status = dueDate < now ? "overdue" : "due";
 
         return {
           ...report,
           dueDate: dueDate.toISOString(),
           dueDateFormatted: formatDate(dueDate),
-          status
-        }
+          status,
+        };
       })
       .filter((report) => new Date(report.dueDate) <= threshold)
-      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
-    return { success: true, data: dueReports }
+    return { success: true, data: dueReports };
   } catch (error) {
-    console.error('Error in getDueReports:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getDueReports:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get a single health report by ID
@@ -503,12 +534,12 @@ export const getDueReports = async (userId, options = {}) => {
  */
 export const getHealthReportById = async (reportId) => {
   try {
-    return await HealthReport.getById(reportId)
+    return await HealthReport.getById(reportId);
   } catch (error) {
-    console.error('Error in getHealthReportById:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getHealthReportById:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Delete a health report
@@ -517,12 +548,12 @@ export const getHealthReportById = async (reportId) => {
  */
 export const deleteHealthReport = async (reportId) => {
   try {
-    return await HealthReport.delete(reportId)
+    return await HealthReport.delete(reportId);
   } catch (error) {
-    console.error('Error in deleteHealthReport:', error)
-    return { success: false, error: error.message }
+    console.error("Error in deleteHealthReport:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Share a health report
@@ -533,88 +564,98 @@ export const deleteHealthReport = async (reportId) => {
  */
 export const shareHealthReport = async (reportId, shareOption, shareData) => {
   try {
-    const reportResult = await HealthReport.getById(reportId)
+    const reportResult = await HealthReport.getById(reportId);
     if (!reportResult.success) {
-      return reportResult
+      return reportResult;
     }
 
-    const report = reportResult.data
+    const report = reportResult.data;
 
     switch (shareOption) {
-      case 'caregiver':
-        return await shareWithCaregiver(report, shareData)
-      case 'family':
-        return await shareWithFamily(report, shareData)
-      case 'healthcare':
-        return await shareWithHealthcare(report, shareData)
-      case 'download':
-        return await downloadHealthReportFile(report)
-      case 'link':
-        return await generateShareableLink(report, shareData)
-      case 'email':
-        return await shareViaEmail(report, shareData)
+      case "caregiver":
+        return await shareWithCaregiver(report, shareData);
+      case "family":
+        return await shareWithFamily(report, shareData);
+      case "healthcare":
+        return await shareWithHealthcare(report, shareData);
+      case "download":
+        return await downloadHealthReportFile(report);
+      case "link":
+        return await generateShareableLink(report, shareData);
+      case "email":
+        return await shareViaEmail(report, shareData);
       default:
-        return { success: false, error: 'Invalid share option' }
+        return { success: false, error: "Invalid share option" };
     }
   } catch (error) {
-    console.error('Error in shareHealthReport:', error)
-    return { success: false, error: error.message }
+    console.error("Error in shareHealthReport:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function validateFile(file) {
-  const maxSize = 10 * 1024 * 1024 // 10MB
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  const allowedTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+  ];
 
   if (!file) {
-    return { valid: false, error: 'No file selected' }
+    return { valid: false, error: "No file selected" };
   }
 
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size exceeds 10MB limit' }
+    return { valid: false, error: "File size exceeds 10MB limit" };
   }
 
   if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Invalid file type. Only PDF, JPG, PNG, and WEBP files are allowed' }
+    return {
+      valid: false,
+      error:
+        "Invalid file type. Only PDF, JPG, PNG, and WEBP files are allowed",
+    };
   }
 
-  return { valid: true }
+  return { valid: true };
 }
 
 function calculateDueDate(reportDate, reportType) {
-  const date = new Date(reportDate)
+  const date = new Date(reportDate);
 
-  let monthsToAdd = 3
+  let monthsToAdd = 3;
 
   switch (reportType) {
-    case 'Medical Report':
-      monthsToAdd = 6
-      break
-    case 'Lab Test':
-      monthsToAdd = 3
-      break
-    case 'Prescription':
-      monthsToAdd = 1
-      break
-    case 'Vaccination Record':
-      monthsToAdd = 12
-      break
+    case "Medical Report":
+      monthsToAdd = 6;
+      break;
+    case "Lab Test":
+      monthsToAdd = 3;
+      break;
+    case "Prescription":
+      monthsToAdd = 1;
+      break;
+    case "Vaccination Record":
+      monthsToAdd = 12;
+      break;
     case "Doctor's Visit Summary":
-      monthsToAdd = 6
-      break
-    case 'Medical Image':
-      monthsToAdd = 12
-      break
+      monthsToAdd = 6;
+      break;
+    case "Medical Image":
+      monthsToAdd = 12;
+      break;
     default:
-      monthsToAdd = 3
+      monthsToAdd = 3;
   }
 
-  date.setMonth(date.getMonth() + monthsToAdd)
-  return date.toISOString()
+  date.setMonth(date.getMonth() + monthsToAdd);
+  return date.toISOString();
 }
 
 /**
@@ -629,59 +670,68 @@ function calculateDueDate(reportDate, reportType) {
  * @returns {'Overdue'|'Due Soon'|'Up to Date'}
  */
 export function computeDueStatus(reportDate, reportType) {
-  if (!reportDate) return 'Up to Date'
+  if (!reportDate) return "Up to Date";
 
-  const now = new Date()
-  const dueDate = new Date(calculateDueDate(reportDate, reportType))
-  const oneMonthFromNow = new Date(now)
-  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1)
+  const now = new Date();
+  const dueDate = new Date(calculateDueDate(reportDate, reportType));
+  const oneMonthFromNow = new Date(now);
+  oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
 
-  if (dueDate <= now) return 'Overdue'
-  if (dueDate <= oneMonthFromNow) return 'Due Soon'
-  return 'Up to Date'
+  if (dueDate <= now) return "Overdue";
+  if (dueDate <= oneMonthFromNow) return "Due Soon";
+  return "Up to Date";
 }
 
 function formatDate(date) {
-  const day = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  return `${day}/${month}/${year}`
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 async function downloadHealthReportFile(report) {
   try {
     // Extract file extension from URL
-    const url = report.report_file_url
-    const urlParts = url.split('.')
-    const extension = urlParts.length > 1 ? `.${urlParts.pop()}` : ''
-    
+    const url = report.report_file_url;
+    const urlParts = url.split(".");
+    const extension = urlParts.length > 1 ? `.${urlParts.pop()}` : "";
+
     // Create filename with proper extension
-    const filename = `${report.report_title || 'health-report'}${extension}`
-    
+    const filename = `${report.report_title || "health-report"}${extension}`;
+
     // Try to fetch and download the file directly
-    const response = await fetch(url)
-    if (!response.ok) throw new Error('Failed to fetch file')
-    
-    const blob = await response.blob()
-    const downloadUrl = window.URL.createObjectURL(blob)
-    
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = filename
-    link.style.display = 'none'
-    
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch file");
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     // Clean up the blob URL
-    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100)
-    
-    return { success: true, action: 'downloaded', message: 'File downloaded successfully' }
+    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 100);
+
+    return {
+      success: true,
+      action: "downloaded",
+      message: "File downloaded successfully",
+    };
   } catch (error) {
-    console.error('Direct download failed:', error)
+    console.error("Direct download failed:", error);
     // Fallback to returning URL for manual download
-    return { success: true, action: 'download', url: report.report_file_url, message: 'Please click the link to download' }
+    return {
+      success: true,
+      action: "download",
+      url: report.report_file_url,
+      message: "Please click the link to download",
+    };
   }
 }
 
@@ -694,97 +744,112 @@ async function downloadHealthReportFile(report) {
  * @param {string} shareType - Type of share (caregiver, family, etc.)
  * @param {string} recipientId - Optional recipient user ID for getting name
  */
-async function sendShareNotificationEmail(report, recipientEmail, shareToken, expiryDate, shareType, recipientId = null) {
+async function sendShareNotificationEmail(
+  report,
+  recipientEmail,
+  shareToken,
+  expiryDate,
+  shareType,
+  recipientId = null,
+) {
   try {
     // Get sender information
     const { data: senderData } = await supabase
-      .from('users')
-      .select('full_name')
-      .eq('id', report.user_id)
-      .single()
+      .from("users")
+      .select("full_name")
+      .eq("id", report.user_id)
+      .single();
 
     // Get recipient name if recipientId provided
-    let recipientName = null
+    let recipientName = null;
     if (recipientId) {
       const { data: recipientData } = await supabase
-        .from('users')
-        .select('full_name')
-        .eq('id', recipientId)
-        .single()
-      recipientName = recipientData?.full_name
+        .from("users")
+        .select("full_name")
+        .eq("id", recipientId)
+        .single();
+      recipientName = recipientData?.full_name;
     }
 
     // Send email notification
-    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
+    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`;
     const emailResult = await sendHealthReportShareEmail({
       recipientEmail: recipientEmail,
       recipientName: recipientName,
-      senderName: senderData?.full_name || 'A user',
-      reportTitle: report.report_title || 'Health Report',
-      reportType: report.report_type || 'Health Report',
+      senderName: senderData?.full_name || "A user",
+      reportTitle: report.report_title || "Health Report",
+      reportType: report.report_type || "Health Report",
       shareUrl: shareUrl,
       expiryDate: expiryDate.toISOString(),
-      shareType: shareType
-    })
+      shareType: shareType,
+    });
 
     if (!emailResult.success) {
-      console.warn('Share successful but email notification failed:', emailResult.error)
+      console.warn(
+        "Share successful but email notification failed:",
+        emailResult.error,
+      );
     }
   } catch (error) {
-    console.warn('Failed to send share notification email:', error)
+    console.warn("Failed to send share notification email:", error);
   }
 }
 
 async function shareWithCaregiver(report, shareData) {
   try {
     if (!shareData || !shareData.caregiverId) {
-      return { success: false, error: 'Please select a caregiver' }
+      return { success: false, error: "Please select a caregiver" };
     }
 
     // Re-validate the contract server-side rather than trusting the dropdown selection
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
     const { data: contract, error: contractError } = await supabase
-      .from('care_services')
-      .select('service_id')
-      .eq('elder_id', report.user_id)
-      .eq('caregiver_id', shareData.caregiverId)
+      .from("care_services")
+      .select("service_id")
+      .eq("elder_id", report.user_id)
+      .eq("caregiver_id", shareData.caregiverId)
       .or(`end_date.is.null,end_date.gte.${today}`)
-      .maybeSingle()
+      .maybeSingle();
 
     if (contractError || !contract) {
-      return { success: false, error: 'No active care contract found with this caregiver' }
+      return {
+        success: false,
+        error: "No active care contract found with this caregiver",
+      };
     }
 
     const { data: caregiverUser, error: caregiverUserError } = await supabase
-      .from('users')
-      .select('id, email, full_name')
-      .eq('id', shareData.caregiverId)
-      .maybeSingle()
+      .from("users")
+      .select("id, email, full_name")
+      .eq("id", shareData.caregiverId)
+      .maybeSingle();
 
     if (caregiverUserError || !caregiverUser) {
-      return { success: false, error: 'Caregiver account not found' }
+      return { success: false, error: "Caregiver account not found" };
     }
 
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7));
 
     // Generate share token (required by DB)
-    const shareToken = generateToken()
+    const shareToken = generateToken();
 
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .insert([{
-        report_id: report.id,
-        shared_by_user_id: report.user_id,
-        shared_with_type: 'caregiver',
-        shared_with_id: caregiverUser.id,
-        shared_with_email: caregiverUser.email,
-        share_token: shareToken,
-        expires_at: expiryDate.toISOString()
-      }])
-      .select()
+      .from("health_report_shares")
+      .insert([
+        {
+          report_id: report.id,
+          shared_by_user_id: report.user_id,
+          shared_with_type: "caregiver",
+          shared_with_id: caregiverUser.id,
+          shared_with_email: caregiverUser.email,
+          share_token: shareToken,
+          expires_at: expiryDate.toISOString(),
+        },
+      ])
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
     // Send email notification
     await sendShareNotificationEmail(
@@ -792,70 +857,82 @@ async function shareWithCaregiver(report, shareData) {
       caregiverUser.email,
       shareToken,
       expiryDate,
-      'caregiver',
-      caregiverUser.id
-    )
+      "caregiver",
+      caregiverUser.id,
+    );
 
-    return { success: true, data, message: 'Report shared with caregiver successfully' }
+    return {
+      success: true,
+      data,
+      message: "Report shared with caregiver successfully",
+    };
   } catch (error) {
-    console.error('Error sharing with caregiver:', error)
-    return { success: false, error: error.message }
+    console.error("Error sharing with caregiver:", error);
+    return { success: false, error: error.message };
   }
 }
 
 async function shareWithFamily(report, shareData) {
   try {
     if (!shareData || !shareData.familyMemberId) {
-      return { success: false, error: 'Please select a family member' }
+      return { success: false, error: "Please select a family member" };
     }
 
     // Re-validate the relationship server-side rather than trusting the dropdown selection
     const { data: familyData, error: familyError } = await supabase
-      .from('family_members')
-      .select('id, family_member_user_id, permissions_level, is_verified')
-      .eq('id', report.user_id)
-      .eq('family_member_user_id', shareData.familyMemberId)
-      .eq('is_verified', true)
-      .maybeSingle()
+      .from("family_members")
+      .select("id, family_member_user_id, permissions_level, is_verified")
+      .eq("id", report.user_id)
+      .eq("family_member_user_id", shareData.familyMemberId)
+      .eq("is_verified", true)
+      .maybeSingle();
 
     if (familyError || !familyData) {
-      return { success: false, error: 'No verified family member relationship found' }
+      return {
+        success: false,
+        error: "No verified family member relationship found",
+      };
     }
 
-    if (!['view_and_share', 'full'].includes(familyData.permissions_level)) {
-      return { success: false, error: 'Family member does not have permission to view reports' }
+    if (!["view_and_share", "full"].includes(familyData.permissions_level)) {
+      return {
+        success: false,
+        error: "Family member does not have permission to view reports",
+      };
     }
 
     const { data: familyUser, error: familyUserError } = await supabase
-      .from('users')
-      .select('id, email, full_name')
-      .eq('id', shareData.familyMemberId)
-      .maybeSingle()
+      .from("users")
+      .select("id, email, full_name")
+      .eq("id", shareData.familyMemberId)
+      .maybeSingle();
 
     if (familyUserError || !familyUser) {
-      return { success: false, error: 'Family member account not found' }
+      return { success: false, error: "Family member account not found" };
     }
 
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7));
 
     // Generate share token (required by DB)
-    const shareToken = generateToken()
+    const shareToken = generateToken();
 
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .insert([{
-        report_id: report.id,
-        shared_by_user_id: report.user_id,
-        shared_with_type: 'family',
-        shared_with_id: familyUser.id,
-        shared_with_email: familyUser.email,
-        share_token: shareToken,
-        expires_at: expiryDate.toISOString()
-      }])
-      .select()
+      .from("health_report_shares")
+      .insert([
+        {
+          report_id: report.id,
+          shared_by_user_id: report.user_id,
+          shared_with_type: "family",
+          shared_with_id: familyUser.id,
+          shared_with_email: familyUser.email,
+          share_token: shareToken,
+          expires_at: expiryDate.toISOString(),
+        },
+      ])
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
     // Send email notification
     await sendShareNotificationEmail(
@@ -863,67 +940,76 @@ async function shareWithFamily(report, shareData) {
       familyUser.email,
       shareToken,
       expiryDate,
-      'family member',
-      familyUser.id
-    )
+      "family member",
+      familyUser.id,
+    );
 
-    return { success: true, data, message: 'Report shared with family member successfully' }
+    return {
+      success: true,
+      data,
+      message: "Report shared with family member successfully",
+    };
   } catch (error) {
-    console.error('Error sharing with family:', error)
-    return { success: false, error: error.message }
+    console.error("Error sharing with family:", error);
+    return { success: false, error: error.message };
   }
 }
 
 async function shareWithHealthcare(report, shareData) {
   try {
     if (!shareData || !shareData.healthcareProviderId) {
-      return { success: false, error: 'Please select a healthcare provider' }
+      return { success: false, error: "Please select a healthcare provider" };
     }
 
     // Re-validate the contract server-side rather than trusting the dropdown selection
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
     const { data: contract, error: contractError } = await supabase
-      .from('care_services')
-      .select('service_id')
-      .eq('elder_id', report.user_id)
-      .eq('healthcare_provider_id', shareData.healthcareProviderId)
+      .from("care_services")
+      .select("service_id")
+      .eq("elder_id", report.user_id)
+      .eq("healthcare_provider_id", shareData.healthcareProviderId)
       .or(`end_date.is.null,end_date.gte.${today}`)
-      .maybeSingle()
+      .maybeSingle();
 
     if (contractError || !contract) {
-      return { success: false, error: 'No active care contract found with this healthcare provider' }
+      return {
+        success: false,
+        error: "No active care contract found with this healthcare provider",
+      };
     }
 
     const { data: providerUser, error: providerUserError } = await supabase
-      .from('users')
-      .select('id, email, full_name')
-      .eq('id', shareData.healthcareProviderId)
-      .maybeSingle()
+      .from("users")
+      .select("id, email, full_name")
+      .eq("id", shareData.healthcareProviderId)
+      .maybeSingle();
 
     if (providerUserError || !providerUser) {
-      return { success: false, error: 'Healthcare provider account not found' }
+      return { success: false, error: "Healthcare provider account not found" };
     }
 
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7));
 
     // Generate share token (required by DB)
-    const shareToken = generateToken()
+    const shareToken = generateToken();
 
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .insert([{
-        report_id: report.id,
-        shared_by_user_id: report.user_id,
-        shared_with_type: 'healthcare_provider',
-        shared_with_id: providerUser.id,
-        shared_with_email: providerUser.email,
-        share_token: shareToken,
-        expires_at: expiryDate.toISOString()
-      }])
-      .select()
+      .from("health_report_shares")
+      .insert([
+        {
+          report_id: report.id,
+          shared_by_user_id: report.user_id,
+          shared_with_type: "healthcare_provider",
+          shared_with_id: providerUser.id,
+          shared_with_email: providerUser.email,
+          share_token: shareToken,
+          expires_at: expiryDate.toISOString(),
+        },
+      ])
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
     // Send email notification
     await sendShareNotificationEmail(
@@ -931,71 +1017,79 @@ async function shareWithHealthcare(report, shareData) {
       providerUser.email,
       shareToken,
       expiryDate,
-      'healthcare provider',
-      providerUser.id
-    )
+      "healthcare provider",
+      providerUser.id,
+    );
 
-    return { success: true, data, message: 'Report shared with healthcare provider successfully' }
+    return {
+      success: true,
+      data,
+      message: "Report shared with healthcare provider successfully",
+    };
   } catch (error) {
-    console.error('Error sharing with healthcare provider:', error)
-    return { success: false, error: error.message }
+    console.error("Error sharing with healthcare provider:", error);
+    return { success: false, error: error.message };
   }
 }
 
 async function generateShareableLink(report, shareData) {
   try {
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7));
 
-    const shareToken = generateToken()
+    const shareToken = generateToken();
 
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .insert([{
-        report_id: report.id,
-        shared_by_user_id: report.user_id,
-        shared_with_type: 'link',
-        share_token: shareToken,
-        expires_at: expiryDate.toISOString()
-      }])
-      .select()
+      .from("health_report_shares")
+      .insert([
+        {
+          report_id: report.id,
+          shared_by_user_id: report.user_id,
+          shared_with_type: "link",
+          share_token: shareToken,
+          expires_at: expiryDate.toISOString(),
+        },
+      ])
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
-    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
+    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`;
     return {
       success: true,
       data: { ...data[0], shareUrl },
-      message: 'Shareable link generated successfully'
-    }
+      message: "Shareable link generated successfully",
+    };
   } catch (error) {
-    console.error('Error generating shareable link:', error)
-    return { success: false, error: error.message }
+    console.error("Error generating shareable link:", error);
+    return { success: false, error: error.message };
   }
 }
 
 async function shareViaEmail(report, shareData) {
   try {
-    const expiryDate = new Date()
-    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7))
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (shareData.expiryDays || 7));
 
-    const shareToken = generateToken()
+    const shareToken = generateToken();
 
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .insert([{
-        report_id: report.id,
-        shared_by_user_id: report.user_id,
-        shared_with_type: 'email',
-        shared_with_email: shareData.email,
-        share_token: shareToken,
-        expires_at: expiryDate.toISOString()
-      }])
-      .select()
+      .from("health_report_shares")
+      .insert([
+        {
+          report_id: report.id,
+          shared_by_user_id: report.user_id,
+          shared_with_type: "email",
+          shared_with_email: shareData.email,
+          share_token: shareToken,
+          expires_at: expiryDate.toISOString(),
+        },
+      ])
+      .select();
 
-    if (error) throw error
+    if (error) throw error;
 
-    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`
+    const shareUrl = `${window.location.origin}/shared-report/${shareToken}`;
 
     // Send email notification
     await sendShareNotificationEmail(
@@ -1003,17 +1097,17 @@ async function shareViaEmail(report, shareData) {
       shareData.email,
       shareToken,
       expiryDate,
-      'email'
-    )
+      "email",
+    );
 
     return {
       success: true,
       data: { ...data[0], shareUrl },
-      message: `Report shared with ${shareData.email} successfully`
-    }
+      message: `Report shared with ${shareData.email} successfully`,
+    };
   } catch (error) {
-    console.error('Error sharing via email:', error)
-    return { success: false, error: error.message }
+    console.error("Error sharing via email:", error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -1025,30 +1119,32 @@ async function shareViaEmail(report, shareData) {
  */
 export const getCaregiverOptions = async (elderId) => {
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
     const { data: services, error: servicesError } = await supabase
-      .from('care_services')
-      .select('caregiver_id')
-      .eq('elder_id', elderId)
-      .or(`end_date.is.null,end_date.gte.${today}`)
+      .from("care_services")
+      .select("caregiver_id")
+      .eq("elder_id", elderId)
+      .or(`end_date.is.null,end_date.gte.${today}`);
 
-    if (servicesError) throw servicesError
+    if (servicesError) throw servicesError;
 
-    const caregiverIds = [...new Set((services || []).map((s) => s.caregiver_id))]
-    if (caregiverIds.length === 0) return { success: true, data: [] }
+    const caregiverIds = [
+      ...new Set((services || []).map((s) => s.caregiver_id)),
+    ];
+    if (caregiverIds.length === 0) return { success: true, data: [] };
 
     const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, full_name, email')
-      .in('id', caregiverIds)
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", caregiverIds);
 
-    if (usersError) throw usersError
-    return { success: true, data: users || [] }
+    if (usersError) throw usersError;
+    return { success: true, data: users || [] };
   } catch (error) {
-    console.error('Error in getCaregiverOptions:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getCaregiverOptions:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get the healthcare providers an elder has an active care_services contract
@@ -1058,30 +1154,32 @@ export const getCaregiverOptions = async (elderId) => {
  */
 export const getHealthcareProviderOptions = async (elderId) => {
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
     const { data: services, error: servicesError } = await supabase
-      .from('care_services')
-      .select('healthcare_provider_id')
-      .eq('elder_id', elderId)
-      .or(`end_date.is.null,end_date.gte.${today}`)
+      .from("care_services")
+      .select("healthcare_provider_id")
+      .eq("elder_id", elderId)
+      .or(`end_date.is.null,end_date.gte.${today}`);
 
-    if (servicesError) throw servicesError
+    if (servicesError) throw servicesError;
 
-    const providerIds = [...new Set((services || []).map((s) => s.healthcare_provider_id))]
-    if (providerIds.length === 0) return { success: true, data: [] }
+    const providerIds = [
+      ...new Set((services || []).map((s) => s.healthcare_provider_id)),
+    ];
+    if (providerIds.length === 0) return { success: true, data: [] };
 
     const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, full_name, email')
-      .in('id', providerIds)
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", providerIds);
 
-    if (usersError) throw usersError
-    return { success: true, data: users || [] }
+    if (usersError) throw usersError;
+    return { success: true, data: users || [] };
   } catch (error) {
-    console.error('Error in getHealthcareProviderOptions:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getHealthcareProviderOptions:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get the verified family members allowed to view an elder's reports, for
@@ -1092,33 +1190,40 @@ export const getHealthcareProviderOptions = async (elderId) => {
 export const getFamilyMemberOptions = async (elderId) => {
   try {
     const { data: relations, error: relationsError } = await supabase
-      .from('family_members')
-      .select('family_member_user_id, relationship_type')
-      .eq('id', elderId)
-      .eq('is_verified', true)
-      .in('permissions_level', ['view_and_share', 'full'])
+      .from("family_members")
+      .select("family_member_user_id, relationship_type")
+      .eq("id", elderId)
+      .eq("is_verified", true)
+      .in("permissions_level", ["view", "view_and_share", "full"]);
 
-    if (relationsError) throw relationsError
+    if (relationsError) throw relationsError;
 
-    const memberIds = [...new Set((relations || []).map((r) => r.family_member_user_id))]
-    if (memberIds.length === 0) return { success: true, data: [] }
+    const memberIds = [
+      ...new Set((relations || []).map((r) => r.family_member_user_id)),
+    ];
+    if (memberIds.length === 0) return { success: true, data: [] };
 
     const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, full_name, email')
-      .in('id', memberIds)
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", memberIds);
 
-    if (usersError) throw usersError
+    if (usersError) throw usersError;
 
-    const relationById = new Map(relations.map((r) => [r.family_member_user_id, r.relationship_type]))
-    const data = (users || []).map((u) => ({ ...u, relationshipType: relationById.get(u.id) }))
+    const relationById = new Map(
+      relations.map((r) => [r.family_member_user_id, r.relationship_type]),
+    );
+    const data = (users || []).map((u) => ({
+      ...u,
+      relationshipType: relationById.get(u.id),
+    }));
 
-    return { success: true, data }
+    return { success: true, data };
   } catch (error) {
-    console.error('Error in getFamilyMemberOptions:', error)
-    return { success: false, error: error.message }
+    console.error("Error in getFamilyMemberOptions:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get all share links for a health report
@@ -1128,18 +1233,18 @@ export const getFamilyMemberOptions = async (elderId) => {
 export const getHealthReportShares = async (reportId) => {
   try {
     const { data, error } = await supabase
-      .from('health_report_shares')
-      .select('*')
-      .eq('report_id', reportId)
-      .order('created_at', { ascending: false })
+      .from("health_report_shares")
+      .select("*")
+      .eq("report_id", reportId)
+      .order("created_at", { ascending: false });
 
-    if (error) throw error
-    return { success: true, data }
+    if (error) throw error;
+    return { success: true, data };
   } catch (error) {
-    console.error('Error fetching health report shares:', error)
-    return { success: false, error: error.message }
+    console.error("Error fetching health report shares:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Revoke a shared health report link
@@ -1148,25 +1253,27 @@ export const getHealthReportShares = async (reportId) => {
  */
 export const revokeHealthReportShare = async (shareId) => {
   try {
-    const timestamp = new Date().toISOString()
+    const timestamp = new Date().toISOString();
 
-    const result = await corsProxyUpdate('health_report_shares', shareId, {
+    const result = await corsProxyUpdate("health_report_shares", shareId, {
       is_revoked: true,
       expires_at: timestamp,
-      updated_at: timestamp
-    })
+      updated_at: timestamp,
+    });
 
-    if (!result.success) throw new Error(result.error)
-    return { success: true, data: result.data }
+    if (!result.success) throw new Error(result.error);
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error('Error revoking health report share:', error)
-    return { success: false, error: error.message }
+    console.error("Error revoking health report share:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 function generateToken() {
-  return Math.random().toString(36).substring(2, 15) +
+  return (
+    Math.random().toString(36).substring(2, 15) +
     Math.random().toString(36).substring(2, 15)
+  );
 }
 
 /**
@@ -1177,19 +1284,23 @@ function generateToken() {
  */
 export const approveHealthReport = async (reportId, adminId) => {
   try {
-    const result = await corsProxyUpdate('health_reports', reportId, {
-      health_report_status: 'Reviewed',
+    const result = await corsProxyUpdate("health_reports", reportId, {
+      health_report_status: "Reviewed",
       updated_at: new Date().toISOString(),
-      notes: `Reviewed by admin ${adminId} on ${new Date().toLocaleDateString()}`
-    })
+      notes: `Reviewed by admin ${adminId} on ${new Date().toLocaleDateString()}`,
+    });
 
-    if (!result.success) throw new Error(result.error)
-    return { success: true, data: result.data, message: 'Health report approved successfully' }
+    if (!result.success) throw new Error(result.error);
+    return {
+      success: true,
+      data: result.data,
+      message: "Health report approved successfully",
+    };
   } catch (error) {
-    console.error('Error approving health report:', error)
-    return { success: false, error: error.message }
+    console.error("Error approving health report:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Admin function to flag a health report
@@ -1201,22 +1312,26 @@ export const approveHealthReport = async (reportId, adminId) => {
 export const flagHealthReport = async (reportId, adminId, flagReason) => {
   try {
     if (!flagReason || flagReason.trim().length === 0) {
-      return { success: false, error: 'Flag reason is required' }
+      return { success: false, error: "Flag reason is required" };
     }
-    const result = await corsProxyUpdate('health_reports', reportId, {
-      health_report_status: 'Flagged',
+    const result = await corsProxyUpdate("health_reports", reportId, {
+      health_report_status: "Flagged",
       updated_at: new Date().toISOString(),
       flagged_reason: flagReason.trim(),
-      notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`
-    })
+      notes: `Flagged by admin ${adminId} on ${new Date().toLocaleDateString()}: ${flagReason.trim()}`,
+    });
 
-    if (!result.success) throw new Error(result.error)
-    return { success: true, data: result.data, message: 'Health report flagged successfully' }
+    if (!result.success) throw new Error(result.error);
+    return {
+      success: true,
+      data: result.data,
+      message: "Health report flagged successfully",
+    };
   } catch (error) {
-    console.error('Error flagging health report:', error)
-    return { success: false, error: error.message }
+    console.error("Error flagging health report:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Admin function to archive a health report
@@ -1226,19 +1341,23 @@ export const flagHealthReport = async (reportId, adminId, flagReason) => {
  */
 export const archiveHealthReport = async (reportId, adminId) => {
   try {
-    const result = await corsProxyUpdate('health_reports', reportId, {
-      health_report_status: 'Archived',
+    const result = await corsProxyUpdate("health_reports", reportId, {
+      health_report_status: "Archived",
       updated_at: new Date().toISOString(),
-      notes: `Archived by admin ${adminId} on ${new Date().toLocaleDateString()}`
-    })
+      notes: `Archived by admin ${adminId} on ${new Date().toLocaleDateString()}`,
+    });
 
-    if (!result.success) throw new Error(result.error)
-    return { success: true, data: result.data, message: 'Health report archived successfully' }
+    if (!result.success) throw new Error(result.error);
+    return {
+      success: true,
+      data: result.data,
+      message: "Health report archived successfully",
+    };
   } catch (error) {
-    console.error('Error archiving health report:', error)
-    return { success: false, error: error.message }
+    console.error("Error archiving health report:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Admin function to get all health reports (for admin dashboard)
@@ -1248,63 +1367,61 @@ export const archiveHealthReport = async (reportId, adminId) => {
 export const getAllHealthReports = async (filters = {}) => {
   try {
     // Use admin view to include flattened user details for easier searching
-    let query = supabase
-      .from('admin_health_report_view')
-      .select('*')
+    let query = supabase.from("admin_health_report_view").select("*");
 
     // Apply search filter across report and user fields
-    const rawSearchKey = filters.searchKey?.trim()
+    const rawSearchKey = filters.searchKey?.trim();
     if (rawSearchKey) {
-      const safeSearch = rawSearchKey.replace(/,/g, ' ')
+      const safeSearch = rawSearchKey.replace(/,/g, " ");
       query = query.or(
         `report_type.ilike.%${safeSearch}%,` +
-        `report_title.ilike.%${safeSearch}%,` +
-        `notes.ilike.%${safeSearch}%,` +
-        `user_full_name.ilike.%${safeSearch}%,` +
-        `user_email.ilike.%${safeSearch}%,` +
-        `ic_number.ilike.%${safeSearch}%,` +
-        `phone.ilike.%${safeSearch}%`
-      )
+          `report_title.ilike.%${safeSearch}%,` +
+          `notes.ilike.%${safeSearch}%,` +
+          `user_full_name.ilike.%${safeSearch}%,` +
+          `user_email.ilike.%${safeSearch}%,` +
+          `ic_number.ilike.%${safeSearch}%,` +
+          `phone.ilike.%${safeSearch}%`,
+      );
     }
 
     // Apply filters
     if (filters.reportType) {
-      query = query.eq('report_type', filters.reportType)
+      query = query.eq("report_type", filters.reportType);
     }
 
     if (filters.uploadStatus) {
-      query = query.eq('health_report_status', filters.uploadStatus)
+      query = query.eq("health_report_status", filters.uploadStatus);
     }
 
     if (filters.startDate && filters.endDate) {
-      query = query.gte('report_date', filters.startDate)
-      query = query.lte('report_date', filters.endDate)
+      query = query.gte("report_date", filters.startDate);
+      query = query.lte("report_date", filters.endDate);
     }
 
     // Apply archive filter - show only non-archived reports unless specifically requested
     if (filters.showArchived === false) {
-      query = query.neq('health_report_status', 'Archived')
+      query = query.neq("health_report_status", "Archived");
     }
 
     // Apply sorting (map legacy keys to view columns for compatibility)
     const sortColumnMap = {
-      id: 'health_report_id',
-      created_at: 'report_created_at'
-    }
+      id: "health_report_id",
+      created_at: "report_created_at",
+    };
     if (filters.sortBy) {
-      const sortColumn = sortColumnMap[filters.sortBy] || filters.sortBy
-      const order = filters.sortOrder || 'desc'
-      query = query.order(sortColumn, { ascending: order === 'asc' })
+      const sortColumn = sortColumnMap[filters.sortBy] || filters.sortBy;
+      const order = filters.sortOrder || "desc";
+      query = query.order(sortColumn, { ascending: order === "asc" });
     } else {
-      query = query.order('report_created_at', { ascending: false })
+      query = query.order("report_created_at", { ascending: false });
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
-    if (error) throw error
+    if (error) throw error;
 
     // Normalize to keep previous shape expectations
-    let processedData = data.map(report => ({
+    let processedData = data.map((report) => ({
       ...report,
       id: report.health_report_id,
       created_at: report.report_created_at,
@@ -1313,14 +1430,14 @@ export const getAllHealthReports = async (filters = {}) => {
         full_name: report.user_full_name,
         email: report.user_email,
         ic_number: report.ic_number,
-        phone: report.phone
-      }
-    }))
+        phone: report.phone,
+      },
+    }));
 
     // Client-side search across nested user fields (since server-side OR excludes nested relations)
     if (rawSearchKey) {
-      const searchLower = rawSearchKey.toLowerCase()
-      processedData = processedData.filter(report => {
+      const searchLower = rawSearchKey.toLowerCase();
+      processedData = processedData.filter((report) => {
         const haystack = [
           report.report_type,
           report.report_title,
@@ -1328,39 +1445,41 @@ export const getAllHealthReports = async (filters = {}) => {
           report.userData?.full_name,
           report.userData?.email,
           report.userData?.ic_number,
-          report.userData?.phone
-        ]
+          report.userData?.phone,
+        ];
 
-        return haystack.some(val =>
-          val && val.toString().toLowerCase().includes(searchLower)
-        )
-      })
+        return haystack.some(
+          (val) => val && val.toString().toLowerCase().includes(searchLower),
+        );
+      });
     }
 
     // Apply due status filtering (complex logic)
     if (filters.dueStatus) {
-      processedData = processedData.filter(report => {
-        const now = new Date()
-        const dueDate = new Date(calculateDueDate(report.report_date, report.report_type))
-        const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30)
+      processedData = processedData.filter((report) => {
+        const now = new Date();
+        const dueDate = new Date(
+          calculateDueDate(report.report_date, report.report_type),
+        );
+        const monthsOverdue = (now - dueDate) / (1000 * 60 * 60 * 24 * 30);
 
-        if (filters.dueStatus === 'overdue') {
-          return monthsOverdue >= 3
-        } else if (filters.dueStatus === 'approaching') {
-          return monthsOverdue >= 2 && monthsOverdue < 3
+        if (filters.dueStatus === "overdue") {
+          return monthsOverdue >= 3;
+        } else if (filters.dueStatus === "approaching") {
+          return monthsOverdue >= 2 && monthsOverdue < 3;
         }
-        return true
-      })
+        return true;
+      });
     }
 
-    return { success: true, data: processedData }
+    return { success: true, data: processedData };
   } catch (error) {
-    console.error('Error fetching all health reports:', error)
-    return { success: false, error: error.message }
+    console.error("Error fetching all health reports:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
-export default HealthReport
+export default HealthReport;
 
 // ============================================================================
 // REMINDERS MODEL AND FUNCTIONALITY
@@ -1379,24 +1498,24 @@ export class Reminder {
     reminder_date,
     is_enabled = true,
     reminder_frequencies = null,
-    category = 'Health & appointments',
+    category = "Health & appointments",
     notes = null,
     created_at = null,
     updated_at = null,
-    notified_at = null
+    notified_at = null,
   }) {
-    this.id = id
-    this.user_id = user_id
-    this.reminder_type = reminder_type
-    this.reminder_title = reminder_title
-    this.reminder_date = reminder_date
-    this.is_enabled = is_enabled
-    this.reminder_frequencies = reminder_frequencies
-    this.category = category
-    this.notes = notes
-    this.created_at = created_at
-    this.updated_at = updated_at
-    this.notified_at = notified_at
+    this.id = id;
+    this.user_id = user_id;
+    this.reminder_type = reminder_type;
+    this.reminder_title = reminder_title;
+    this.reminder_date = reminder_date;
+    this.is_enabled = is_enabled;
+    this.reminder_frequencies = reminder_frequencies;
+    this.category = category;
+    this.notes = notes;
+    this.created_at = created_at;
+    this.updated_at = updated_at;
+    this.notified_at = notified_at;
   }
 
   // Static method to create from database row
@@ -1413,8 +1532,8 @@ export class Reminder {
       notes: row.notes,
       created_at: row.created_at ? new Date(row.created_at) : null,
       updated_at: row.updated_at ? new Date(row.updated_at) : null,
-      notified_at: row.notified_at ? new Date(row.notified_at) : null
-    })
+      notified_at: row.notified_at ? new Date(row.notified_at) : null,
+    });
   }
 
   // Convert to database format for insert/update
@@ -1427,123 +1546,129 @@ export class Reminder {
       is_enabled: this.is_enabled,
       reminder_frequencies: this.reminder_frequencies,
       category: this.category,
-      notes: this.notes
-    }
+      notes: this.notes,
+    };
   }
 
   // Check if reminder is due soon (within 7 days)
   isDueSoon() {
-    const now = new Date()
-    const reminderDate = new Date(this.reminder_date)
-    const diffTime = reminderDate.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays <= 7 && diffDays >= 0
+    const now = new Date();
+    const reminderDate = new Date(this.reminder_date);
+    const diffTime = reminderDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 7 && diffDays >= 0;
   }
 
   // Check if reminder is overdue
   isOverdue() {
-    const now = new Date()
-    const reminderDate = new Date(this.reminder_date)
-    return reminderDate < now && this.is_enabled
+    const now = new Date();
+    const reminderDate = new Date(this.reminder_date);
+    return reminderDate < now && this.is_enabled;
   }
 
   // Get reminder display text based on type
   getDisplayType() {
     const typeMap = {
-      'Next health check': 'Health Check',
-      'Medication refill': 'Medication',
-      'Blood pressure check': 'Blood Pressure',
-      'Doctor visit': 'Doctor Visit',
-      'Vaccination': 'Vaccination',
-      'Lab test': 'Lab Test',
-      'Custom': 'Custom'
-    }
-    return typeMap[this.reminder_type] || this.reminder_type
+      "Next health check": "Health Check",
+      "Medication refill": "Medication",
+      "Blood pressure check": "Blood Pressure",
+      "Doctor visit": "Doctor Visit",
+      Vaccination: "Vaccination",
+      "Lab test": "Lab Test",
+      Custom: "Custom",
+    };
+    return typeMap[this.reminder_type] || this.reminder_type;
   }
 
   // Get category display text
   getCategoryDisplay() {
     const categoryMap = {
-      'Health & appointments': 'Health & Appointments',
-      'Medication': 'Medication',
-      'Personal': 'Personal',
-      'Other': 'Other'
-    }
-    return categoryMap[this.category] || this.category
+      "Health & appointments": "Health & Appointments",
+      Medication: "Medication",
+      Personal: "Personal",
+      Other: "Other",
+    };
+    return categoryMap[this.category] || this.category;
   }
 
   // Validate reminder data
   static validate(reminderData) {
-    const errors = {}
+    const errors = {};
 
     // Required fields
     if (!reminderData.reminder_title?.trim()) {
-      errors.reminder_title = 'Reminder title is required'
+      errors.reminder_title = "Reminder title is required";
     }
 
     if (!reminderData.reminder_type) {
-      errors.reminder_type = 'Reminder type is required'
+      errors.reminder_type = "Reminder type is required";
     }
 
     if (!reminderData.reminder_date) {
-      errors.reminder_date = 'Reminder date is required'
+      errors.reminder_date = "Reminder date is required";
     } else {
-      const reminderDate = new Date(reminderData.reminder_date)
-      const now = new Date()
+      const reminderDate = new Date(reminderData.reminder_date);
+      const now = new Date();
       if (reminderDate < now) {
-        errors.reminder_date = 'Reminder date must be in the future'
+        errors.reminder_date = "Reminder date must be in the future";
       }
     }
 
     // Validate reminder type
     const validTypes = [
-      'Next health check',
-      'Medication refill',
-      'Blood pressure check',
-      'Doctor visit',
-      'Vaccination',
-      'Lab test',
-      'Custom'
-    ]
-    if (reminderData.reminder_type && !validTypes.includes(reminderData.reminder_type)) {
-      errors.reminder_type = 'Invalid reminder type'
+      "Next health check",
+      "Medication refill",
+      "Blood pressure check",
+      "Doctor visit",
+      "Vaccination",
+      "Lab test",
+      "Custom",
+    ];
+    if (
+      reminderData.reminder_type &&
+      !validTypes.includes(reminderData.reminder_type)
+    ) {
+      errors.reminder_type = "Invalid reminder type";
     }
 
     // Validate category
     const validCategories = [
-      'Health & appointments',
-      'Medication',
-      'Personal',
-      'Other'
-    ]
-    if (reminderData.category && !validCategories.includes(reminderData.category)) {
-      errors.category = 'Invalid category'
+      "Health & appointments",
+      "Medication",
+      "Personal",
+      "Other",
+    ];
+    if (
+      reminderData.category &&
+      !validCategories.includes(reminderData.category)
+    ) {
+      errors.category = "Invalid category";
     }
 
     return {
       isValid: Object.keys(errors).length === 0,
-      errors
-    }
+      errors,
+    };
   }
 }
 
 // Constants for dropdown options
 export const REMINDER_TYPES = [
-  'Next health check',
-  'Medication refill',
-  'Blood pressure check',
-  'Doctor visit',
-  'Vaccination',
-  'Lab test',
-  'Custom'
-]
+  "Next health check",
+  "Medication refill",
+  "Blood pressure check",
+  "Doctor visit",
+  "Vaccination",
+  "Lab test",
+  "Custom",
+];
 
 export const REMINDER_CATEGORIES = [
-  'Health & appointments',
-  'Medication',
-  'Personal',
-  'Other'
-]
+  "Health & appointments",
+  "Medication",
+  "Personal",
+  "Other",
+];
 
 // Reminders service functionality integrated into HealthReport
 const RemindersService = {
@@ -1551,71 +1676,73 @@ const RemindersService = {
   async createReminder(reminderData) {
     try {
       // Validate reminder data
-      const validation = Reminder.validate(reminderData)
+      const validation = Reminder.validate(reminderData);
       if (!validation.isValid) {
-        throw new Error(`Validation failed: ${Object.values(validation.errors).join(', ')}`)
+        throw new Error(
+          `Validation failed: ${Object.values(validation.errors).join(", ")}`,
+        );
       }
 
       // Create reminder instance and convert to database format
-      const reminder = new Reminder(reminderData)
-      const dbData = reminder.toDatabaseFormat()
+      const reminder = new Reminder(reminderData);
+      const dbData = reminder.toDatabaseFormat();
 
       const { data, error } = await supabase
-        .from('reminders')
+        .from("reminders")
         .insert(dbData)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
-      return { success: true, data: Reminder.fromDatabase(data) }
+      if (error) throw error;
+      return { success: true, data: Reminder.fromDatabase(data) };
     } catch (error) {
-      console.error('Error creating reminder:', error)
-      return { success: false, error: error.message }
+      console.error("Error creating reminder:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Get all reminders for a user
   async getUserReminders(userId, options = {}) {
     try {
-      let query = supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', userId)
+      let query = supabase.from("reminders").select("*").eq("user_id", userId);
 
       // Apply filters
       if (options.category) {
-        query = query.eq('category', options.category)
+        query = query.eq("category", options.category);
       }
 
       if (options.reminder_type) {
-        query = query.eq('reminder_type', options.reminder_type)
+        query = query.eq("reminder_type", options.reminder_type);
       }
 
       if (options.is_enabled !== undefined) {
-        query = query.eq('is_enabled', options.is_enabled)
+        query = query.eq("is_enabled", options.is_enabled);
       }
 
       // Apply date filters
       if (options.date_from) {
-        query = query.gte('reminder_date', options.date_from)
+        query = query.gte("reminder_date", options.date_from);
       }
 
       if (options.date_to) {
-        query = query.lte('reminder_date', options.date_to)
+        query = query.lte("reminder_date", options.date_to);
       }
 
       // Apply ordering
-      const orderBy = options.orderBy || 'reminder_date'
-      const order = options.order || 'asc'
-      query = query.order(orderBy, { ascending: order === 'asc' })
+      const orderBy = options.orderBy || "reminder_date";
+      const order = options.order || "asc";
+      query = query.order(orderBy, { ascending: order === "asc" });
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
-      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+      if (error) throw error;
+      return {
+        success: true,
+        data: data.map((row) => Reminder.fromDatabase(row)),
+      };
     } catch (error) {
-      console.error('Error fetching reminders:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching reminders:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -1623,22 +1750,22 @@ const RemindersService = {
   async getReminderById(reminderId) {
     try {
       const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('id', reminderId)
-        .single()
+        .from("reminders")
+        .select("*")
+        .eq("id", reminderId)
+        .single();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          return { success: false, error: 'Reminder not found' }
+        if (error.code === "PGRST116") {
+          return { success: false, error: "Reminder not found" };
         }
-        throw error
+        throw error;
       }
 
-      return { success: true, data: Reminder.fromDatabase(data) }
+      return { success: true, data: Reminder.fromDatabase(data) };
     } catch (error) {
-      console.error('Error fetching reminder:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching reminder:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -1646,17 +1773,20 @@ const RemindersService = {
   async updateReminder(reminderId, updateData) {
     try {
       // Remove user_id from update data if present (shouldn't be updated)
-      const { user_id, id, created_at, ...cleanUpdateData } = updateData
-      const result = await corsProxyUpdate('reminders', reminderId, {
+      const { user_id, id, created_at, ...cleanUpdateData } = updateData;
+      const result = await corsProxyUpdate("reminders", reminderId, {
         ...cleanUpdateData,
-        updated_at: new Date().toISOString()
-      })
+        updated_at: new Date().toISOString(),
+      });
 
-      if (!result.success) return { success: false, error: result.error }
-      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
+      if (!result.success) return { success: false, error: result.error };
+      return {
+        success: true,
+        data: result.data ? Reminder.fromDatabase(result.data) : null,
+      };
     } catch (error) {
-      console.error('Error updating reminder:', error)
-      return { success: false, error: error.message }
+      console.error("Error updating reminder:", error);
+      return { success: false, error: error.message };
     }
   },
 
@@ -1664,147 +1794,159 @@ const RemindersService = {
   async deleteReminder(reminderId) {
     try {
       const { error } = await supabase
-        .from('reminders')
+        .from("reminders")
         .delete()
-        .eq('id', reminderId)
+        .eq("id", reminderId);
 
-      if (error) throw error
-      return { success: true }
+      if (error) throw error;
+      return { success: true };
     } catch (error) {
-      console.error('Error deleting reminder:', error)
-      return { success: false, error: error.message }
+      console.error("Error deleting reminder:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Toggle reminder enabled status
   async toggleReminder(reminderId, isEnabled) {
     try {
-      const result = await corsProxyUpdate('reminders', reminderId, {
+      const result = await corsProxyUpdate("reminders", reminderId, {
         is_enabled: isEnabled,
-        updated_at: new Date().toISOString()
-      })
+        updated_at: new Date().toISOString(),
+      });
 
-      if (!result.success) return { success: false, error: result.error }
-      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
+      if (!result.success) return { success: false, error: result.error };
+      return {
+        success: true,
+        data: result.data ? Reminder.fromDatabase(result.data) : null,
+      };
     } catch (error) {
-      console.error('Error toggling reminder:', error)
-      return { success: false, error: error.message }
+      console.error("Error toggling reminder:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Get upcoming reminders (next 7 days)
   async getUpcomingReminders(userId) {
     try {
-      const now = new Date()
-      const nextWeek = new Date()
-      nextWeek.setDate(now.getDate() + 7)
+      const now = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(now.getDate() + 7);
 
       const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_enabled', true)
-        .gte('reminder_date', now.toISOString())
-        .lte('reminder_date', nextWeek.toISOString())
-        .order('reminder_date', { ascending: true })
+        .from("reminders")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_enabled", true)
+        .gte("reminder_date", now.toISOString())
+        .lte("reminder_date", nextWeek.toISOString())
+        .order("reminder_date", { ascending: true });
 
-      if (error) throw error
-      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+      if (error) throw error;
+      return {
+        success: true,
+        data: data.map((row) => Reminder.fromDatabase(row)),
+      };
     } catch (error) {
-      console.error('Error fetching upcoming reminders:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching upcoming reminders:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Get overdue reminders
   async getOverdueReminders(userId) {
     try {
-      const now = new Date()
+      const now = new Date();
 
       const { data, error } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_enabled', true)
-        .lt('reminder_date', now.toISOString())
-        .order('reminder_date', { ascending: false })
+        .from("reminders")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_enabled", true)
+        .lt("reminder_date", now.toISOString())
+        .order("reminder_date", { ascending: false });
 
-      if (error) throw error
-      return { success: true, data: data.map(row => Reminder.fromDatabase(row)) }
+      if (error) throw error;
+      return {
+        success: true,
+        data: data.map((row) => Reminder.fromDatabase(row)),
+      };
     } catch (error) {
-      console.error('Error fetching overdue reminders:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching overdue reminders:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Get reminder statistics for dashboard
   async getReminderStatistics(userId) {
     try {
-      const now = new Date()
-      const nextWeek = new Date()
-      nextWeek.setDate(now.getDate() + 7)
+      const now = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(now.getDate() + 7);
 
       // Get all reminders count
       const { count: totalCount, error: totalError } = await supabase
-        .from('reminders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_enabled', true)
+        .from("reminders")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_enabled", true);
 
       // Get upcoming reminders count
       const { count: upcomingCount, error: upcomingError } = await supabase
-        .from('reminders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_enabled', true)
-        .gte('reminder_date', now.toISOString())
-        .lte('reminder_date', nextWeek.toISOString())
+        .from("reminders")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_enabled", true)
+        .gte("reminder_date", now.toISOString())
+        .lte("reminder_date", nextWeek.toISOString());
 
       // Get overdue reminders count
       const { count: overdueCount, error: overdueError } = await supabase
-        .from('reminders')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_enabled', true)
-        .lt('reminder_date', now.toISOString())
+        .from("reminders")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_enabled", true)
+        .lt("reminder_date", now.toISOString());
 
       if (totalError || upcomingError || overdueError) {
-        throw new Error('Failed to fetch reminder statistics')
+        throw new Error("Failed to fetch reminder statistics");
       }
 
       return {
-        success: true, 
+        success: true,
         data: {
           total: totalCount || 0,
           upcoming: upcomingCount || 0,
-          overdue: overdueCount || 0
-        }
-      }
+          overdue: overdueCount || 0,
+        },
+      };
     } catch (error) {
-      console.error('Error fetching reminder statistics:', error)
-      return { success: false, error: error.message }
+      console.error("Error fetching reminder statistics:", error);
+      return { success: false, error: error.message };
     }
   },
 
   // Mark reminder as notified
   async markAsNotified(reminderId) {
     try {
-      const result = await corsProxyUpdate('reminders', reminderId, {
+      const result = await corsProxyUpdate("reminders", reminderId, {
         notified_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+        updated_at: new Date().toISOString(),
+      });
 
-      if (!result.success) return { success: false, error: result.error }
-      return { success: true, data: result.data ? Reminder.fromDatabase(result.data) : null }
+      if (!result.success) return { success: false, error: result.error };
+      return {
+        success: true,
+        data: result.data ? Reminder.fromDatabase(result.data) : null,
+      };
     } catch (error) {
-      console.error('Error marking reminder as notified:', error)
-      return { success: false, error: error.message }
+      console.error("Error marking reminder as notified:", error);
+      return { success: false, error: error.message };
     }
-  }
-}
+  },
+};
 
-// Export reminders functionality  
-export { RemindersService }
+// Export reminders functionality
+export { RemindersService };
 
 /**
  * Replace an existing health report file and reset its status
@@ -1817,29 +1959,33 @@ export { RemindersService }
 export const reuploadHealthReport = async (reportId, fileUrl, options = {}) => {
   try {
     if (!reportId) {
-      return { success: false, error: 'Report ID is required for reupload' }
+      return { success: false, error: "Report ID is required for reupload" };
     }
 
     if (!fileUrl) {
-      return { success: false, error: 'File URL is required for reupload' }
+      return { success: false, error: "File URL is required for reupload" };
     }
 
-    const status = options.status || 'Pending'
-    const timestamp = new Date().toISOString()
+    const status = options.status || "Pending";
+    const timestamp = new Date().toISOString();
 
-    const result = await corsProxyUpdate('health_reports', reportId, {
+    const result = await corsProxyUpdate("health_reports", reportId, {
       report_file_url: fileUrl,
       health_report_status: status,
-      updated_at: timestamp
-    })
+      updated_at: timestamp,
+    });
 
-    if (!result.success) throw new Error(result.error)
-    return { success: true, data: result.data, message: 'Health report file replaced successfully' }
+    if (!result.success) throw new Error(result.error);
+    return {
+      success: true,
+      data: result.data,
+      message: "Health report file replaced successfully",
+    };
   } catch (error) {
-    console.error('Error reuploading health report:', error)
-    return { success: false, error: error.message }
+    console.error("Error reuploading health report:", error);
+    return { success: false, error: error.message };
   }
-}
+};
 
 /**
  * Get admin dashboard statistics
@@ -1848,40 +1994,43 @@ export const reuploadHealthReport = async (reportId, fileUrl, options = {}) => {
 export const getAdminStatistics = async () => {
   try {
     const { data, error } = await supabase
-      .from('health_reports')
-      .select('health_report_status, created_at')
-      .neq('health_report_status', 'Archived')
+      .from("health_reports")
+      .select("health_report_status, created_at")
+      .neq("health_report_status", "Archived");
 
-    if (error) throw error
+    if (error) throw error;
 
     const stats = {
       pending: 0,
       reviewed: 0,
       flagged: 0,
-      generated: 0
-    }
+      generated: 0,
+    };
 
-    const currentMonth = new Date().getMonth()
-    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
-    data.forEach(report => {
-      const status = (report.health_report_status || 'Pending').toLowerCase()
-      const reportDate = new Date(report.created_at)
-      
+    data.forEach((report) => {
+      const status = (report.health_report_status || "Pending").toLowerCase();
+      const reportDate = new Date(report.created_at);
+
       // Count by status (using actual schema values)
-      if (status === 'pending') stats.pending++
-      else if (status === 'reviewed') stats.reviewed++
-      else if (status === 'flagged') stats.flagged++
-      
-      // Count reports generated this month
-      if (reportDate.getMonth() === currentMonth && reportDate.getFullYear() === currentYear) {
-        stats.generated++
-      }
-    })
+      if (status === "pending") stats.pending++;
+      else if (status === "reviewed") stats.reviewed++;
+      else if (status === "flagged") stats.flagged++;
 
-    return { success: true, data: stats }
+      // Count reports generated this month
+      if (
+        reportDate.getMonth() === currentMonth &&
+        reportDate.getFullYear() === currentYear
+      ) {
+        stats.generated++;
+      }
+    });
+
+    return { success: true, data: stats };
   } catch (error) {
-    console.error('Error fetching admin statistics:', error)
-    return { success: false, error: error.message }
+    console.error("Error fetching admin statistics:", error);
+    return { success: false, error: error.message };
   }
-}
+};

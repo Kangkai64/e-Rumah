@@ -166,7 +166,7 @@ CREATE TABLE public.family_members (
   notes text NULL,
   created_at timestamp with time zone NULL DEFAULT now(),
   updated_at timestamp with time zone NULL DEFAULT now(),
-  CONSTRAINT family_members_unique_relationship UNIQUE (id, family_member_user_id),
+  CONSTRAINT family_members_pkey PRIMARY KEY (id, family_member_user_id),
   CONSTRAINT family_members_family_user_id_fkey FOREIGN KEY (family_member_user_id) REFERENCES public.users (id) ON DELETE CASCADE,
   CONSTRAINT family_members_id_fkey FOREIGN KEY (id) REFERENCES public.users (id) ON DELETE CASCADE,
   CONSTRAINT family_members_not_self CHECK ((id <> family_member_user_id)),
@@ -1493,4 +1493,21 @@ CREATE TRIGGER audit_applications
 
 CREATE TRIGGER audit_loan_offers
   AFTER INSERT OR UPDATE OR DELETE ON public.loan_offers
+  FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();
+
+-- health_report_status/due_status/flagged_reason are overwritten in place on
+-- UPDATE - see migrations/034_*.sql.
+CREATE TRIGGER audit_health_reports
+  AFTER INSERT OR UPDATE OR DELETE ON public.health_reports
+  FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();
+
+-- status/confirmed_by/confirmed_at (disbursements) and
+-- status/result_value/completed_by (valuations) are overwritten in place on
+-- UPDATE - see migrations/035_*.sql.
+CREATE TRIGGER audit_loan_disbursement_schedules
+  AFTER INSERT OR UPDATE OR DELETE ON public.loan_disbursement_schedules
+  FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();
+
+CREATE TRIGGER audit_property_valuation_schedules
+  AFTER INSERT OR UPDATE OR DELETE ON public.property_valuation_schedules
   FOR EACH ROW EXECUTE FUNCTION public.audit_trigger_fn();

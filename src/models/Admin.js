@@ -82,28 +82,64 @@ const Admin = {
       const last30Days = new Date();
       last30Days.setDate(last30Days.getDate() - 30);
 
-      const [applicationsResult, reportsResult] = await Promise.all([
-        supabase.from("applications").select("status, rejected_at"),
-        supabase
-          .from("reports")
-          .select("*", { count: "exact", head: true })
-          // created_at is set once on insert and never touched again, unlike
-          // generated_at (which viewMonthlyReport() also bumps on every view
-          // of an existing report) - see migration 020.
-          .gte("created_at", startOfMonth.toISOString())
-          .lte("created_at", endOfMonth.toISOString()),
-      ]);
+      const [applicationsResult, reportsResult, valuationCandidatesResult] =
+        await Promise.all([
+          supabase.from("applications").select("status, rejected_at"),
+          supabase
+            .from("reports")
+            .select("*", { count: "exact", head: true })
+            // created_at is set once on insert and never touched again, unlike
+            // generated_at (which viewMonthlyReport() also bumps on every view
+            // of an existing report) - see migration 020.
+            .gte("created_at", startOfMonth.toISOString())
+            .lte("created_at", endOfMonth.toISOString()),
+          // Applications still awaiting a valuation result: indicative_market_value
+          // is only ever null when the applicant checked valuationReportPending at
+          // submission (see applicationValidation.js), so this is a reliable proxy
+          // for "no valuation on file yet" without needing a storage lookup.
+          supabase
+            .from("applications")
+            .select("id, properties(indicative_market_value)")
+            .in("status", ["submitted", "underReviewed"]),
+        ]);
 
       if (applicationsResult.error) throw applicationsResult.error;
       if (reportsResult.error) throw reportsResult.error;
+      if (valuationCandidatesResult.error) throw valuationCandidatesResult.error;
 
       const applications = applicationsResult.data || [];
       const reportsGenerated = reportsResult.count || 0;
+
+      const valuationCandidates = (valuationCandidatesResult.data || []).filter(
+        (app) => !(parseFloat(app.properties?.indicative_market_value) > 0),
+      );
+
+      let pendingValuation = valuationCandidates.length;
+      if (valuationCandidates.length) {
+        const { data: schedules, error: schedulesError } = await supabase
+          .from("property_valuation_schedules")
+          .select("application_id")
+          .eq("status", "scheduled")
+          .in(
+            "application_id",
+            valuationCandidates.map((app) => app.id),
+          );
+
+        if (schedulesError) throw schedulesError;
+
+        const scheduledIds = new Set(
+          (schedules || []).map((s) => s.application_id),
+        );
+        pendingValuation = valuationCandidates.filter(
+          (app) => !scheduledIds.has(app.id),
+        ).length;
+      }
 
       const stats = {
         pending: applications.filter(
           (app) => app.status === "submitted" || app.status === "underReviewed",
         ).length,
+        pendingValuation,
         approved: applications.filter((app) => app.status === "approved")
           .length,
         auctioning: applications.filter((app) => app.status === "auctioning")
@@ -148,6 +184,11 @@ const Admin = {
         if (filters.status === "pending") {
           // Pending includes both 'submitted' and 'underReviewed'
           query = query.in("status", ["submitted", "underReviewed"]);
+        } else if (filters.status === "valuationPending") {
+          // Valuation-pending is a derived filter (see needsValuationSchedule
+          // below), not a real application status, so just narrow to the
+          // statuses it can apply to here and finish filtering client-side.
+          query = query.in("status", ["submitted", "underReviewed"]);
         } else {
           // For specific status: submitted, approved, rejected, terminated, underReviewed
           query = query.eq("status", filters.status);
@@ -163,11 +204,43 @@ const Admin = {
 
       if (error) throw error;
 
-      // Client-side search filter (case-insensitive)
       let filteredData = data || [];
+
+      // Flag applications with no valuation result on file yet (indicative_market_value
+      // is only null when the applicant left the valuation report pending at submission)
+      // and no valuer appointment already booked, so the admin knows which ones still
+      // need a valuation scheduled.
+      const candidateIds = filteredData
+        .filter((app) => !(parseFloat(app.properties?.indicative_market_value) > 0))
+        .map((app) => app.id);
+
+      let scheduledIds = new Set();
+      if (candidateIds.length) {
+        const { data: schedules, error: schedulesError } = await supabase
+          .from("property_valuation_schedules")
+          .select("application_id")
+          .eq("status", "scheduled")
+          .in("application_id", candidateIds);
+
+        if (schedulesError) throw schedulesError;
+        scheduledIds = new Set((schedules || []).map((s) => s.application_id));
+      }
+
+      filteredData = filteredData.map((app) => ({
+        ...app,
+        needsValuationSchedule:
+          !(parseFloat(app.properties?.indicative_market_value) > 0) &&
+          !scheduledIds.has(app.id),
+      }));
+
+      if (filters.status === "valuationPending") {
+        filteredData = filteredData.filter((app) => app.needsValuationSchedule);
+      }
+
+      // Client-side search filter (case-insensitive)
       if (filters.search && filters.search.trim()) {
         const searchLower = filters.search.toLowerCase().trim();
-        filteredData = data.filter((app) => {
+        filteredData = filteredData.filter((app) => {
           const fullName = (app.users?.full_name || "").toLowerCase();
           const icNumber = (app.users?.ic_number || "").toLowerCase();
           const email = (app.users?.email || "").toLowerCase();
